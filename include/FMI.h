@@ -19,6 +19,8 @@ extern "C" {
 #include <Windows.h>
 #endif
 
+#include <stddef.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 #ifndef FMI_MAX_MESSAGE_LENGTH

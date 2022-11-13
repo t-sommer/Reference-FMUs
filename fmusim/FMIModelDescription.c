@@ -5,8 +5,11 @@
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
 
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 
+#include <string.h>
 
 static void readModelDescriptionFMI3(xmlNodePtr root, FMIModelDescription* modelDescription) {
 
@@ -290,8 +293,11 @@ FMIModelDescription* FMIReadModelDescription(const char* filename) {
     xmlSchemaParserCtxtPtr pctxt;
 
     char path[2048] = "";
-    GetModuleFileNameA(NULL, path, 2048);
 
+#ifdef _WIN32
+    GetModuleFileNameA(NULL, path, 2048);
+#endif
+    
     switch (modelDescription->fmiVersion) {
     case FMIVersion2:
         strcat(path, "\\..\\schema\\fmi2\\fmi2ModelDescription.xsd");

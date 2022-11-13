@@ -46,11 +46,17 @@ target_include_directories(fmusim PRIVATE
   ${CONDA_DIR}/Library/include/libxml2
 )
 
-target_link_libraries(fmusim
-  ${CONDA_DIR}/Library/lib/libxml2.lib
-  ${CONDA_DIR}/Library/lib/zip.lib
-)
-
+if (WIN32)
+  target_link_libraries(fmusim
+    ${CONDA_DIR}/Library/lib/libxml2.lib
+    ${CONDA_DIR}/Library/lib/zip.lib
+  )
+else ()
+  target_link_libraries(fmusim
+    ${CONDA_DIR}/lib/libxml2.dylib
+    ${CONDA_DIR}/lib/libzip.dylib
+  )
+endif ()
 file(GLOB API_MS_DLLS ${CONDA_DIR}/Library/bin/api-ms-win-*.dll)
 
 install(TARGETS fmusim RUNTIME DESTINATION .)

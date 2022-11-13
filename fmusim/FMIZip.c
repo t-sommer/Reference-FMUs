@@ -1,15 +1,20 @@
 #include <zip.h>
 #include <errno.h>
+#ifdef _WIN32
 #include <Windows.h>
 #include <Shlwapi.h>
 #include <process.h>
 #include <strsafe.h>
+#endif
+#include <string.h>
+#include <stdlib.h>
 
 #include "FMIZip.h"
 
 
 const char* FMICreateTemporaryDirectory() {
-    
+
+#ifdef _WIN32
     const char* tempfile = _tempnam(NULL, NULL);
 
     if (!tempfile) {
@@ -24,11 +29,16 @@ const char* FMICreateTemporaryDirectory() {
     }
 
     return tempfile;
+#endif
+    
+    return NULL;
 }
 
 int FMIPathAppend(char* path, const char* more) {
-
+#ifdef _WIN32
     return PathAppendA(path, "modelDescription.xml");
+#endif
+    return 0;
 }
 
 int FMIExtractArchive(const char* filename, const char* unzipdir) {
@@ -56,13 +66,19 @@ int FMIExtractArchive(const char* filename, const char* unzipdir) {
 
             len = strlen(sb.name);
 
-            strcpy(path, unzipdir);            
+            strcpy(path, unzipdir);
+            
+#ifdef _WIN32
             PathAppendA(path, sb.name);
-
+#else
+            
+#endif
             if (sb.name[len - 1] == '/') {
-
+#ifdef _WIN32
                 mkdir(path);
-
+#else
+                
+#endif
             } else {
 
                 zf = zip_fopen_index(za, i, 0);

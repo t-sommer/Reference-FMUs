@@ -4,11 +4,16 @@
 #include <limits.h>
 #include <fcntl.h>
 #include <limits.h>
+
+#ifdef _WIN32
 #include <Shlwapi.h>
 #include <strsafe.h>
-#include <errno.h>
-
 #include <direct.h>
+#endif
+
+#include <errno.h>
+#include <stdarg.h>
+
 
 #include "FMI3.h"
 #include "FMIZip.h"

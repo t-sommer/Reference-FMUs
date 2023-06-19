@@ -35,11 +35,17 @@ typedef enum {
 } ValueReference;
 
 typedef struct {
+
     uint64_t m;
     uint64_t n;
-    double u[N_MAX];
+
+    double* u_pointer;
+    double* y_pointer;
+
+    double u_memory[N_MAX];    
     double A[M_MAX][N_MAX];
-    double y[M_MAX];
+    double y_memory[M_MAX];
+
 } ModelData;
 
 #endif /* config_h */

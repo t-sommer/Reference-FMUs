@@ -1,3 +1,5 @@
+#include "fmi3SharedMemory.h"
+
 #include "config.h"
 #include "model.h"
 
@@ -7,6 +9,9 @@ void setStartValues(ModelInstance *comp) {
     M(m) = 2;
     M(n) = 2;
 
+    M(u_pointer) = M(u_memory);
+    M(y_pointer) = M(y_memory);
+
     // identity matrix
     for (int i = 0; i < M_MAX; i++) {
     for (int j = 0; j < N_MAX; j++) {
@@ -14,11 +19,11 @@ void setStartValues(ModelInstance *comp) {
     }}
 
     for (int i = 0; i < M_MAX; i++) {
-        M(u)[i] = i + 1;
+        M(u_pointer)[i] = i + 1;
     }
 
     for (int i = 0; i < N_MAX; i++) {
-        M(y)[i] = 0;
+        M(y_pointer)[i] = 0;
     }
 
 }
@@ -27,9 +32,9 @@ Status calculateValues(ModelInstance *comp) {
 
     // y = A * u
     for (size_t i = 0; i < M(m); i++) {
-        M(y)[i] = 0;
+        M(y_pointer)[i] = 0;
         for (size_t j = 0; j < M(n); j++) {
-            M(y)[i] += M(A)[i][j] * M(u)[j];
+            M(y_pointer)[i] += M(A)[i][j] * M(u_pointer)[j];
         }
     }
 
@@ -48,7 +53,7 @@ Status getFloat64(ModelInstance* comp, ValueReference vr, double values[], size_
         case vr_u:
             ASSERT_NVALUES(M(n));
             for (size_t i = 0; i < M(n); i++) {
-                values[(*index)++] = M(u)[i];
+                values[(*index)++] = M(u_pointer)[i];
             }
             return OK;
         case vr_A:
@@ -61,7 +66,7 @@ Status getFloat64(ModelInstance* comp, ValueReference vr, double values[], size_
         case vr_y:
             ASSERT_NVALUES(1);
             for (size_t i = 0; i < M(m); i++) {
-                values[(*index)++] = M(y)[i];
+                values[(*index)++] = M(y_pointer)[i];
             }
             return OK;
         default:
@@ -76,7 +81,7 @@ Status setFloat64(ModelInstance* comp, ValueReference vr, const double values[],
         case vr_u:
             ASSERT_NVALUES(M(n));
             for (size_t i = 0; i < M(n); i++) {
-                M(u)[i] = values[(*index)++];
+                M(u_pointer)[i] = values[(*index)++];
             }
             calculateValues(comp);
             return OK;
@@ -142,4 +147,78 @@ void eventUpdate(ModelInstance *comp) {
     comp->nominalsOfContinuousStatesChanged = false;
     comp->terminateSimulation               = false;
     comp->nextEventTimeDefined              = false;
+}
+
+fmi3Status fmi3GetFloat64Pointer(fmi3Instance instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Float64* valuePointers[],
+    size_t nValues) {
+
+    if (!instance) {
+        return fmi3Fatal;
+    }
+
+    // TODO: check nValues
+    UNUSED(nValues);
+
+    ModelInstance* comp = (ModelInstance*)instance;
+
+    calculateValues(comp);
+
+    for (size_t i = 0; i < nValueReferences; i++) {
+
+        const fmi3ValueReference vr = valueReferences[i];
+
+        switch (vr) {
+        case vr_u:
+            valuePointers[i] = M(u_pointer);
+            break;
+        case vr_y:
+            valuePointers[i] = M(y_pointer);
+            break;
+        default:
+            logError(comp, "fmi3GetFloat64Pointer is not allowed for value reference %u.", vr);
+            return fmi3Error;
+        }
+
+    }
+
+    return fmi3OK;
+}
+
+fmi3Status fmi3SetFloat64Pointer(fmi3Instance instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Float64* valuePointers[],
+    size_t nValues) {
+
+    if (!instance) {
+        return fmi3Fatal;
+    }
+
+    // TODO: check nValues
+    UNUSED(nValues);
+
+    ModelInstance* comp = (ModelInstance*)instance;
+
+    for (size_t i = 0; i < nValueReferences; i++) {
+
+        const fmi3ValueReference vr = valueReferences[i];
+
+        switch (vr) {
+        case vr_u:
+            M(u_pointer) = valuePointers[i];
+            break;
+        case vr_y:
+            M(y_pointer) = valuePointers[i];
+            break;
+        default:
+            logError(comp, "fmi3SetFloat64Pointer is not allowed for value reference %u.", vr);
+            return fmi3Error;
+        }
+
+    }
+
+    return fmi3OK;
 }

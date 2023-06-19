@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "fmi3FunctionTypes.h"
+#include "fmi3SharedMemory.h"
 #include "FMI.h"
 
 struct FMI3Functions_ {
@@ -134,6 +134,12 @@ struct FMI3Functions_ {
 
     fmi3ActivateModelPartitionTYPE          *fmi3ActivateModelPartition;
 
+    /***************************************************
+    Shared Memory Functions
+    ****************************************************/
+
+    fmi3GetFloat64PointerTYPE* fmi3GetFloat64Pointer;
+    fmi3SetFloat64PointerTYPE* fmi3SetFloat64Pointer;
 };
 
 
@@ -556,6 +562,24 @@ Functions for Scheduled Execution
 FMI_STATIC FMIStatus FMI3ActivateModelPartition(FMIInstance *instance,
     fmi3ValueReference clockReference,
     fmi3Float64 activationTime);
+
+/***************************************************
+Shared Memory Functions
+****************************************************/
+
+FMI_STATIC FMIStatus FMI3GetFloat64Pointer(
+    FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Float64* valuePointers[],
+    size_t nValues);
+
+FMI_STATIC FMIStatus FMI3SetFloat64Pointer(
+    FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Float64* valuePointers[],
+    size_t nValues);
 
 #ifdef __cplusplus
 }  /* end of extern "C" { */

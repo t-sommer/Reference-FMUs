@@ -369,6 +369,17 @@ typedef fmi3Status fmi3SetClockTYPE  (fmi3Instance instance,
                                       const fmi3Clock values[]);
 /* end::SetClock[] */
 
+/* Getting and setting Shared Memory */
+typedef fmi3Status fmi3GetPointerTYPE (fmi3Instance instance,
+                                       const fmi3ValueReference valueReferences[],
+                                       size_t nValueReferences,
+                                       void* values[]);
+
+typedef fmi3Status fmi3SetPointerTYPE (fmi3Instance instance,
+                                       const fmi3ValueReference valueReferences[],
+                                       size_t nValueReferences,
+                                       const void* values[]);
+
 /* Getting Variable Dependency Information */
 /* tag::GetNumberOfVariableDependencies[] */
 typedef fmi3Status fmi3GetNumberOfVariableDependenciesTYPE(fmi3Instance instance,

@@ -18,9 +18,12 @@ FMIStatus recordVariables(FMIInstance *S, FILE *outputFile) {
 
     const fmi3ValueReference valueReferences[1] = { vr_y };
 
-    fmi3Float64 values[2] = { 0 };
+    fmi3Float64* valuePointers[1];
 
-    FMIStatus status = FMI3GetFloat64((FMIInstance *)S, valueReferences, 1, values, 2);
+    // use the FMU's memory to retrive the outputs
+    const FMIStatus status = FMI3GetFloat64Pointer((FMIInstance*)S, valueReferences, 1, &valuePointers, 2);
+
+    fmi3Float64* values = valuePointers[0];
 
     fprintf(outputFile, "%g,%g,%g\n", ((FMIInstance *)S)->time, values[0], values[1]);
 

@@ -1,4 +1,4 @@
-#include "fmi3SharedMemory.h"
+#include "fmi3DirectMemory.h"
 
 #include "config.h"
 #include "model.h"

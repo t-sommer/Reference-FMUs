@@ -168,20 +168,20 @@ if (${FMI_VERSION} EQUAL 3)
         )
     endif ()
 
-    # cs_shared_memory
-    add_executable(cs_shared_memory
+    # cs_direct_memory
+    add_executable(cs_direct_memory
         ${EXAMPLE_SOURCES}
-        include/fmi3SharedMemory.h
+        include/fmi3DirectMemory.h
         LinearTransform/config.h
         examples/LinearTransform.c
-        examples/cs_shared_memory.c
+        examples/cs_direct_memory.c
     )
-    add_dependencies(cs_shared_memory LinearTransform)
-    set_target_properties(cs_shared_memory PROPERTIES FOLDER examples)
-    target_compile_definitions(cs_shared_memory PRIVATE FMI_VERSION=${FMI_VERSION} DISABLE_PREFIX)
-    target_include_directories(cs_shared_memory PRIVATE include LinearTransform)
-    target_link_libraries(cs_shared_memory ${LIBRARIES})
-    set_target_properties(cs_shared_memory PROPERTIES
+    add_dependencies(cs_direct_memory LinearTransform)
+    set_target_properties(cs_direct_memory PROPERTIES FOLDER examples)
+    target_compile_definitions(cs_direct_memory PRIVATE FMI_VERSION=${FMI_VERSION} DISABLE_PREFIX)
+    target_include_directories(cs_direct_memory PRIVATE include LinearTransform)
+    target_link_libraries(cs_direct_memory ${LIBRARIES})
+    set_target_properties(cs_direct_memory PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY         temp
         RUNTIME_OUTPUT_DIRECTORY_DEBUG   temp
         RUNTIME_OUTPUT_DIRECTORY_RELEASE temp

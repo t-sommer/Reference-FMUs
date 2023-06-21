@@ -114,7 +114,7 @@ elseif (${FMI_VERSION} EQUAL 3)
     include/fmi3Functions.h
     include/fmi3FunctionTypes.h
     include/fmi3PlatformTypes.h
-    include/fmi3SharedMemory.h
+    include/fmi3DirectMemory.h
   )
 endif()
 

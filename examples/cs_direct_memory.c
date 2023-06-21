@@ -1,5 +1,5 @@
-#define OUTPUT_FILE  "cs_shared_memory_out.csv"
-#define LOG_FILE     "cs_shared_memory_log.txt"
+#define OUTPUT_FILE  "cs_direct_memory_out.csv"
+#define LOG_FILE     "cs_direct_memory_log.txt"
 
 #include "util.h"
 

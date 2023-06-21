@@ -34,6 +34,7 @@ do { \
     instance->fmi3Functions->fmi3 ## f = fmi3 ## f; \
 } while (0)
 #elif defined(_WIN32)
+
 #define LOAD_SYMBOL(f) \
 do { \
     instance->fmi3Functions->fmi3 ## f = (fmi3 ## f ## TYPE*)GetProcAddress(instance->libraryHandle, "fmi3" #f); \
@@ -42,7 +43,14 @@ do { \
         return fmi3Fatal; \
     } \
 } while (0)
+
+#define LOAD_OPTIONAL_SYMBOL(f) \
+do { \
+    instance->fmi3Functions->fmi3 ## f = (fmi3 ## f ## TYPE*)GetProcAddress(instance->libraryHandle, "fmi3" #f); \
+} while (0)
+
 #else
+
 #define LOAD_SYMBOL(f) \
 do { \
     instance->fmi3Functions->fmi3 ## f = (fmi3 ## f ## TYPE*)dlsym(instance->libraryHandle, "fmi3" #f); \
@@ -51,6 +59,12 @@ do { \
         return FMIFatal; \
     } \
 } while (0)
+
+#define LOAD_OPTIONAL_SYMBOL(f) \
+do { \
+    instance->fmi3Functions->fmi3 ## f = (fmi3 ## f ## TYPE*)dlsym(instance->libraryHandle, "fmi3" #f); \
+} while (0)
+
 #endif
 
 #define CALL(f) \
@@ -84,6 +98,26 @@ do { \
         FMIAppendArrayToLogMessageBuffer(instance, valueReferences, nValueReferences, NULL, FMIValueReferenceType); \
         FMIAppendToLogMessageBuffer(instance, "}, nValueReferences=%zu, values={", nValueReferences); \
         FMIAppendArrayToLogMessageBuffer(instance, values, nValues, NULL, FMI ## t ## Type); \
+        FMIAppendToLogMessageBuffer(instance, "}, nValues=%zu)", nValues); \
+        instance->logFunctionCall(instance, status, instance->logMessageBuffer); \
+    } \
+    instance->status = status > instance->status ? status : instance->status; \
+    return status; \
+} while (0)
+
+#define CALL_DIRECT_ARRAY(s, t) \
+do { \
+    const FMIStatus status = (FMIStatus)instance->fmi3Functions->fmi3 ## s ## t ## Pointer(instance->component, valueReferences, nValueReferences, valuePointers, nValues); \
+    if (instance->logFunctionCall) { \
+        FMIClearLogMessageBuffer(instance); \
+        FMIAppendToLogMessageBuffer(instance, "fmi3" #s #t "(valueReferences={"); \
+        FMIAppendArrayToLogMessageBuffer(instance, valueReferences, nValueReferences, NULL, FMIValueReferenceType); \
+        FMIAppendToLogMessageBuffer(instance, "}, nValueReferences=%zu, values={", nValueReferences); \
+        for (size_t i = 0; i < nValueReferences; i++) { \
+            FMIAppendToLogMessageBuffer(instance, "{"); \
+            FMIAppendArrayToLogMessageBuffer(instance, valuePointers[i], nValues, NULL, FMI ## t ## Type); \
+            FMIAppendToLogMessageBuffer(instance, i < nValueReferences - 1 ? "}, " : "}", nValueReferences); \
+        } \
         FMIAppendToLogMessageBuffer(instance, "}, nValues=%zu)", nValues); \
         instance->logFunctionCall(instance, status, instance->logMessageBuffer); \
     } \
@@ -244,11 +278,37 @@ static FMIStatus loadSymbols3(FMIInstance *instance) {
     LOAD_SYMBOL(ActivateModelPartition);
 
     /***************************************************
-    Shared Memory Functions
+    Direct Memory Functions
     ****************************************************/
 
-    LOAD_SYMBOL(GetFloat64Pointer);
-    LOAD_SYMBOL(SetFloat64Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetFloat32Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetFloat64Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetInt8Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetUInt8Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetInt16Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetUInt16Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetInt32Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetUInt32Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetInt64Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetUInt64Pointer);
+    LOAD_OPTIONAL_SYMBOL(GetBooleanPointer);
+    LOAD_OPTIONAL_SYMBOL(GetStringPointer);
+    LOAD_OPTIONAL_SYMBOL(GetBinaryPointer);
+    LOAD_OPTIONAL_SYMBOL(GetClockPointer);
+    LOAD_OPTIONAL_SYMBOL(SetFloat32Pointer);
+    LOAD_OPTIONAL_SYMBOL(SetFloat64Pointer);
+    LOAD_OPTIONAL_SYMBOL(SetInt8Pointer);
+    LOAD_OPTIONAL_SYMBOL(SetUInt8Pointer);
+    LOAD_OPTIONAL_SYMBOL(SetInt16Pointer);
+    LOAD_OPTIONAL_SYMBOL(SetUInt16Pointer);
+    LOAD_OPTIONAL_SYMBOL(SetInt32Pointer);
+    LOAD_OPTIONAL_SYMBOL(SetUInt32Pointer);
+    LOAD_OPTIONAL_SYMBOL(SetInt64Pointer);
+    LOAD_OPTIONAL_SYMBOL(SetUInt64Pointer);
+    LOAD_OPTIONAL_SYMBOL(SetBooleanPointer);
+    LOAD_OPTIONAL_SYMBOL(SetStringPointer);
+    LOAD_OPTIONAL_SYMBOL(SetBinaryPointer);
+    LOAD_OPTIONAL_SYMBOL(SetClockPointer);
 
     instance->state = FMI2StartAndEndState;
 
@@ -1177,32 +1237,184 @@ FMIStatus FMI3ActivateModelPartition(FMIInstance *instance,
 }
 
 /***************************************************
-Shared Memory Functions
+Direct Memory Functions
 ****************************************************/
 
-FMIStatus FMI3GetFloat64Pointer(
-    FMIInstance* instance,
+FMIStatus FMI3GetFloat32Pointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Float32* valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, Float32);
+}
+
+FMIStatus FMI3GetFloat64Pointer(FMIInstance* instance,
     const fmi3ValueReference valueReferences[],
     size_t nValueReferences,
     fmi3Float64* valuePointers[],
     size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, Float64);
+}
 
-    const FMIStatus status = (FMIStatus)instance->fmi3Functions->fmi3GetFloat64Pointer(instance->component, valueReferences, nValueReferences, valuePointers, nValues);
+FMIStatus FMI3GetInt8Pointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Int8* valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, Int8);
+}
+
+FMIStatus FMI3GetUInt8Pointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3UInt8* valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, UInt8);
+}
+
+FMIStatus FMI3GetInt16Pointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Int16* valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, Int16);
+}
+
+FMIStatus FMI3GetUInt16Pointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3UInt16* valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, UInt16);
+}
+
+FMIStatus FMI3GetInt32Pointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Int32* valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, Int32);
+}
+
+FMIStatus FMI3GetUInt32Pointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3UInt32* valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, UInt32);
+}
+
+FMIStatus FMI3GetInt64Pointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Int64* valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, Int64);
+}
+
+FMIStatus FMI3GetUInt64Pointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3UInt64* valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, UInt64);
+}
+
+FMIStatus FMI3GetBooleanPointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Boolean* valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, Boolean);
+}
+
+FMIStatus FMI3GetStringPointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3String valuePointers[],
+    size_t nValues) {
+    CALL_DIRECT_ARRAY(Get, String);
+}
+
+FMIStatus FMI3GetBinaryPointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    size_t sizes[],
+    fmi3Binary valuePointers[],
+    size_t nValues) {
+
+    const FMIStatus status = (FMIStatus)instance->fmi3Functions->fmi3GetBinaryPointer(instance->component, valueReferences, nValueReferences, sizes, valuePointers, nValues);
 
     if (instance->logFunctionCall) {
         FMIClearLogMessageBuffer(instance);
-        FMIAppendToLogMessageBuffer(instance, "fmi3GetFloat64Pointer(valueReferences={");
+        FMIAppendToLogMessageBuffer(instance, "fmi3GetBinary(valueReferences={");
         FMIAppendArrayToLogMessageBuffer(instance, valueReferences, nValueReferences, NULL, FMIValueReferenceType);
-        FMIAppendToLogMessageBuffer(instance, "}, nValueReferences=%zu, values={...", nValueReferences);
-        //FMIAppendArrayToLogMessageBuffer(instance, values, nValues, NULL, FMIFloat64Type);
+        FMIAppendToLogMessageBuffer(instance, "}, nValueReferences=%zu, sizes={", nValueReferences);
+        FMIAppendArrayToLogMessageBuffer(instance, sizes, nValueReferences, NULL, FMISizeTType);
+        FMIAppendToLogMessageBuffer(instance, "}, values={");
+        FMIAppendArrayToLogMessageBuffer(instance, valuePointers, nValues, sizes, FMIBinaryType);
         FMIAppendToLogMessageBuffer(instance, "}, nValues=%zu)", nValues);
         instance->logFunctionCall(instance, status, instance->logMessageBuffer);
     }
 
-    instance->status = status > instance->status ? status : instance->status;
+    return status;
+}
+
+FMIStatus FMI3GetClockPointer(FMIInstance* instance,
+    const fmi3ValueReference valueReferences[],
+    size_t nValueReferences,
+    fmi3Clock* valuePointers[]) {
+
+    const FMIStatus status = (FMIStatus)instance->fmi3Functions->fmi3GetClockPointer(instance->component, valueReferences, nValueReferences, valuePointers);
+
+    if (instance->logFunctionCall) {
+        FMIClearLogMessageBuffer(instance);
+        FMIAppendToLogMessageBuffer(instance, "fmi3GetClock(valueReferences={");
+        FMIAppendArrayToLogMessageBuffer(instance, valueReferences, nValueReferences, NULL, FMIValueReferenceType);
+        FMIAppendToLogMessageBuffer(instance, "}, nValueReferences=%zu, values={", nValueReferences);
+        for (size_t i = 0; i < nValueReferences; i++) {
+            FMIAppendToLogMessageBuffer(instance, "{");
+            FMIAppendArrayToLogMessageBuffer(instance, valuePointers[i], nValueReferences, NULL, FMIClockType);
+            FMIAppendToLogMessageBuffer(instance, i < nValueReferences - 1 ? "}, " : "}", nValueReferences);
+        }
+        FMIAppendToLogMessageBuffer(instance, "})");
+        instance->logFunctionCall(instance, status, instance->logMessageBuffer);
+    }
 
     return status;
 }
+
+
+
+//FMIStatus FMI3GetFloat64Pointer(
+//    FMIInstance* instance,
+//    const fmi3ValueReference valueReferences[],
+//    size_t nValueReferences,
+//    fmi3Float64* valuePointers[],
+//    size_t nValues) {
+//
+//    CALL_DIRECT_ARRAY(Get, Float64);
+//
+//    //const FMIStatus status = (FMIStatus)instance->fmi3Functions->fmi3GetFloat64Pointer(instance->component, valueReferences, nValueReferences, valuePointers, nValues);
+//
+//    //if (instance->logFunctionCall) {
+//    //    FMIClearLogMessageBuffer(instance);
+//    //    FMIAppendToLogMessageBuffer(instance, "fmi3GetFloat64Pointer(valueReferences={");
+//    //    FMIAppendArrayToLogMessageBuffer(instance, valueReferences, nValueReferences, NULL, FMIValueReferenceType);
+//    //    FMIAppendToLogMessageBuffer(instance, "}, nValueReferences=%zu, values={", nValueReferences);
+//    //    for (size_t i = 0; i < nValueReferences; i++) {
+//    //        FMIAppendToLogMessageBuffer(instance, "{", nValueReferences);
+//    //        FMIAppendArrayToLogMessageBuffer(instance, valuePointers[i], nValues, NULL, FMIFloat64Type);
+//    //        FMIAppendToLogMessageBuffer(instance, i < nValueReferences - 1 ? "}, " : "}", nValueReferences);
+//    //    }
+//    //    FMIAppendToLogMessageBuffer(instance, "}, nValues=%zu)", nValues);
+//    //    instance->logFunctionCall(instance, status, instance->logMessageBuffer);
+//    //}
+//
+//    //instance->status = status > instance->status ? status : instance->status;
+//
+//    //return status;
+//}
 
 FMIStatus FMI3SetFloat64Pointer(
     FMIInstance* instance,
@@ -1211,21 +1423,28 @@ FMIStatus FMI3SetFloat64Pointer(
     fmi3Float64* valuePointers[],
     size_t nValues) {
 
-    const FMIStatus status = (FMIStatus)instance->fmi3Functions->fmi3SetFloat64Pointer(instance->component, valueReferences, nValueReferences, valuePointers, nValues);
+    CALL_DIRECT_ARRAY(Set, Float64);
 
-    if (instance->logFunctionCall) {
-        FMIClearLogMessageBuffer(instance);
-        FMIAppendToLogMessageBuffer(instance, "fmi3SetFloat64Pointer(valueReferences={");
-        FMIAppendArrayToLogMessageBuffer(instance, valueReferences, nValueReferences, NULL, FMIValueReferenceType);
-        FMIAppendToLogMessageBuffer(instance, "}, nValueReferences=%zu, values={...", nValueReferences);
-        //FMIAppendArrayToLogMessageBuffer(instance, values, nValues, NULL, FMIFloat64Type);
-        FMIAppendToLogMessageBuffer(instance, "}, nValues=%zu)", nValues);
-        instance->logFunctionCall(instance, status, instance->logMessageBuffer);
-    }
 
-    instance->status = status > instance->status ? status : instance->status;
+    //const FMIStatus status = (FMIStatus)instance->fmi3Functions->fmi3SetFloat64Pointer(instance->component, valueReferences, nValueReferences, valuePointers, nValues);
 
-    return status;
+    //if (instance->logFunctionCall) {
+    //    FMIClearLogMessageBuffer(instance);
+    //    FMIAppendToLogMessageBuffer(instance, "fmi3SetFloat64Pointer(valueReferences={");
+    //    FMIAppendArrayToLogMessageBuffer(instance, valueReferences, nValueReferences, NULL, FMIValueReferenceType);
+    //    FMIAppendToLogMessageBuffer(instance, "}, nValueReferences=%zu, values={", nValueReferences);
+    //    for (size_t i = 0; i < nValueReferences; i++) {
+    //        FMIAppendToLogMessageBuffer(instance, "{", nValueReferences);
+    //        FMIAppendArrayToLogMessageBuffer(instance, valuePointers[i], nValues, NULL, FMIFloat64Type);
+    //        FMIAppendToLogMessageBuffer(instance, i < nValueReferences - 1 ? "}, " : "}", nValueReferences);
+    //    }
+    //    FMIAppendToLogMessageBuffer(instance, "}, nValues=%zu)", nValues);
+    //    instance->logFunctionCall(instance, status, instance->logMessageBuffer);
+    //}
+
+    //instance->status = status > instance->status ? status : instance->status;
+
+    //return status;
 }
 
 #undef LOAD_SYMBOL

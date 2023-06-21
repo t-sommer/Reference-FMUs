@@ -156,7 +156,7 @@ Common Functions
 #define fmi3SetBinary                fmi3FullName(fmi3SetBinary)
 #define fmi3SetClock                 fmi3FullName(fmi3SetClock)
 
-/* Getting and setting Shared Memory */
+/* Getting and setting Direct Memory */
 #define fmi3GetPointer               fmi3FullName(fmi3GetPointer)
 #define fmi3SetPointer               fmi3FullName(fmi3SetPointer)
 

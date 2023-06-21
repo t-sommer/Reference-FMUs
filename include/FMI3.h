@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "fmi3SharedMemory.h"
+#include "fmi3DirectMemory.h"
 #include "FMI.h"
 
 struct FMI3Functions_ {
@@ -135,11 +135,37 @@ struct FMI3Functions_ {
     fmi3ActivateModelPartitionTYPE          *fmi3ActivateModelPartition;
 
     /***************************************************
-    Shared Memory Functions
+    Direct Memory Functions
     ****************************************************/
 
-    fmi3GetFloat64PointerTYPE* fmi3GetFloat64Pointer;
-    fmi3SetFloat64PointerTYPE* fmi3SetFloat64Pointer;
+    fmi3GetFloat32PointerTYPE *fmi3GetFloat32Pointer;
+    fmi3GetFloat64PointerTYPE *fmi3GetFloat64Pointer;
+    fmi3GetInt8PointerTYPE    *fmi3GetInt8Pointer;
+    fmi3GetUInt8PointerTYPE   *fmi3GetUInt8Pointer;
+    fmi3GetInt16PointerTYPE   *fmi3GetInt16Pointer;
+    fmi3GetUInt16PointerTYPE  *fmi3GetUInt16Pointer;
+    fmi3GetInt32PointerTYPE   *fmi3GetInt32Pointer;
+    fmi3GetUInt32PointerTYPE  *fmi3GetUInt32Pointer;
+    fmi3GetInt64PointerTYPE   *fmi3GetInt64Pointer;
+    fmi3GetUInt64PointerTYPE  *fmi3GetUInt64Pointer;
+    fmi3GetBooleanPointerTYPE *fmi3GetBooleanPointer;
+    fmi3GetStringPointerTYPE  *fmi3GetStringPointer;
+    fmi3GetBinaryPointerTYPE  *fmi3GetBinaryPointer;
+    fmi3GetClockPointerTYPE   *fmi3GetClockPointer;
+    fmi3SetFloat32PointerTYPE *fmi3SetFloat32Pointer;
+    fmi3SetFloat64PointerTYPE *fmi3SetFloat64Pointer;
+    fmi3SetInt8PointerTYPE    *fmi3SetInt8Pointer;
+    fmi3SetUInt8PointerTYPE   *fmi3SetUInt8Pointer;
+    fmi3SetInt16PointerTYPE   *fmi3SetInt16Pointer;
+    fmi3SetUInt16PointerTYPE  *fmi3SetUInt16Pointer;
+    fmi3SetInt32PointerTYPE   *fmi3SetInt32Pointer;
+    fmi3SetUInt32PointerTYPE  *fmi3SetUInt32Pointer;
+    fmi3SetInt64PointerTYPE   *fmi3SetInt64Pointer;
+    fmi3SetUInt64PointerTYPE  *fmi3SetUInt64Pointer;
+    fmi3SetBooleanPointerTYPE *fmi3SetBooleanPointer;
+    fmi3SetStringPointerTYPE  *fmi3SetStringPointer;
+    fmi3SetBinaryPointerTYPE  *fmi3SetBinaryPointer;
+    fmi3SetClockPointerTYPE   *fmi3SetClockPointer;
 };
 
 
@@ -564,7 +590,7 @@ FMI_STATIC FMIStatus FMI3ActivateModelPartition(FMIInstance *instance,
     fmi3Float64 activationTime);
 
 /***************************************************
-Shared Memory Functions
+Direct Memory Functions
 ****************************************************/
 
 FMI_STATIC FMIStatus FMI3GetFloat64Pointer(

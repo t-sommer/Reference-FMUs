@@ -1,0 +1,10 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+walkdir = "2.5.0"
+# clap = { version = "4", features = ["derive"] }
+# toml = "0.7"
+zip = "7.0.0"

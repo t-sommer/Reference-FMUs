@@ -1,0 +1,2 @@
+[workspace]
+members = ["BouncingBall", "fmi", "xtask"]

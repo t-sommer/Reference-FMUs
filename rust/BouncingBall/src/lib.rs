@@ -1,14 +1,11 @@
 #![allow(non_camel_case_types, non_snake_case, unused_variables)]
 
-use fmi::types::*;
 use fmi::fmi3::types::*;
 use std::ffi::CString;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
 
-const LOG_STATUS_ERROR: fmi3String = "logStatusError\0".as_ptr() as fmi3String;
-
-type MyCallback = dyn Fn(&str);
+type LogError = dyn Fn(&str);
 
 struct ModelInstance {
     time: fmi3Float64,
@@ -17,7 +14,7 @@ struct ModelInstance {
     e: fmi3Float64,
     g: fmi3Float64,
     v_min: fmi3Float64,
-    logMessage: Box<MyCallback>,
+    logMessage: Box<LogError>,
 }
 
 enum ValueReference {
@@ -126,26 +123,16 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
 
     let logMessage = logMessage.unwrap();
 
-    // unsafe { 
-    //     logMessage(
-    //         instanceEnvironment,
-    //         fmi3OK,
-    //         b"info\0".as_ptr() as fmi3String,
-    //         b"Instantiating Co-Simulation FMU instance.\0".as_ptr() as fmi3String,
-    //     ) 
-    // };
+    let log_error = move |message: &str| {
 
-    let my_callback = move |message: &str| {
-
-        let c_message = CString::new(message).unwrap();
-        let fmi3_message = c_message.as_ptr() as fmi3String;
+        let message = CString::new(message).unwrap();
         
         unsafe { 
             logMessage(
                 instanceEnvironment,
-                fmi3OK,
-                b"info\0".as_ptr() as fmi3String,
-                fmi3_message,
+                fmi3Error,
+                b"error\0".as_ptr() as fmi3String,
+                message.as_ptr() as fmi3String,
             ) 
         };
 
@@ -158,7 +145,7 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
         e: 0.8,  // coefficient of restitution
         g: 9.81, // gravity
         v_min: 0.01, // minimum velocity threshold
-        logMessage: Box::new(my_callback),
+        logMessage: Box::new(log_error),
     };
 
     let instance = Box::new(instance);

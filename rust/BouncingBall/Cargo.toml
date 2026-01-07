@@ -8,6 +8,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 fmi = { path = "../fmi" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
 [build-dependencies]
 static_vcruntime = "2.0"

@@ -4,16 +4,22 @@ use fmi::fmi3::types::*;
 use std::ffi::CString;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
+use serde::{Deserialize, Serialize};
 
 type LogError = dyn Fn(&str);
 
-struct ModelInstance {
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+struct ModelData {
     time: fmi3Float64,
     h: fmi3Float64,
     v: fmi3Float64,
     e: fmi3Float64,
     g: fmi3Float64,
     v_min: fmi3Float64,
+}
+
+struct ModelInstance {
+    data: ModelData,
     logError: Box<LogError>,
 }
 
@@ -51,12 +57,12 @@ impl TryFrom<u32> for ValueReference {
 impl ModelInstance {
 
     fn doFixedStep(&mut self, stepSize: fmi3Float64) {
-        self.v += -self.g * stepSize;
-        self.h += self.v * stepSize;
+        self.data.v += -self.data.g * stepSize;
+        self.data.h += self.data.v * stepSize;
 
-        if self.h <= 0.0 {
-            self.h = 0.0;
-            self.v = -self.e * self.v;
+        if self.data.h <= 0.0 {
+            self.data.h = 0.0;
+            self.data.v = -self.data.e * self.data.v;
         }
     }
 }
@@ -138,13 +144,17 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
 
     };
 
-    let instance = ModelInstance {
+    let data = ModelData {
         time: 0.0,
         h: 1.0,  // initial height
         v: 0.0,  // initial velocity
         e: 0.8,  // coefficient of restitution
         g: 9.81, // gravity
         v_min: 0.01, // minimum velocity threshold
+    };
+
+    let instance = ModelInstance {
+        data: data,
         logError: Box::new(log_error),
     };
 
@@ -244,12 +254,12 @@ pub extern "C" fn fmi3GetFloat64(
     let instance = unsafe { &*(instance as *const ModelInstance) };
 
     if valueReferences.is_null() {
-        // container.logError("Argument valueReferences must not be NULL.");
+        (instance.logError)("Argument valueReferences must not be NULL.");
         return fmi3Error;
     }
 
     if values.is_null() {
-        // container.logError("Argument values must not be NULL.");
+        (instance.logError)("Argument values must not be NULL.");
         return fmi3Error;
     }
 
@@ -260,20 +270,21 @@ pub extern "C" fn fmi3GetFloat64(
 
     for (i, &vr) in valueReferences.iter().enumerate() {
 
-        values[i] = instance.time;
+        let data = &instance.data;
+
+        values[i] = data.time;
                 
         match ValueReference::try_from(vr) {
-            Ok(ValueReference::time) => values[i] = instance.time,
-            Ok(ValueReference::h) => values[i] = instance.h,
-            Ok(ValueReference::der_h) => values[i] = instance.v,
-            Ok(ValueReference::v) => values[i] = instance.v,
-            Ok(ValueReference::der_v) => values[i] = -instance.g,
-            Ok(ValueReference::g) => values[i] = instance.g,
-            Ok(ValueReference::e) => values[i] = instance.e,
-            Ok(ValueReference::v_min) => values[i] = instance.v_min,
+            Ok(ValueReference::time) => values[i] = data.time,
+            Ok(ValueReference::h) => values[i] = data.h,
+            Ok(ValueReference::der_h) => values[i] = data.v,
+            Ok(ValueReference::v) => values[i] = data.v,
+            Ok(ValueReference::der_v) => values[i] = -data.g,
+            Ok(ValueReference::g) => values[i] = data.g,
+            Ok(ValueReference::e) => values[i] = data.e,
+            Ok(ValueReference::v_min) => values[i] = data.v_min,
             _ => {
-                values[i] = -1.0;
-                let message = format!("Unknown value reference for type Float64: {}", vr);
+                let message = format!("Unknown value reference: {}", vr);
                 (instance.logError)(&message);
                 return fmi3Error;
             }
@@ -281,7 +292,6 @@ pub extern "C" fn fmi3GetFloat64(
     }
 
     fmi3OK
-    // container.$getter(valueReferences, values)
 }
 
 make_getter!(fmi3GetInt8, fmi3Int8, getInt8);

@@ -14,7 +14,7 @@ struct ModelInstance {
     e: fmi3Float64,
     g: fmi3Float64,
     v_min: fmi3Float64,
-    logMessage: Box<LogError>,
+    logError: Box<LogError>,
 }
 
 enum ValueReference {
@@ -145,7 +145,7 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
         e: 0.8,  // coefficient of restitution
         g: 9.81, // gravity
         v_min: 0.01, // minimum velocity threshold
-        logMessage: Box::new(log_error),
+        logError: Box::new(log_error),
     };
 
     let instance = Box::new(instance);
@@ -243,8 +243,6 @@ pub extern "C" fn fmi3GetFloat64(
 
     let instance = unsafe { &*(instance as *const ModelInstance) };
 
-    (instance.logMessage)("fmi3GetFloat64() was called.");
-
     if valueReferences.is_null() {
         // container.logError("Argument valueReferences must not be NULL.");
         return fmi3Error;
@@ -275,8 +273,9 @@ pub extern "C" fn fmi3GetFloat64(
             Ok(ValueReference::v_min) => values[i] = instance.v_min,
             _ => {
                 values[i] = -1.0;
-                eprintln!("Unknown value reference: {}", vr);
-                // return fmi3Warning;
+                let message = format!("Unknown value reference for type Float64: {}", vr);
+                (instance.logError)(&message);
+                return fmi3Error;
             }
         }
     }

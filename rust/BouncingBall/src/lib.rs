@@ -506,6 +506,8 @@ pub extern "C" fn fmi3FreeFMUState(
         let _ = Box::from_raw(FMUState as *mut ModelData);
     }
 
+    unsafe { *FMUState = null_mut() };
+
     fmi3OK
 }
 
@@ -537,7 +539,7 @@ pub extern "C" fn fmi3SerializeFMUState(
     serializedState: *mut u8,
     size: usize,
 ) -> fmi3Status {
-    let instance: &mut ModelInstance = get_instance_mut!(instance);
+    let instance = get_instance_mut!(instance);
 
     assert_not_null!(FMUState, instance);
     assert_not_null!(serializedState, instance);
@@ -573,7 +575,22 @@ pub extern "C" fn fmi3DeserializeFMUState(
     size: usize,
     FMUState: *mut *mut c_void,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+    let instance= get_instance!(instance);
+
+    assert_not_null!(serializedState, instance);
+    assert_not_null!(FMUState, instance);
+
+    let serialized_slice = unsafe { std::slice::from_raw_parts(serializedState, size) };
+
+    if let Ok(data) = serde_json::from_slice::<ModelData>(serialized_slice) {
+        let fmu_state = Box::new(data);
+        unsafe { *FMUState = Box::into_raw(fmu_state) as *mut c_void };
+    } else {
+        (instance.logError)("Failed to deserialize FMU state.");
+        return fmi3Error;
+    }
+    
+    fmi3OK
 }
 
 /* Getting partial derivatives */

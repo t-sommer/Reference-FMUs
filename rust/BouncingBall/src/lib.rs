@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, unused_variables)]
 
 use fmi::fmi3::types::*;
-use std::ffi::CString;
+use std::{f64, ffi::CString};
 use std::os::raw::c_void;
 use std::ptr::null_mut;
 use std::any::type_name_of_val;
@@ -57,8 +57,45 @@ impl TryFrom<u32> for ValueReference {
 
 impl ModelInstance {
 
+    fn new(instanceEnvironment: fmi3InstanceEnvironment, logMessage: Option<fmi3LogMessageCallback>) -> Self {
+  
+        // Convert raw pointer to thread-safe representation
+        let instance_environment = instanceEnvironment as usize;
+
+        let logMessage = logMessage.unwrap();
+
+        let log_error = move |message: &str| {
+
+            let message = CString::new(message).unwrap();
+            
+            unsafe { 
+                logMessage(
+                    instanceEnvironment,
+                    fmi3Error,
+                    b"error\0".as_ptr() as fmi3String,
+                    message.as_ptr() as fmi3String,
+                ) 
+            };
+
+        };
+
+        let data = ModelData {
+            time: 0.0,
+            h: 1.0,  // initial height
+            v: 0.0,  // initial velocity
+            e: 0.8,  // coefficient of restitution
+            g: -9.81, // gravity
+            v_min: 0.01, // minimum velocity threshold
+        };
+
+        ModelInstance {
+            data: data,
+            logError: Box::new(log_error),
+        }
+    }
+
     fn doFixedStep(&mut self, stepSize: fmi3Float64) {
-        self.data.v += -self.data.g * stepSize;
+        self.data.v += self.data.g * stepSize;
         self.data.h += self.data.v * stepSize;
 
         if self.data.h <= 0.0 {
@@ -153,7 +190,9 @@ pub extern "C" fn fmi3InstantiateModelExchange(
     instanceEnvironment: fmi3InstanceEnvironment,
     logMessage: Option<fmi3LogMessageCallback>,
 ) -> fmi3Instance {
-    null_mut()
+    let instance = ModelInstance::new(instanceEnvironment, logMessage);
+    let instance = Box::new(instance);
+    Box::into_raw(instance) as fmi3Instance
 }
 
 #[unsafe(no_mangle)]
@@ -171,47 +210,8 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
     logMessage: Option<fmi3LogMessageCallback>,
     intermediateUpdate: fmi3IntermediateUpdateCallback,
 ) -> fmi3Instance {
-
-    if let None = logMessage {
-        return null_mut();
-    }
-    
-    // Convert raw pointer to thread-safe representation
-    let instance_environment = instanceEnvironment as usize;
-
-    let logMessage = logMessage.unwrap();
-
-    let log_error = move |message: &str| {
-
-        let message = CString::new(message).unwrap();
-        
-        unsafe { 
-            logMessage(
-                instanceEnvironment,
-                fmi3Error,
-                b"error\0".as_ptr() as fmi3String,
-                message.as_ptr() as fmi3String,
-            ) 
-        };
-
-    };
-
-    let data = ModelData {
-        time: 0.0,
-        h: 1.0,  // initial height
-        v: 0.0,  // initial velocity
-        e: 0.8,  // coefficient of restitution
-        g: 9.81, // gravity
-        v_min: 0.01, // minimum velocity threshold
-    };
-
-    let instance = ModelInstance {
-        data: data,
-        logError: Box::new(log_error),
-    };
-
+    let instance = ModelInstance::new(instanceEnvironment, logMessage);
     let instance = Box::new(instance);
-
     Box::into_raw(instance) as fmi3Instance
 }
 
@@ -264,7 +264,7 @@ pub extern "C" fn fmi3ExitInitializationMode(instance: fmi3Instance) -> fmi3Stat
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterEventMode(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -736,7 +736,40 @@ pub extern "C" fn fmi3UpdateDiscreteStates(
     valuesOfContinuousStatesChanged: *mut fmi3Boolean,
     nextEventTime: *mut fmi3Float64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+
+    let instance = get_instance_mut!(instance);
+
+    assert_not_null!(discreteStatesNeedUpdate, instance);
+    assert_not_null!(terminateSimulation, instance);
+    assert_not_null!(nominalsOfContinuousStatesChanged, instance);
+    assert_not_null!(valuesOfContinuousStatesChanged, instance);
+    assert_not_null!(nextEventTime, instance);
+
+    let data = &mut instance.data;
+
+    if data.h <= 0.0 {
+
+        data.h = f64::MIN_POSITIVE;  // slightly above 0 to avoid zero-crossing
+        data.v = -data.e * data.v;
+
+        if data.v.abs() < data.v_min {
+            data.v = 0.0;
+            data.g = 0.0;  // stop bouncing
+        }
+
+        unsafe { *valuesOfContinuousStatesChanged = fmi3True };
+    } else {
+        unsafe { *valuesOfContinuousStatesChanged = fmi3False };
+    }
+
+    unsafe { 
+        *discreteStatesNeedUpdate = fmi3False;
+        *terminateSimulation = fmi3False;
+        *nominalsOfContinuousStatesChanged = fmi3False;
+        *nextEventTime = f64::INFINITY;
+    }
+
+    fmi3OK
 }
 
 /***************************************************
@@ -745,7 +778,7 @@ Types for Functions for Model Exchange
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterContinuousTimeMode(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -762,7 +795,9 @@ pub extern "C" fn fmi3CompletedIntegratorStep(
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3SetTime(instance: fmi3Instance, time: fmi3Float64) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+    let instance = get_instance_mut!(instance);
+    instance.data.time = time;
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -771,7 +806,25 @@ pub extern "C" fn fmi3SetContinuousStates(
     continuousStates: *const fmi3Float64,
     nContinuousStates: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+    let instance = get_instance_mut!(instance);
+
+    assert_not_null!(continuousStates, instance);
+
+    if nContinuousStates != 2 {
+        let message = format!(
+            "Number of continuous states ({}) does not match the model (2).",
+            nContinuousStates
+        );
+        (instance.logError)(&message);
+        return fmi3Error;
+    }
+
+    let continuous_states = unsafe { std::slice::from_raw_parts(continuousStates, nContinuousStates) };
+
+    instance.data.h = continuous_states[0];
+    instance.data.v = continuous_states[1]; 
+
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -780,7 +833,25 @@ pub extern "C" fn fmi3GetContinuousStateDerivatives(
     derivatives: *mut fmi3Float64,
     nContinuousStates: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+    let instance = get_instance!(instance);
+
+    assert_not_null!(derivatives, instance);
+
+    if nContinuousStates != 2 {
+        let message = format!(
+            "Number of continuous state derivatives requested ({}) does not match the model (2).",
+            nContinuousStates
+        );
+        (instance.logError)(&message);
+        return fmi3Error;
+    }
+
+    let derivatives = unsafe { std::slice::from_raw_parts_mut(derivatives, nContinuousStates) };
+
+    derivatives[0] = instance.data.v;
+    derivatives[1] = instance.data.g; 
+
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -789,8 +860,24 @@ pub extern "C" fn fmi3GetEventIndicators(
     eventIndicators: *mut fmi3Float64,
     nEventIndicators: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
-}
+    let instance = get_instance!(instance);
+
+    assert_not_null!(eventIndicators, instance);
+
+    if nEventIndicators != 1 {
+        let message = format!(
+            "Number of event indicators requested ({}) does not match the model (1).",
+            nEventIndicators
+        );
+        (instance.logError)(&message);
+        return fmi3Error;
+    }
+
+    let event_indicators = unsafe { std::slice::from_raw_parts_mut(eventIndicators, nEventIndicators) };
+
+    event_indicators[0] = instance.data.h;
+
+    fmi3OK}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3GetContinuousStates(
@@ -798,7 +885,26 @@ pub extern "C" fn fmi3GetContinuousStates(
     continuousStates: *mut fmi3Float64,
     nContinuousStates: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+
+    let instance = get_instance!(instance);
+
+    assert_not_null!(continuousStates, instance);
+
+    if nContinuousStates != 2 {
+        let message = format!(
+            "Number of continuous states requested ({}) does not match the model (2).",
+            nContinuousStates
+        );
+        (instance.logError)(&message);
+        return fmi3Error;
+    }
+
+    let continuous_states = unsafe { std::slice::from_raw_parts_mut(continuousStates, nContinuousStates) };
+
+    continuous_states[0] = instance.data.h;
+    continuous_states[1] = instance.data.v; 
+
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -807,7 +913,22 @@ pub extern "C" fn fmi3GetNominalsOfContinuousStates(
     nominals: *mut fmi3Float64,
     nNominals: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+    let instance = get_instance!(instance);
+
+    assert_not_null!(nominals, instance);
+
+    if nNominals != 2 {
+        let message = format!("Number of nominals of continuous states requested ({nNominals}) does not match the model (2).");
+        (instance.logError)(&message);
+        return fmi3Error;
+    }
+
+    let nominals = unsafe { std::slice::from_raw_parts_mut(nominals, nNominals) };
+
+    nominals[0] = 1.0;
+    nominals[1] = 1.0; 
+
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -867,6 +988,8 @@ pub extern "C" fn fmi3DoStep(
     let instance = unsafe { &mut*(instance as *mut ModelInstance) };
 
     instance.doFixedStep(communicationStepSize);
+
+    instance.data.time = currentCommunicationPoint + communicationStepSize;
 
     fmi3OK
 }

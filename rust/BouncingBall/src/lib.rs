@@ -8,6 +8,7 @@ use std::ptr::null_mut;
 
 const LOG_STATUS_ERROR: fmi3String = "logStatusError\0".as_ptr() as fmi3String;
 
+type MyCallback = dyn Fn(&str);
 
 struct ModelInstance {
     time: fmi3Float64,
@@ -16,6 +17,7 @@ struct ModelInstance {
     e: fmi3Float64,
     g: fmi3Float64,
     v_min: fmi3Float64,
+    logMessage: Box<MyCallback>,
 }
 
 enum ValueReference {
@@ -124,6 +126,31 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
 
     let logMessage = logMessage.unwrap();
 
+    // unsafe { 
+    //     logMessage(
+    //         instanceEnvironment,
+    //         fmi3OK,
+    //         b"info\0".as_ptr() as fmi3String,
+    //         b"Instantiating Co-Simulation FMU instance.\0".as_ptr() as fmi3String,
+    //     ) 
+    // };
+
+    let my_callback = move |message: &str| {
+
+        let c_message = CString::new(message).unwrap();
+        let fmi3_message = c_message.as_ptr() as fmi3String;
+        
+        unsafe { 
+            logMessage(
+                instanceEnvironment,
+                fmi3OK,
+                b"info\0".as_ptr() as fmi3String,
+                fmi3_message,
+            ) 
+        };
+
+    };
+
     let instance = ModelInstance {
         time: 0.0,
         h: 1.0,  // initial height
@@ -131,6 +158,7 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
         e: 0.8,  // coefficient of restitution
         g: 9.81, // gravity
         v_min: 0.01, // minimum velocity threshold
+        logMessage: Box::new(my_callback),
     };
 
     let instance = Box::new(instance);
@@ -227,6 +255,8 @@ pub extern "C" fn fmi3GetFloat64(
     }
 
     let instance = unsafe { &*(instance as *const ModelInstance) };
+
+    (instance.logMessage)("fmi3GetFloat64() was called.");
 
     if valueReferences.is_null() {
         // container.logError("Argument valueReferences must not be NULL.");

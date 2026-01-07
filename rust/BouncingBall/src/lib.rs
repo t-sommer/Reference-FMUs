@@ -4,18 +4,19 @@ use fmi::fmi3::types::*;
 use std::ffi::CString;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
+use std::any::type_name_of_val;
 use serde::{Deserialize, Serialize};
 
 type LogError = dyn Fn(&str);
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct ModelData {
-    time: fmi3Float64,
-    h: fmi3Float64,
-    v: fmi3Float64,
-    e: fmi3Float64,
-    g: fmi3Float64,
-    v_min: fmi3Float64,
+    time: f64,
+    h: f64,
+    v: f64,
+    e: f64,
+    g: f64,
+    v_min: f64,
 }
 
 struct ModelInstance {
@@ -65,11 +66,62 @@ impl ModelInstance {
             self.data.v = -self.data.e * self.data.v;
         }
     }
+
 }
 
-fn NOT_IMPLEMENTED(instance: fmi3Instance) -> fmi3Status {
-    println!("Function is not implemented.");
-    fmi3Error
+macro_rules! get_instance {
+    ($instance: expr) => {{
+
+        if $instance.is_null() {
+            return fmi3Error;
+        }
+
+        unsafe { &*($instance as *const ModelInstance) }
+    }};
+}
+
+macro_rules! get_instance_mut {
+    ($instance: expr) => {{
+
+        if $instance.is_null() {
+            return fmi3Error;
+        }
+
+        unsafe { &mut*($instance as *mut ModelInstance) }
+    }};
+}
+
+macro_rules! assert_not_null {
+    ($value:expr, $instance:expr) => {
+        if $value.is_null() {
+            let message = format!("Argument {} must not be NULL.", stringify!($value));
+            ($instance.logError)(&message);
+            return fmi3Error;
+        }
+    };
+}
+
+
+macro_rules! current_fn {
+    () => {{
+        fn __current_fn_marker() {}
+        let name = type_name_of_val(&__current_fn_marker);
+        // strip the trailing "::__current_fn_marker"
+        match name.rfind("::") {
+            Some(idx) => &name[..idx],
+            None => name,
+        }
+    }};
+}
+
+macro_rules! NOT_IMPLEMENTED {
+    ($instance:expr) => {{
+        let instance = get_instance!($instance);
+        let function_name = current_fn!();
+        let message = format!("Function {} is not implemented.", function_name);
+        (instance.logError)(&message);
+        fmi3Error
+}};
 }
 
 /* Inquire version numbers and setting logging status */
@@ -86,7 +138,7 @@ pub extern "C" fn fmi3SetDebugLogging(
     nCategories: usize,
     categories: *const fmi3String,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 /* Creation and destruction of FMU instances and setting debug status */
@@ -181,6 +233,14 @@ pub extern "C" fn fmi3InstantiateScheduledExecution(
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3FreeInstance(instance: fmi3Instance) {
+    
+    if instance.is_null() {
+        return;
+    }
+
+    unsafe {
+        let _ = Box::from_raw(instance as *mut ModelInstance);
+    }
 }
 
 /* Enter and exit initialization mode, enter event mode, terminate and reset */
@@ -204,7 +264,7 @@ pub extern "C" fn fmi3ExitInitializationMode(instance: fmi3Instance) -> fmi3Stat
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterEventMode(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -214,7 +274,7 @@ pub extern "C" fn fmi3Terminate(instance: fmi3Instance) -> fmi3Status {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3Reset(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 /* Getting and setting variable values */
@@ -229,7 +289,7 @@ macro_rules! make_getter {
             values: *mut $type,
             nValues: usize,
         ) -> fmi3Status {
-            NOT_IMPLEMENTED(instance)
+            NOT_IMPLEMENTED!(instance)
         }
     };
 }
@@ -246,22 +306,10 @@ pub extern "C" fn fmi3GetFloat64(
     nValues: usize,
 ) -> fmi3Status {
 
-    if instance.is_null() {
-        eprintln!("Argument instance must not be NULL.");
-        return fmi3Error;
-    }
+    let instance = get_instance!(instance);
 
-    let instance = unsafe { &*(instance as *const ModelInstance) };
-
-    if valueReferences.is_null() {
-        (instance.logError)("Argument valueReferences must not be NULL.");
-        return fmi3Error;
-    }
-
-    if values.is_null() {
-        (instance.logError)("Argument values must not be NULL.");
-        return fmi3Error;
-    }
+    assert_not_null!(valueReferences, instance);
+    assert_not_null!(values, instance);
 
     let valueReferences =
         unsafe { std::slice::from_raw_parts(valueReferences, nValueReferences) };
@@ -313,7 +361,7 @@ pub extern "C" fn fmi3GetString(
     values: *mut fmi3String,
     nValues: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -325,7 +373,7 @@ pub extern "C" fn fmi3GetBinary(
     values: *mut *const fmi3Binary,
     nValues: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -335,7 +383,7 @@ pub extern "C" fn fmi3GetClock(
     nValueReferences: usize,
     values: *mut fmi3Clock,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 macro_rules! make_setter {
@@ -348,7 +396,7 @@ macro_rules! make_setter {
             values: *const $type,
             nValues: usize,
         ) -> fmi3Status {
-            NOT_IMPLEMENTED(instance)
+            NOT_IMPLEMENTED!(instance)
         }
     };
 }
@@ -374,7 +422,7 @@ pub extern "C" fn fmi3SetString(
     values: *const fmi3String,
     nValues: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -386,7 +434,7 @@ pub extern "C" fn fmi3SetBinary(
     values: *const *const u8,
     nValues: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -397,7 +445,7 @@ pub extern "C" fn fmi3SetClock(
     values: *const u32,
     nValues: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 /* Getting Variable Dependency Information */
@@ -408,7 +456,7 @@ pub extern "C" fn fmi3GetNumberOfVariableDependencies(
     valueReference: fmi3ValueReference,
     nDependencies: *mut usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -420,7 +468,7 @@ pub extern "C" fn fmi3GetVariableDependencies(
     elementIndicesOfIndependents: *mut usize,
     dependencyKinds: *mut i32,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 /* Getting and setting the internal FMU state */
@@ -428,22 +476,37 @@ pub extern "C" fn fmi3GetVariableDependencies(
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3GetFMUState(
     instance: fmi3Instance,
-    FMUState: *mut *mut c_void,
+    FMUState: *mut fmi3FMUState,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    let instance = get_instance!(instance);
+    let fmu_state = Box::new(instance.data.clone());
+    unsafe { *FMUState = Box::into_raw(fmu_state) as *mut c_void };
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn fmi3SetFMUState(instance: fmi3Instance, FMUState: *mut c_void) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+pub extern "C" fn fmi3SetFMUState(instance: fmi3Instance, FMUState: fmi3FMUState) -> fmi3Status {
+    let instance = get_instance_mut!(instance);
+    let fmu_state = unsafe { &*(FMUState as *const ModelData) };
+    instance.data = fmu_state.clone();
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3FreeFMUState(
     instance: fmi3Instance,
-    FMUState: *mut *mut c_void,
+    FMUState: *mut fmi3FMUState,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+
+    let instance: &mut ModelInstance = get_instance_mut!(instance);
+
+    assert_not_null!(FMUState, instance);
+
+    unsafe {
+        let _ = Box::from_raw(FMUState as *mut ModelData);
+    }
+
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -452,7 +515,19 @@ pub extern "C" fn fmi3SerializedFMUStateSize(
     FMUState: *mut c_void,
     size: *mut usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+
+    let instance: &mut ModelInstance = get_instance_mut!(instance);
+
+    assert_not_null!(FMUState, instance);
+    assert_not_null!(size, instance);
+
+    let data =  unsafe { &*(FMUState as *const ModelData) };
+
+    let serialized = serde_json::to_vec_pretty(data).unwrap();
+
+    unsafe { *size = serialized.len() };
+
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -462,7 +537,33 @@ pub extern "C" fn fmi3SerializeFMUState(
     serializedState: *mut u8,
     size: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    let instance: &mut ModelInstance = get_instance_mut!(instance);
+
+    assert_not_null!(FMUState, instance);
+    assert_not_null!(serializedState, instance);
+    
+    let data =  unsafe { &*(FMUState as *const ModelData) };
+    
+    if let Ok(serialized) = serde_json::to_vec_pretty(data) {
+
+        let required_size = serialized.len();
+        
+        if size != required_size {
+            let message = format!(
+                "Provided buffer size {} does not match the size of the serialized FMU state {}.",
+                size, required_size
+            );
+            (instance.logError)(&message);
+            return fmi3Error;
+        }
+
+        unsafe { std::ptr::copy_nonoverlapping(serialized.as_ptr(), serializedState, size) };
+    } else {
+        (instance.logError)("Failed to serialize FMU state.");
+        return fmi3Error;
+    }
+        
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -472,7 +573,7 @@ pub extern "C" fn fmi3DeserializeFMUState(
     size: usize,
     FMUState: *mut *mut c_void,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 /* Getting partial derivatives */
@@ -489,7 +590,7 @@ pub extern "C" fn fmi3GetDirectionalDerivative(
     sensitivity: *mut fmi3Float64,
     nSensitivity: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -504,19 +605,19 @@ pub extern "C" fn fmi3GetAdjointDerivative(
     sensitivity: *mut fmi3Float64,
     nSensitivity: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 /* Entering and exiting the Configuration or Reconfiguration Mode */
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterConfigurationMode(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3ExitConfigurationMode(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -527,7 +628,7 @@ pub extern "C" fn fmi3GetIntervalDecimal(
     intervals: *mut fmi3Float64,
     qualifiers: *mut fmi3IntervalQualifier,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -538,7 +639,7 @@ pub extern "C" fn fmi3GetIntervalFraction(
     counters: *mut fmi3UInt64,
     resolutions: *mut fmi3UInt64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -548,7 +649,7 @@ pub extern "C" fn fmi3GetShiftDecimal(
     nValueReferences: usize,
     shifts: *mut fmi3Float64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -559,7 +660,7 @@ pub extern "C" fn fmi3GetShiftFraction(
     counters: *mut fmi3UInt64,
     resolutions: *mut fmi3UInt64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -569,7 +670,7 @@ pub extern "C" fn fmi3SetIntervalDecimal(
     nValueReferences: usize,
     intervals: *const fmi3Float64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -580,7 +681,7 @@ pub extern "C" fn fmi3SetIntervalFraction(
     counters: *const fmi3UInt64,
     resolutions: *const fmi3UInt64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -590,7 +691,7 @@ pub extern "C" fn fmi3SetShiftDecimal(
     nValueReferences: usize,
     shifts: *const fmi3Float64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -601,12 +702,12 @@ pub extern "C" fn fmi3SetShiftFraction(
     counters: *const fmi3UInt64,
     resolutions: *const fmi3UInt64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EvaluateDiscreteStates(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -618,7 +719,7 @@ pub extern "C" fn fmi3UpdateDiscreteStates(
     valuesOfContinuousStatesChanged: *mut fmi3Boolean,
     nextEventTime: *mut fmi3Float64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 /***************************************************
@@ -627,7 +728,7 @@ Types for Functions for Model Exchange
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterContinuousTimeMode(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -637,14 +738,14 @@ pub extern "C" fn fmi3CompletedIntegratorStep(
     enterEventMode: *mut fmi3Boolean,
     terminateSimulation: *mut fmi3Boolean,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 /* Providing independent variables and re-initialization of caching */
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3SetTime(instance: fmi3Instance, time: fmi3Float64) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -653,7 +754,7 @@ pub extern "C" fn fmi3SetContinuousStates(
     continuousStates: *const fmi3Float64,
     nContinuousStates: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -662,7 +763,7 @@ pub extern "C" fn fmi3GetContinuousStateDerivatives(
     derivatives: *mut fmi3Float64,
     nContinuousStates: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -671,7 +772,7 @@ pub extern "C" fn fmi3GetEventIndicators(
     eventIndicators: *mut fmi3Float64,
     nEventIndicators: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -680,7 +781,7 @@ pub extern "C" fn fmi3GetContinuousStates(
     continuousStates: *mut fmi3Float64,
     nContinuousStates: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -689,7 +790,7 @@ pub extern "C" fn fmi3GetNominalsOfContinuousStates(
     nominals: *mut fmi3Float64,
     nNominals: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -697,7 +798,7 @@ pub extern "C" fn fmi3GetNumberOfEventIndicators(
     instance: fmi3Instance,
     nEventIndicators: *mut usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -705,7 +806,7 @@ pub extern "C" fn fmi3GetNumberOfContinuousStates(
     instance: fmi3Instance,
     nContinuousStates: *mut usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 /***************************************************
@@ -714,7 +815,7 @@ Types for Functions for Co-Simulation
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterStepMode(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -726,7 +827,7 @@ pub extern "C" fn fmi3GetOutputDerivatives(
     values: *mut fmi3Float64,
     nValues: usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }
 
 #[unsafe(no_mangle)]
@@ -763,5 +864,5 @@ pub extern "C" fn fmi3ActivateModelPartition(
     clockReference: fmi3ValueReference,
     activationTime: fmi3Float64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    NOT_IMPLEMENTED!(instance)
 }

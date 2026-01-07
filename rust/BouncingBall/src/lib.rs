@@ -19,6 +19,21 @@ struct ModelData {
     v_min: f64,
 }
 
+impl ModelData {
+
+    fn default() -> Self {
+        ModelData {
+            time: 0.0,
+            h: 1.0,  // initial height
+            v: 0.0,  // initial velocity
+            e: 0.8,  // coefficient of restitution
+            g: -9.81, // gravity
+            v_min: 0.01, // minimum velocity threshold
+        }
+    }
+    
+}
+
 struct ModelInstance {
     data: ModelData,
     logError: Box<LogError>,
@@ -59,7 +74,7 @@ impl ModelInstance {
 
     fn new(instanceEnvironment: fmi3InstanceEnvironment, logMessage: Option<fmi3LogMessageCallback>) -> Self {
   
-        // Convert raw pointer to thread-safe representation
+        // convert raw pointer to thread-safe representation
         let instance_environment = instanceEnvironment as usize;
 
         let logMessage = logMessage.unwrap();
@@ -79,17 +94,8 @@ impl ModelInstance {
 
         };
 
-        let data = ModelData {
-            time: 0.0,
-            h: 1.0,  // initial height
-            v: 0.0,  // initial velocity
-            e: 0.8,  // coefficient of restitution
-            g: -9.81, // gravity
-            v_min: 0.01, // minimum velocity threshold
-        };
-
         ModelInstance {
-            data: data,
+            data: ModelData::default(),
             logError: Box::new(log_error),
         }
     }
@@ -274,7 +280,9 @@ pub extern "C" fn fmi3Terminate(instance: fmi3Instance) -> fmi3Status {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3Reset(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+    let instance = get_instance_mut!(instance);
+    instance.data = ModelData::default();
+    fmi3OK
 }
 
 /* Getting and setting variable values */

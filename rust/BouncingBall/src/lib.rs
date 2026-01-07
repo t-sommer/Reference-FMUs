@@ -1,8 +1,66 @@
 #![allow(non_camel_case_types, non_snake_case, unused_variables)]
 
+use fmi::types::*;
 use fmi::fmi3::types::*;
+use std::ffi::CString;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
+
+const LOG_STATUS_ERROR: fmi3String = "logStatusError\0".as_ptr() as fmi3String;
+
+
+struct ModelInstance {
+    time: fmi3Float64,
+    h: fmi3Float64,
+    v: fmi3Float64,
+    e: fmi3Float64,
+    g: fmi3Float64,
+    v_min: fmi3Float64,
+}
+
+enum ValueReference {
+    time = 0,
+    h = 1,
+    der_h = 2,
+    v = 3,
+    der_v = 4,
+    g = 5,
+    e = 6,
+    v_min = 7,
+}
+
+impl TryFrom<u32> for ValueReference {
+    
+    type Error = ();
+    
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            x if x == ValueReference::time as u32 => Ok(ValueReference::time),
+            x if x == ValueReference::h as u32 => Ok(ValueReference::h),
+            x if x == ValueReference::der_h as u32 => Ok(ValueReference::der_h),
+            x if x == ValueReference::v as u32 => Ok(ValueReference::v),
+            x if x == ValueReference::der_v as u32 => Ok(ValueReference::der_v),
+            x if x == ValueReference::g as u32 => Ok(ValueReference::g),
+            x if x == ValueReference::e as u32 => Ok(ValueReference::e),
+            x if x == ValueReference::v_min as u32 => Ok(ValueReference::v_min),
+            _ => Err(()),
+        }
+    }
+
+}
+
+impl ModelInstance {
+
+    fn doFixedStep(&mut self, stepSize: fmi3Float64) {
+        self.v += -self.g * stepSize;
+        self.h += self.v * stepSize;
+
+        if self.h <= 0.0 {
+            self.h = 0.0;
+            self.v = -self.e * self.v;
+        }
+    }
+}
 
 fn NOT_IMPLEMENTED(instance: fmi3Instance) -> fmi3Status {
     println!("Function is not implemented.");
@@ -56,7 +114,28 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
     logMessage: Option<fmi3LogMessageCallback>,
     intermediateUpdate: fmi3IntermediateUpdateCallback,
 ) -> fmi3Instance {
-    null_mut()
+
+    if let None = logMessage {
+        return null_mut();
+    }
+    
+    // Convert raw pointer to thread-safe representation
+    let instance_environment = instanceEnvironment as usize;
+
+    let logMessage = logMessage.unwrap();
+
+    let instance = ModelInstance {
+        time: 0.0,
+        h: 1.0,  // initial height
+        v: 0.0,  // initial velocity
+        e: 0.8,  // coefficient of restitution
+        g: 9.81, // gravity
+        v_min: 0.01, // minimum velocity threshold
+    };
+
+    let instance = Box::new(instance);
+
+    Box::into_raw(instance) as fmi3Instance
 }
 
 #[unsafe(no_mangle)]
@@ -90,12 +169,12 @@ pub extern "C" fn fmi3EnterInitializationMode(
     stopTimeDefined: bool,
     stopTime: fmi3Float64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3ExitInitializationMode(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -105,7 +184,7 @@ pub extern "C" fn fmi3EnterEventMode(instance: fmi3Instance) -> fmi3Status {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3Terminate(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -131,7 +210,64 @@ macro_rules! make_getter {
 }
 
 make_getter!(fmi3GetFloat32, fmi3Float32, getFloat32);
-make_getter!(fmi3GetFloat64, fmi3Float64, getFloat64);
+
+// make_getter!(fmi3GetFloat64, fmi3Float64, getFloat64);
+#[unsafe(no_mangle)]
+pub extern "C" fn fmi3GetFloat64(
+    instance: fmi3Instance,
+    valueReferences: *const fmi3ValueReference,
+    nValueReferences: usize,
+    values: *mut fmi3Float64,
+    nValues: usize,
+) -> fmi3Status {
+
+    if instance.is_null() {
+        eprintln!("Argument instance must not be NULL.");
+        return fmi3Error;
+    }
+
+    let instance = unsafe { &*(instance as *const ModelInstance) };
+
+    if valueReferences.is_null() {
+        // container.logError("Argument valueReferences must not be NULL.");
+        return fmi3Error;
+    }
+
+    if values.is_null() {
+        // container.logError("Argument values must not be NULL.");
+        return fmi3Error;
+    }
+
+    let valueReferences =
+        unsafe { std::slice::from_raw_parts(valueReferences, nValueReferences) };
+
+    let values = unsafe { std::slice::from_raw_parts_mut(values, nValues) };
+
+    for (i, &vr) in valueReferences.iter().enumerate() {
+
+        values[i] = instance.time;
+                
+        match ValueReference::try_from(vr) {
+            Ok(ValueReference::time) => values[i] = instance.time,
+            Ok(ValueReference::h) => values[i] = instance.h,
+            Ok(ValueReference::der_h) => values[i] = instance.v,
+            Ok(ValueReference::v) => values[i] = instance.v,
+            Ok(ValueReference::der_v) => values[i] = -instance.g,
+            Ok(ValueReference::g) => values[i] = instance.g,
+            Ok(ValueReference::e) => values[i] = instance.e,
+            Ok(ValueReference::v_min) => values[i] = instance.v_min,
+            _ => {
+                values[i] = -1.0;
+                eprintln!("Unknown value reference: {}", vr);
+                // return fmi3Warning;
+            }
+        }
+    }
+
+    fmi3OK
+    // container.$getter(valueReferences, values)
+}
+
 make_getter!(fmi3GetInt8, fmi3Int8, getInt8);
 make_getter!(fmi3GetUInt8, fmi3UInt8, getUInt8);
 make_getter!(fmi3GetInt16, fmi3Int16, getInt16);
@@ -578,7 +714,17 @@ pub extern "C" fn fmi3DoStep(
     earlyReturn: *mut fmi3Boolean,
     lastSuccessfulTime: *mut fmi3Float64,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED(instance)
+
+    if instance.is_null() {
+        eprintln!("Argument instance must not be NULL.");
+        return fmi3Error;
+    }
+
+    let instance = unsafe { &mut*(instance as *mut ModelInstance) };
+
+    instance.doFixedStep(communicationStepSize);
+
+    fmi3OK
 }
 
 /***************************************************

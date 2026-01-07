@@ -40,8 +40,6 @@ fn zip_dir<P: AsRef<Path>>(src_dir: P, dst_file: P) -> Result<(), Box<dyn std::e
     Ok(())
 }
 
-// usage:
-// zip_dir("my_folder", "my_folder.zip")?;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 

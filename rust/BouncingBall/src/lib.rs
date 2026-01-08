@@ -10,7 +10,18 @@ use serde::{Deserialize, Serialize};
 type LogError = dyn Fn(&str);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+enum ModelMode {
+    Instantiated,
+    InitializationMode,
+    EventMode,
+    ContinuousTimeMode,
+    StepMode,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct ModelData {
+    mode: ModelMode,
+    eventModeUsed: bool,
     time: f64,
     h: f64,
     v: f64,
@@ -23,6 +34,8 @@ impl ModelData {
 
     fn default() -> Self {
         ModelData {
+            mode: ModelMode::Instantiated,
+            eventModeUsed: false,
             time: 0.0,
             h: 1.0,  // initial height
             v: 0.0,  // initial velocity
@@ -40,14 +53,14 @@ struct ModelInstance {
 }
 
 enum ValueReference {
-    time = 0,
-    h = 1,
-    der_h = 2,
-    v = 3,
-    der_v = 4,
-    g = 5,
-    e = 6,
-    v_min = 7,
+    time,
+    h,
+    der_h,
+    v,
+    der_v,
+    g,
+    e,
+    v_min,
 }
 
 impl TryFrom<u32> for ValueReference {
@@ -110,6 +123,14 @@ impl ModelInstance {
         }
     }
 
+}
+
+macro_rules! error {
+    ($inst:expr, $($arg:tt)+) => {{
+        let message = format!($($arg)+);
+        ($inst.logError)(&message);
+        return fmi3Error;
+    }};
 }
 
 macro_rules! get_instance {
@@ -260,11 +281,46 @@ pub extern "C" fn fmi3EnterInitializationMode(
     stopTimeDefined: bool,
     stopTime: fmi3Float64,
 ) -> fmi3Status {
+
+    let instance = get_instance_mut!(instance);
+
+    if instance.data.mode != ModelMode::Instantiated {
+        error!(instance, "Cannot enter initialization mode from mode {:?}.", instance.data.mode);
+    }
+    
+    instance.data.mode = ModelMode::InitializationMode;
+
     fmi3OK
+}
+
+macro_rules! assert_mode {
+    ($mode:expr, $instance:expr) => {
+        if $instance.data.mode != $mode {
+            error!($instance, 
+                "Function {} may only be called in mode {:?} but current mode is {:?}.",
+                current_fn!(),
+                $mode,
+                $instance.data.mode
+            );
+        }
+    };
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3ExitInitializationMode(instance: fmi3Instance) -> fmi3Status {
+
+    let instance = get_instance_mut!(instance);
+
+    assert_mode!(ModelMode::InitializationMode, instance);
+
+    instance.data.mode = if instance.data.eventModeUsed {
+        ModelMode::EventMode
+    } else {
+        ModelMode::StepMode
+    };
+
+    instance.data.mode = ModelMode::InitializationMode;
+
     fmi3OK
 }
 
@@ -340,9 +396,7 @@ pub extern "C" fn fmi3GetFloat64(
             Ok(ValueReference::e) => values[i] = data.e,
             Ok(ValueReference::v_min) => values[i] = data.v_min,
             _ => {
-                let message = format!("Unknown value reference: {}", vr);
-                (instance.logError)(&message);
-                return fmi3Error;
+                error!(instance, "Unknown value reference: {}", vr);
             }
         }
     }
@@ -559,18 +613,15 @@ pub extern "C" fn fmi3SerializeFMUState(
         let required_size = serialized.len();
         
         if size != required_size {
-            let message = format!(
+            error!(instance,
                 "Provided buffer size {} does not match the size of the serialized FMU state {}.",
                 size, required_size
             );
-            (instance.logError)(&message);
-            return fmi3Error;
         }
 
         unsafe { std::ptr::copy_nonoverlapping(serialized.as_ptr(), serializedState, size) };
     } else {
-        (instance.logError)("Failed to serialize FMU state.");
-        return fmi3Error;
+        error!(instance, "Failed to serialize FMU state.");
     }
         
     fmi3OK
@@ -594,8 +645,7 @@ pub extern "C" fn fmi3DeserializeFMUState(
         let fmu_state = Box::new(data);
         unsafe { *FMUState = Box::into_raw(fmu_state) as *mut c_void };
     } else {
-        (instance.logError)("Failed to deserialize FMU state.");
-        return fmi3Error;
+        error!(instance, "Failed to deserialize FMU state.");
     }
     
     fmi3OK
@@ -819,12 +869,7 @@ pub extern "C" fn fmi3SetContinuousStates(
     assert_not_null!(continuousStates, instance);
 
     if nContinuousStates != 2 {
-        let message = format!(
-            "Number of continuous states ({}) does not match the model (2).",
-            nContinuousStates
-        );
-        (instance.logError)(&message);
-        return fmi3Error;
+        error!(instance, "Number of continuous states ({}) does not match the model (2).", nContinuousStates);
     }
 
     let continuous_states = unsafe { std::slice::from_raw_parts(continuousStates, nContinuousStates) };
@@ -846,12 +891,7 @@ pub extern "C" fn fmi3GetContinuousStateDerivatives(
     assert_not_null!(derivatives, instance);
 
     if nContinuousStates != 2 {
-        let message = format!(
-            "Number of continuous state derivatives requested ({}) does not match the model (2).",
-            nContinuousStates
-        );
-        (instance.logError)(&message);
-        return fmi3Error;
+        error!(instance, "Number of continuous state derivatives requested ({}) does not match the model (2).", nContinuousStates);
     }
 
     let derivatives = unsafe { std::slice::from_raw_parts_mut(derivatives, nContinuousStates) };
@@ -873,12 +913,7 @@ pub extern "C" fn fmi3GetEventIndicators(
     assert_not_null!(eventIndicators, instance);
 
     if nEventIndicators != 1 {
-        let message = format!(
-            "Number of event indicators requested ({}) does not match the model (1).",
-            nEventIndicators
-        );
-        (instance.logError)(&message);
-        return fmi3Error;
+        error!(instance, "Number of event indicators requested ({}) does not match the model (1).", nEventIndicators);
     }
 
     let event_indicators = unsafe { std::slice::from_raw_parts_mut(eventIndicators, nEventIndicators) };
@@ -899,12 +934,7 @@ pub extern "C" fn fmi3GetContinuousStates(
     assert_not_null!(continuousStates, instance);
 
     if nContinuousStates != 2 {
-        let message = format!(
-            "Number of continuous states requested ({}) does not match the model (2).",
-            nContinuousStates
-        );
-        (instance.logError)(&message);
-        return fmi3Error;
+        error!(instance, "Number of continuous states requested ({}) does not match the model (2).", nContinuousStates);
     }
 
     let continuous_states = unsafe { std::slice::from_raw_parts_mut(continuousStates, nContinuousStates) };
@@ -926,9 +956,7 @@ pub extern "C" fn fmi3GetNominalsOfContinuousStates(
     assert_not_null!(nominals, instance);
 
     if nNominals != 2 {
-        let message = format!("Number of nominals of continuous states requested ({nNominals}) does not match the model (2).");
-        (instance.logError)(&message);
-        return fmi3Error;
+        error!(instance, "Number of nominals of continuous states requested ({nNominals}) does not match the model (2).");
     }
 
     let nominals = unsafe { std::slice::from_raw_parts_mut(nominals, nNominals) };
@@ -988,12 +1016,14 @@ pub extern "C" fn fmi3DoStep(
     lastSuccessfulTime: *mut fmi3Float64,
 ) -> fmi3Status {
 
-    if instance.is_null() {
-        eprintln!("Argument instance must not be NULL.");
-        return fmi3Error;
-    }
+    let instance = get_instance_mut!(instance);
 
-    let instance = unsafe { &mut*(instance as *mut ModelInstance) };
+    assert_not_null!(eventHandlingNeeded, instance);
+    assert_not_null!(terminateSimulation, instance);
+    assert_not_null!(earlyReturn, instance);
+    assert_not_null!(lastSuccessfulTime, instance);
+
+    assert_mode!(ModelMode::StepMode, instance);
 
     instance.doFixedStep(communicationStepSize);
 

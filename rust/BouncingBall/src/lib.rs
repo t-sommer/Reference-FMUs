@@ -10,16 +10,24 @@ use serde::{Deserialize, Serialize};
 type LogError = dyn Fn(&str);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+enum InterfaceType {
+    ModelExchange,
+    CoSimulation,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 enum ModelMode {
     Instantiated,
     InitializationMode,
     EventMode,
     ContinuousTimeMode,
     StepMode,
+    Terminated,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct ModelData {
+    interfaceType: InterfaceType,
     mode: ModelMode,
     eventModeUsed: bool,
     time: f64,
@@ -32,8 +40,9 @@ struct ModelData {
 
 impl ModelData {
 
-    fn default() -> Self {
+    fn default(interfaceType: InterfaceType) -> Self {
         ModelData {
+            interfaceType: interfaceType,
             mode: ModelMode::Instantiated,
             eventModeUsed: false,
             time: 0.0,
@@ -85,7 +94,7 @@ impl TryFrom<u32> for ValueReference {
 
 impl ModelInstance {
 
-    fn new(instanceEnvironment: fmi3InstanceEnvironment, logMessage: Option<fmi3LogMessageCallback>) -> Self {
+    fn new(interfaceType: InterfaceType, instanceEnvironment: fmi3InstanceEnvironment, logMessage: Option<fmi3LogMessageCallback>) -> Self {
   
         // convert raw pointer to thread-safe representation
         let instance_environment = instanceEnvironment as usize;
@@ -108,7 +117,7 @@ impl ModelInstance {
         };
 
         ModelInstance {
-            data: ModelData::default(),
+            data: ModelData::default(interfaceType),
             logError: Box::new(log_error),
         }
     }
@@ -217,7 +226,7 @@ pub extern "C" fn fmi3InstantiateModelExchange(
     instanceEnvironment: fmi3InstanceEnvironment,
     logMessage: Option<fmi3LogMessageCallback>,
 ) -> fmi3Instance {
-    let instance = ModelInstance::new(instanceEnvironment, logMessage);
+    let instance = ModelInstance::new(InterfaceType::ModelExchange, instanceEnvironment, logMessage);
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi3Instance
 }
@@ -237,7 +246,7 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
     logMessage: Option<fmi3LogMessageCallback>,
     intermediateUpdate: fmi3IntermediateUpdateCallback,
 ) -> fmi3Instance {
-    let instance = ModelInstance::new(instanceEnvironment, logMessage);
+    let instance = ModelInstance::new(InterfaceType::CoSimulation, instanceEnvironment, logMessage);
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi3Instance
 }
@@ -293,13 +302,26 @@ pub extern "C" fn fmi3EnterInitializationMode(
     fmi3OK
 }
 
+macro_rules! assert_interface_type {
+    ($instance:expr, $itype:expr) => {
+        if $instance.data.interfaceType != $itype {
+            error!($instance, 
+                "Function {} may only be called for interface type {:?} but current interface type is {:?}.",
+                current_fn!(),
+                $itype,
+                $instance.data.interfaceType
+            );
+        }
+    };
+}
+
 macro_rules! assert_mode {
-    ($mode:expr, $instance:expr) => {
-        if $instance.data.mode != $mode {
+    ($instance:expr, $mode:pat) => {
+        if !matches!($instance.data.mode, $mode) {
             error!($instance, 
                 "Function {} may only be called in mode {:?} but current mode is {:?}.",
                 current_fn!(),
-                $mode,
+                stringify!($mode),
                 $instance.data.mode
             );
         }
@@ -311,33 +333,53 @@ pub extern "C" fn fmi3ExitInitializationMode(instance: fmi3Instance) -> fmi3Stat
 
     let instance = get_instance_mut!(instance);
 
-    assert_mode!(ModelMode::InitializationMode, instance);
+    assert_mode!(instance, ModelMode::InitializationMode);
 
-    instance.data.mode = if instance.data.eventModeUsed {
-        ModelMode::EventMode
-    } else {
-        ModelMode::StepMode
+    instance.data.mode = match instance.data.interfaceType {
+        InterfaceType::ModelExchange => ModelMode::EventMode,
+        InterfaceType::CoSimulation => {
+            if instance.data.eventModeUsed {
+                ModelMode::EventMode
+            } else {
+                ModelMode::StepMode
+            }
+        },
     };
-
-    instance.data.mode = ModelMode::InitializationMode;
 
     fmi3OK
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterEventMode(instance: fmi3Instance) -> fmi3Status {
+
+    let instance = get_instance_mut!(instance);
+
+    match instance.data.interfaceType {
+        InterfaceType::ModelExchange => assert_mode!(instance, ModelMode::ContinuousTimeMode),
+        InterfaceType::CoSimulation => assert_mode!(instance, ModelMode::StepMode),
+    }
+
+    instance.data.mode = ModelMode::EventMode;
+
     fmi3OK
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3Terminate(instance: fmi3Instance) -> fmi3Status {
+
+    let instance = get_instance_mut!(instance);
+
+    assert_mode!(instance, ModelMode::EventMode | ModelMode::ContinuousTimeMode | ModelMode::StepMode);
+
+    instance.data.mode = ModelMode::Terminated;
+
     fmi3OK
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3Reset(instance: fmi3Instance) -> fmi3Status {
     let instance = get_instance_mut!(instance);
-    instance.data = ModelData::default();
+    instance.data = ModelData::default(instance.data.interfaceType.clone());
     fmi3OK
 }
 
@@ -792,6 +834,7 @@ pub extern "C" fn fmi3UpdateDiscreteStates(
     terminateSimulation: *mut fmi3Boolean,
     nominalsOfContinuousStatesChanged: *mut fmi3Boolean,
     valuesOfContinuousStatesChanged: *mut fmi3Boolean,
+    nextEventTimeDefined: *mut fmi3Boolean,
     nextEventTime: *mut fmi3Float64,
 ) -> fmi3Status {
 
@@ -801,6 +844,7 @@ pub extern "C" fn fmi3UpdateDiscreteStates(
     assert_not_null!(terminateSimulation, instance);
     assert_not_null!(nominalsOfContinuousStatesChanged, instance);
     assert_not_null!(valuesOfContinuousStatesChanged, instance);
+    assert_not_null!(nextEventTimeDefined, instance);
     assert_not_null!(nextEventTime, instance);
 
     let data = &mut instance.data;
@@ -824,6 +868,7 @@ pub extern "C" fn fmi3UpdateDiscreteStates(
         *discreteStatesNeedUpdate = fmi3False;
         *terminateSimulation = fmi3False;
         *nominalsOfContinuousStatesChanged = fmi3False;
+        *nextEventTimeDefined = fmi3False;
         *nextEventTime = f64::INFINITY;
     }
 
@@ -836,6 +881,14 @@ Types for Functions for Model Exchange
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterContinuousTimeMode(instance: fmi3Instance) -> fmi3Status {
+
+    let instance = get_instance_mut!(instance);
+
+    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_mode!(instance, ModelMode::EventMode);
+
+    instance.data.mode = ModelMode::ContinuousTimeMode;
+
     fmi3OK
 }
 
@@ -989,7 +1042,15 @@ Types for Functions for Co-Simulation
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterStepMode(instance: fmi3Instance) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+
+    let instance = get_instance_mut!(instance);
+
+    assert_interface_type!(instance, InterfaceType::CoSimulation);
+    assert_mode!(instance, ModelMode::EventMode);
+
+    instance.data.mode = ModelMode::StepMode;
+    
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -1023,7 +1084,7 @@ pub extern "C" fn fmi3DoStep(
     assert_not_null!(earlyReturn, instance);
     assert_not_null!(lastSuccessfulTime, instance);
 
-    assert_mode!(ModelMode::StepMode, instance);
+    assert_mode!(instance, ModelMode::StepMode);
 
     instance.doFixedStep(communicationStepSize);
 

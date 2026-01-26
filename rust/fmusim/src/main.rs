@@ -1,11 +1,9 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use fmi::{model_description::{Causality, ModelVariable, VariableType, read_model_description}, util::extract_fmu};
+use fmi::{model_description::{Causality, ModelVariable, VariableType, read_model_description}, util::{extract_fmu, sample, write_header}};
 use std::{fs::File, io::Write};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}};
 use clap::Parser;
-
-mod recorder;
 
 
 #[derive(Parser)]
@@ -20,36 +18,6 @@ struct Args {
     log_fmi_calls: bool,
 }
 
-fn write_header(variables: &[&ModelVariable], stream: &mut dyn Write) -> std::io::Result<()> {
-    write!(stream, "\"time\"")?;
-    for variable in variables {
-        write!(stream, ",\"{}\"", variable.name)?;
-    }
-    writeln!(stream)?;
-    Ok(())
-}
-
-fn sample(time: f64, variables: &[&ModelVariable], fmu: &FMU3, stream: &mut dyn Write) -> std::io::Result<()> {
-    write!(stream, "{time}")?;
-    for variable in variables {
-        write!(stream, ",")?;
-        match variable.variableType {
-            VariableType::Float64 => {
-                let value_references = [variable.valueReference];
-                let mut values = [0.0];
-                fmu.getFloat64(&value_references, &mut values);
-                for (i, value) in values.iter().enumerate() {
-                    if i > 0 {
-                        write!(stream, " ")?;
-                    }
-                    write!(stream, "{value}")?;
-                }
-            }
-        }
-    }
-    writeln!(stream)?;
-    Ok(())
-}
 
 fn main() {
 

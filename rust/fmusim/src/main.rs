@@ -1,8 +1,16 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use std::env;
-use std::{path::Path, process::Output, io::Write};
+use std::{path::Path};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, types::fmiValueReference};
+use clap::Parser;
+
+#[derive(Parser)]
+#[command(name = "fmusim")]
+#[command(about = "FMU simulation tool")]
+struct Args {
+    /// Path to the FMU file or directory containing modelDescription.xml
+    filename: String,
+}
 
 #[derive(Debug)]
 
@@ -44,27 +52,21 @@ struct ModelDescription {
 }
 
 fn main() {
-    println!("=== FMUSIM STARTING ===");
-    std::io::stdout().flush().unwrap();
 
-    let args: Vec<String> = env::args().collect();
+    let args = Args::parse();
 
-    println!("args: {args:?}");
-    std::io::stdout().flush().unwrap();
+    println!("Filename argument: {}", args.filename);
 
-    let xml_path = r"E:\WS\Reference-FMUs\rust\deploy\modelDescription.xml";
+    let xml_path = &args.filename;
     println!("Attempting to read file: {}", xml_path);
-    std::io::stdout().flush().unwrap();
 
     let text = match std::fs::read_to_string(xml_path) {
         Ok(content) => {
             println!("Successfully read XML file");
-            std::io::stdout().flush().unwrap();
             content
         },
         Err(e) => {
             println!("ERROR: Failed to read XML file: {}", e);
-            std::io::stdout().flush().unwrap();
             return;
         }
     };

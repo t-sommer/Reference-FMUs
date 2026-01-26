@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug executable 'fmusim'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=fmusim",
+                    "--package=fmusim",
+                    "--",
+                    "deploy/modelDescription.xml"
+                ]
+            }
+        }
+    ]
+}

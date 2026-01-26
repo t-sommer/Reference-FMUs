@@ -1,45 +1,13 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use std::{fs::{File, read, read_to_string}, io::Write, path::Path};
+use fmi::{model_description::{Causality, CoSimulation, ModelDescription, ModelVariable, VariableType, read_model_description}, util::extract_fmu};
+use std::{fs::{File, read, read_to_string}, io::{self, Write}, path::Path, process::Output};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, types::fmiValueReference};
 use clap::Parser;
 use zip::ZipArchive;
-use tempfile::TempDir;
 
-fn extract_fmu(fmu_path: &str) -> Result<TempDir, Box<dyn std::error::Error>> {
+mod recorder;
 
-    // Create temporary directory
-    let temp_dir = TempDir::new()?;
-
-    // Open the FMU file (which is a ZIP archive)
-    let file = File::open(fmu_path)?;
-    let mut archive = ZipArchive::new(file)?;
-
-    // Extract all files
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i)?;
-        let outpath = match file.enclosed_name() {
-            Some(path) => temp_dir.path().join(path),
-            None => continue,
-        };
-
-        if (*file.name()).ends_with('/') {
-            // Directory
-            std::fs::create_dir_all(&outpath)?;
-        } else {
-            // File
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    std::fs::create_dir_all(p)?;
-                }
-            }
-            let mut outfile = File::create(&outpath)?;
-            std::io::copy(&mut file, &mut outfile)?;
-        }
-    }
-
-    Ok(temp_dir)
-}
 
 #[derive(Parser)]
 #[command(name = "fmusim")]
@@ -53,115 +21,35 @@ struct Args {
     log_fmi_calls: bool,
 }
 
-#[derive(Debug)]
-enum VariableType {
-    Float64,
-}   
-
-#[derive(Debug, PartialEq)]
-enum Causality {
-    Parameter,
-    CalculatedParameter,
-    StructuralParameter,
-    Input,
-    Output,
-    Local,
-    Independent
-}
-
-#[derive(Debug)]
-struct CoSimulation {
-    modelIdentifier: String,
-}
-
-#[derive(Debug)]
-struct ModelVariable {
-    variableType: VariableType,
-    name: String,
-    valueReference: fmiValueReference,
-    causality: Causality,
-}
-
-#[derive(Debug)]
-struct ModelDescription {
-    fmiVersion: String,
-    modelName: String,
-    instantiationToken: String,
-    coSimulation: Option<CoSimulation>,
-    modelVariables: Vec<ModelVariable>,
-}
-
-fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
-
-
-    let text = match std::fs::read_to_string(path) {
-        Ok(content) => content,
-        Err(e) => return Err(format!("ERROR: Failed to read XML file: {}", e))
-    };
-
-    let opt = roxmltree::ParsingOptions {
-        allow_dtd: true,
-        ..roxmltree::ParsingOptions::default()
-    };
-
-    let doc = roxmltree::Document::parse_with_options(&text, opt).unwrap();
-
-    let root = doc.root_element();
-    
-    let ModelVariables = root.descendants().find(|n| n.has_tag_name("ModelVariables")).unwrap();
-    
-    let mut modelVariables = vec![];
-
-    for child in ModelVariables.children().filter(|n| n.is_element()) {
-
-        let name = child.attribute("name").unwrap();
-        let valueReference = child.attribute("valueReference").unwrap().parse().unwrap();
-
-        let causality = match child.attribute("causality") {
-            Some("parameter") => Causality::Parameter,
-            Some("calculatedParameter") => Causality::CalculatedParameter,
-            Some("structuralParameter") => Causality::StructuralParameter,
-            Some("input") => Causality::Input,
-            Some("output") => Causality::Output,
-            Some("independent") => Causality::Independent,
-            _ => Causality::Local,
-        };
-
-        match child.tag_name().name() {
-            "Float64" => {
-                // println!("Float64!"),
-                modelVariables.push(ModelVariable {
-                    variableType: VariableType::Float64,
-                    name: name.to_string(),
-                    valueReference: valueReference,
-                    causality: causality,
-                });
-                    
-            }
-            _ => {},
-        }
-        // println!("{child:?}");
+fn write_header(variables: &[&ModelVariable], stream: &mut dyn Write) -> std::io::Result<()> {
+    write!(stream, "\"time\"")?;
+    for variable in variables {
+        write!(stream, ",\"{}\"", variable.name)?;
     }
+    writeln!(stream)?;
+    Ok(())
+}
 
-    let coSimulation = if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation")) {
-        Some(
-            CoSimulation {
-                modelIdentifier: cs.attribute("modelIdentifier").unwrap().to_string()
+fn sample(time: f64, variables: &[&ModelVariable], fmu: &FMU3, stream: &mut dyn Write) -> std::io::Result<()> {
+    write!(stream, "{time}")?;
+    for variable in variables {
+        write!(stream, ",")?;
+        match variable.variableType {
+            VariableType::Float64 => {
+                let value_references = [variable.valueReference];
+                let mut values = [0.0];
+                fmu.getFloat64(&value_references, &mut values);
+                for (i, value) in values.iter().enumerate() {
+                    if i > 0 {
+                        write!(stream, " ")?;
+                    }
+                    write!(stream, "{value}")?;
+                }
             }
-        )
-    } else {
-        None
-    };
-
-    let model_description = ModelDescription {
-        fmiVersion: root.attribute("fmiVersion").unwrap().to_string(),
-        modelName: root.attribute("modelName").unwrap().to_string(),
-        instantiationToken: root.attribute("instantiationToken").unwrap().to_string(),
-        coSimulation: coSimulation,
-        modelVariables: modelVariables,
-    };
-
-    Ok(model_description)
+        }
+    }
+    writeln!(stream)?;
+    Ok(())
 }
 
 fn main() {
@@ -242,9 +130,22 @@ fn main() {
     let mut earlyReturn: bool = false;
     let mut lastSuccessfulTime: fmi::types::fmiFloat64 = 0.0;
 
+    let mut buffer = File::create("BouncingBall_out.txt").unwrap();
+    let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
+    
+    write_header(&output_variables, &mut buffer).unwrap();
+
+    sample(0.0, &output_variables, &fmu, &mut buffer).unwrap();
+
     fmu.doStep(0.0, 0.1, true, &mut eventHandlingNeeded, &mut terminateSimulation, &mut earlyReturn, &mut lastSuccessfulTime); 
+    
+    sample(0.1, &output_variables, &fmu, &mut buffer).unwrap();
 
     fmu.getFloat64(&value_references, &mut values);
+
+    // Print values separated by spaces
+    let values_str: Vec<String> = values.iter().map(|v| v.to_string()).collect();
+    println!("{}", values_str.join(" "));
 
     fmu.terminate();
 

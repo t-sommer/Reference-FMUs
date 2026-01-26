@@ -6,6 +6,7 @@ use crate::types::fmiValueReference;
 
 #[derive(Debug)]
 pub enum VariableType {
+    Float32,
     Float64,
 }   
 
@@ -18,6 +19,14 @@ pub enum Causality {
     Output,
     Local,
     Independent
+}
+
+#[derive(Debug)]
+pub struct DefaultExperiment {
+    pub startTime: Option<String>,
+    pub stopTime: Option<String>,
+    pub tolerance: Option<String>,
+    pub stepSize: Option<String>,
 }
 
 #[derive(Debug)]
@@ -38,6 +47,7 @@ pub struct ModelDescription {
     pub fmiVersion: String,
     pub modelName: String,
     pub instantiationToken: String,
+    pub defaultExperiment: Option<DefaultExperiment>,
     pub coSimulation: Option<CoSimulation>,
     pub modelVariables: Vec<ModelVariable>,
 }
@@ -93,6 +103,28 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
         // println!("{child:?}");
     }
 
+    let defaultExperiment = root.descendants().find(|n| n.has_tag_name("DefaultExperiment")).map(|e| 
+        DefaultExperiment {
+            startTime: e.attribute("startTime").map(|s| s.to_string()),
+            stopTime: e.attribute("stopTime").map(|s| s.to_string()),
+            tolerance: e.attribute("tolerance").map(|s| s.to_string()),
+            stepSize: e.attribute("stepSize").map(|s| s.to_string()),
+        }
+    );
+
+    // let defaultExperiment = if let Some(e) = root.descendants().find(|n| n.has_tag_name("DefaultExperiment")) {
+    //     Some(
+    //         DefaultExperiment {
+    //             startTime: e.attribute("startTime").map(|s| s.to_string()),
+    //             stopTime: e.attribute("stopTime").map(|s| s.to_string()),
+    //             tolerance: e.attribute("tolerance").map(|s| s.to_string()),
+    //             stepSize: e.attribute("stepSize").map(|s| s.to_string()),
+    //         }
+    //     )
+    // } else {
+    //     None
+    // };
+
     let coSimulation = if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation")) {
         Some(
             CoSimulation {
@@ -107,8 +139,9 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
         fmiVersion: root.attribute("fmiVersion").unwrap().to_string(),
         modelName: root.attribute("modelName").unwrap().to_string(),
         instantiationToken: root.attribute("instantiationToken").unwrap().to_string(),
-        coSimulation: coSimulation,
-        modelVariables: modelVariables,
+        defaultExperiment,
+        coSimulation,
+        modelVariables,
     };
 
     Ok(model_description)

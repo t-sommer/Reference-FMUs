@@ -49,22 +49,34 @@ pub fn write_header(variables: &[&ModelVariable], stream: &mut dyn Write) -> std
     Ok(())
 }
 
+
+macro_rules! write_values {
+    ($values:expr, $stream:expr) => {{
+        for (i, value) in $values.iter().enumerate() {
+            if i > 0 {
+                write!($stream, " ")?;
+            }
+            write!($stream, "{value}")?;
+        }}  
+    };
+}
+
 pub fn sample(time: f64, variables: &[&ModelVariable], fmu: &FMU3, stream: &mut dyn Write) -> std::io::Result<()> {
     write!(stream, "{time}")?;
     for variable in variables {
         write!(stream, ",")?;
+        let value_references = [variable.valueReference];
         match variable.variableType {
+            VariableType::Float32 => {
+                let mut values = [0.0f32];
+                fmu.getFloat32(&value_references, &mut values);
+                write_values!(values, stream)
+            },
             VariableType::Float64 => {
-                let value_references = [variable.valueReference];
                 let mut values = [0.0];
                 fmu.getFloat64(&value_references, &mut values);
-                for (i, value) in values.iter().enumerate() {
-                    if i > 0 {
-                        write!(stream, " ")?;
-                    }
-                    write!(stream, "{value}")?;
-                }
-            }
+                write_values!(values, stream)
+            },
         }
     }
     writeln!(stream)?;

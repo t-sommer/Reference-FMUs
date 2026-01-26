@@ -10,12 +10,24 @@ use clap::Parser;
 #[command(name = "fmusim")]
 #[command(about = "FMU simulation tool")]
 struct Args {
-    /// Path to the FMU file or directory containing modelDescription.xml
+    /// Path to the FMU file
     filename: String,
     
     /// Enable logging of FMI function calls
     #[arg(long)]
     log_fmi_calls: bool,
+
+    /// Interval for sampling the output variables
+    #[arg(long)]
+    output_interval: Option<f64>,
+
+    /// Stop time for the simulation
+    #[arg(long)]
+    stop_time: Option<f64>,
+
+    /// File to store the output as CSV
+    #[arg(long)]
+    output_file: Option<String>,
 }
 
 
@@ -80,35 +92,31 @@ fn main() {
         &[]
     );
 
-    fmu.enterInitializationMode(None, 0.0, Some(1.0));
+    let stop_time = args.stop_time
+        .or_else(|| model_description.defaultExperiment.as_ref().and_then(|exp| exp.stopTime.as_ref().and_then(|s| s.parse().ok())))
+        .unwrap_or(1.0);
+
+    let output_interval = args.output_interval.unwrap_or(stop_time / 10.0);
+
+    fmu.enterInitializationMode(None, 0.0, Some(stop_time));
 
     fmu.exitInitializationMode();
-
-    let value_references: Vec<u32> = model_description.modelVariables
-        .iter()
-        .filter(|v| v.causality == Causality::Output)
-        .map(|v| v.valueReference)
-        .collect();
-
-    let mut values = vec![0.0; value_references.len()];
-
-    let mut eventHandlingNeeded: bool = false;
-    let mut terminateSimulation: bool = false;
-    let mut earlyReturn: bool = false;
-    let mut lastSuccessfulTime: fmi::types::fmiFloat64 = 0.0;
 
     let mut buffer = File::create("BouncingBall_out.txt").unwrap();
     let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
     
     write_header(&output_variables, &mut buffer).unwrap();
-
     sample(0.0, &output_variables, &fmu, &mut buffer).unwrap();
 
-    fmu.doStep(0.0, 0.1, true, &mut eventHandlingNeeded, &mut terminateSimulation, &mut earlyReturn, &mut lastSuccessfulTime); 
-    
-    sample(0.1, &output_variables, &fmu, &mut buffer).unwrap();
+    let mut time = 0.0;
 
-    fmu.getFloat64(&value_references, &mut values);
+    while time < stop_time {
+        let mut eventHandlingNeeded: bool = false;
+        let mut terminateSimulation: bool = false;
+        let mut earlyReturn: bool = false;
+        fmu.doStep(time, output_interval, true, &mut eventHandlingNeeded, &mut terminateSimulation, &mut earlyReturn, &mut time); 
+        sample(time, &output_variables, &fmu, &mut buffer).unwrap();
+    }
 
     fmu.terminate();
 

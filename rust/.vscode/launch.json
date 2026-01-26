@@ -11,7 +11,8 @@
                     "--bin=fmusim",
                     "--package=fmusim",
                     "--",
-                    "BouncingBall.fmu"
+                    "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\3.0\\BouncingBall.fmu",
+                    "--log-fmi-calls"
                 ]
             }
         }

@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use std::{io::Write, fs::File};
+use std::{fs::{File, read, read_to_string}, io::Write, path::Path};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, types::fmiValueReference};
 use clap::Parser;
 use zip::ZipArchive;
@@ -47,6 +47,10 @@ fn extract_fmu(fmu_path: &str) -> Result<TempDir, Box<dyn std::error::Error>> {
 struct Args {
     /// Path to the FMU file or directory containing modelDescription.xml
     filename: String,
+    
+    /// Enable logging of FMI function calls
+    #[arg(long)]
+    log_fmi_calls: bool,
 }
 
 #[derive(Debug)]
@@ -87,32 +91,12 @@ struct ModelDescription {
     modelVariables: Vec<ModelVariable>,
 }
 
-fn main() {
+fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
 
-    let args = Args::parse();
 
-    // Extract FMU to temporary directory
-    let temp_dir = match extract_fmu(&args.filename) {
-        Ok(dir) => dir,
-        Err(e) => {
-            println!("ERROR: Failed to extract FMU: {}", e);
-            std::io::stdout().flush().unwrap();
-            return;
-        }
-    };
-
-    // Path to modelDescription.xml in the extracted directory
-    let xml_path = temp_dir.path().join("modelDescription.xml");
-
-    let text = match std::fs::read_to_string(&xml_path) {
-        Ok(content) => {
-            println!("Successfully read XML file");
-            content
-        },
-        Err(e) => {
-            println!("ERROR: Failed to read XML file: {}", e);
-            return;
-        }
+    let text = match std::fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(e) => return Err(format!("ERROR: Failed to read XML file: {}", e))
     };
 
     let opt = roxmltree::ParsingOptions {
@@ -176,21 +160,45 @@ fn main() {
         coSimulation: coSimulation,
         modelVariables: modelVariables,
     };
-    
-    println!("{model_description:#?}");
 
-    // let doc = roxmltree::Document::parse("<rect id='rect1'/>").unwrap();
+    Ok(model_description)
+}
 
-    // let elem = doc.descendants().find(|n| n.attribute("id") == Some("rect1")).unwrap();
-    
-    // assert!(elem.has_tag_name("rect"));
+fn main() {
 
-    let log_fmi_call = |status: &fmi::types::fmiStatus, message: &str| {
-        println!("{message} -> {status:?}");
+    let args = Args::parse();
+
+    // Extract FMU to temporary directory
+    let temp_dir = match extract_fmu(&args.filename) {
+        Ok(dir) => dir,
+        Err(e) => {
+            println!("ERROR: Failed to extract FMU: {}", e);
+            return;
+        }
     };
 
-    let log_message = |status: &fmi::types::fmiStatus, category: &str, message: &str| {
-        println!("[Message][{:?}][{}] {}", status, category, message);
+    // Path to modelDescription.xml in the extracted directory
+    let xml_path = temp_dir.path().join("modelDescription.xml");
+
+    let model_description = read_model_description(xml_path.as_path()).unwrap();
+    
+    // println!("{model_description:#?}");
+
+    // Create logging callbacks only if requested
+    let log_fmi_call = if args.log_fmi_calls {
+        Some(Box::new(|status: &fmi::types::fmiStatus, message: &str| {
+            println!("{message} -> {status:?}");
+        }) as Box<dyn Fn(&fmi::types::fmiStatus, &str) + Send + Sync>)
+    } else {
+        None
+    };
+
+    let log_message = if args.log_fmi_calls {
+        Some(Box::new(|status: &fmi::types::fmiStatus, category: &str, message: &str| {
+            println!("[Message][{:?}][{}] {}", status, category, message);
+        }) as Box<dyn Fn(&fmi::types::fmiStatus, &str, &str) + Send + Sync>)
+    } else {
+        None
     };
 
     let unzipdir = temp_dir.path();
@@ -199,13 +207,11 @@ fn main() {
 
     let shared_library_path = unzipdir.join("binaries").join(PLATFORM_TUPLE).join(shared_library_filename);
 
-    // let path = Path::new(r"E:\WS\Reference-FMUs\rust\deploy\binaries\x86_64-windows\BouncingBall.dll");
-
     let mut fmu = FMU3::new(
         shared_library_path.as_path(), 
         "instance1", 
-        Some(Box::new(log_fmi_call)), 
-        Some(Box::new(log_message))
+        log_fmi_call, 
+        log_message
     ).expect("Failed to load FMU");
 
     fmu.instantiateCoSimulation(

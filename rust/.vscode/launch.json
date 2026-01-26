@@ -12,7 +12,9 @@
                     "--package=fmusim",
                     "--",
                     "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\3.0\\BouncingBall.fmu",
-                    "--log-fmi-calls"
+                    "--log-fmi-calls",
+                    "--output-file", 
+                    "BouncingBall_out.csv"
                 ]
             }
         }

@@ -1,10 +1,9 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use fmi::{model_description::{Causality, CoSimulation, ModelDescription, ModelVariable, VariableType, read_model_description}, util::extract_fmu};
-use std::{fs::{File, read, read_to_string}, io::{self, Write}, path::Path, process::Output};
-use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, types::fmiValueReference};
+use fmi::{model_description::{Causality, ModelVariable, VariableType, read_model_description}, util::extract_fmu};
+use std::{fs::File, io::Write};
+use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}};
 use clap::Parser;
-use zip::ZipArchive;
 
 mod recorder;
 

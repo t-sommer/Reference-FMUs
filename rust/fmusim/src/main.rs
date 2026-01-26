@@ -92,6 +92,7 @@ fn main() {
         &[]
     );
 
+    let mut time = 0.0;
     let stop_time = args.stop_time
         .or_else(|| model_description.defaultExperiment.as_ref().and_then(|exp| exp.stopTime.as_ref().and_then(|s| s.parse().ok())))
         .unwrap_or(1.0);
@@ -102,20 +103,30 @@ fn main() {
 
     fmu.exitInitializationMode();
 
-    let mut buffer = File::create("BouncingBall_out.txt").unwrap();
+    let mut buffer = if let Some(path) = args.output_file {
+        Some(File::create(path).expect("Failed to create output file"))
+    } else {
+        None
+    };
+
     let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
     
-    write_header(&output_variables, &mut buffer).unwrap();
-    sample(0.0, &output_variables, &fmu, &mut buffer).unwrap();
-
-    let mut time = 0.0;
+    if let Some(ref mut file) = buffer {
+        write_header(&output_variables, file).unwrap();
+        sample(0.0, &output_variables, &fmu, file).unwrap();
+    }
 
     while time < stop_time {
-        let mut eventHandlingNeeded: bool = false;
-        let mut terminateSimulation: bool = false;
-        let mut earlyReturn: bool = false;
+        
+        let mut eventHandlingNeeded = false;
+        let mut terminateSimulation = false;
+        let mut earlyReturn = false;
+
         fmu.doStep(time, output_interval, true, &mut eventHandlingNeeded, &mut terminateSimulation, &mut earlyReturn, &mut time); 
-        sample(time, &output_variables, &fmu, &mut buffer).unwrap();
+        
+        if let Some(ref mut file) = buffer {
+            sample(time, &output_variables, &fmu, file).unwrap();
+        }
     }
 
     fmu.terminate();

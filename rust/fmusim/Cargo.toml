@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 fmi = { path = "../fmi" }
+roxmltree = "0.21.1"

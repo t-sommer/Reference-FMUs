@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use fmi::{model_description::{Causality, ModelVariable, VariableType, read_model_description}, util::{extract_fmu, sample, write_header}};
-use std::{fs::File, io::Write};
+use fmi::{model_description::{Causality, ModelVariable, read_model_description}, util::{extract_fmu, sample, write_header}};
+use std::fs::File;
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}};
 use clap::Parser;
 
@@ -109,10 +109,6 @@ fn main() {
     sample(0.1, &output_variables, &fmu, &mut buffer).unwrap();
 
     fmu.getFloat64(&value_references, &mut values);
-
-    // Print values separated by spaces
-    let values_str: Vec<String> = values.iter().map(|v| v.to_string()).collect();
-    println!("{}", values_str.join(" "));
 
     fmu.terminate();
 

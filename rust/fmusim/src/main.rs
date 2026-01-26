@@ -1,8 +1,45 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use std::{path::Path};
+use std::{io::Write, fs::File};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, types::fmiValueReference};
 use clap::Parser;
+use zip::ZipArchive;
+use tempfile::TempDir;
+
+fn extract_fmu(fmu_path: &str) -> Result<TempDir, Box<dyn std::error::Error>> {
+
+    // Create temporary directory
+    let temp_dir = TempDir::new()?;
+
+    // Open the FMU file (which is a ZIP archive)
+    let file = File::open(fmu_path)?;
+    let mut archive = ZipArchive::new(file)?;
+
+    // Extract all files
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)?;
+        let outpath = match file.enclosed_name() {
+            Some(path) => temp_dir.path().join(path),
+            None => continue,
+        };
+
+        if (*file.name()).ends_with('/') {
+            // Directory
+            std::fs::create_dir_all(&outpath)?;
+        } else {
+            // File
+            if let Some(p) = outpath.parent() {
+                if !p.exists() {
+                    std::fs::create_dir_all(p)?;
+                }
+            }
+            let mut outfile = File::create(&outpath)?;
+            std::io::copy(&mut file, &mut outfile)?;
+        }
+    }
+
+    Ok(temp_dir)
+}
 
 #[derive(Parser)]
 #[command(name = "fmusim")]
@@ -13,10 +50,9 @@ struct Args {
 }
 
 #[derive(Debug)]
-
 enum VariableType {
     Float64,
-}
+}   
 
 #[derive(Debug, PartialEq)]
 enum Causality {
@@ -55,12 +91,20 @@ fn main() {
 
     let args = Args::parse();
 
-    println!("Filename argument: {}", args.filename);
+    // Extract FMU to temporary directory
+    let temp_dir = match extract_fmu(&args.filename) {
+        Ok(dir) => dir,
+        Err(e) => {
+            println!("ERROR: Failed to extract FMU: {}", e);
+            std::io::stdout().flush().unwrap();
+            return;
+        }
+    };
 
-    let xml_path = &args.filename;
-    println!("Attempting to read file: {}", xml_path);
+    // Path to modelDescription.xml in the extracted directory
+    let xml_path = temp_dir.path().join("modelDescription.xml");
 
-    let text = match std::fs::read_to_string(xml_path) {
+    let text = match std::fs::read_to_string(&xml_path) {
         Ok(content) => {
             println!("Successfully read XML file");
             content
@@ -149,7 +193,7 @@ fn main() {
         println!("[Message][{:?}][{}] {}", status, category, message);
     };
 
-    let unzipdir = Path::new(r"E:\WS\Reference-FMUs\rust\deploy");
+    let unzipdir = temp_dir.path();
 
     let shared_library_filename = format!("{}{}", model_description.coSimulation.unwrap().modelIdentifier, SHARED_LIBRARY_EXTENSION);
 

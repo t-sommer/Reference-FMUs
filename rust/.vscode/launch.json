@@ -11,7 +11,7 @@
                     "--bin=fmusim",
                     "--package=fmusim",
                     "--",
-                    "deploy/modelDescription.xml"
+                    "BouncingBall.fmu"
                 ]
             }
         }

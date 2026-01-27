@@ -13,9 +13,9 @@
                     "--",
                     "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\3.0\\StateSpace.fmu",
                     // "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\3.0\\BouncingBall.fmu",
-                    "--log-fmi-calls",
-                    "--output-file", 
-                    "BouncingBall_out.csv"
+                    // "--log-fmi-calls",
+                    // "--output-file", 
+                    // "BouncingBall_out.csv"
                 ]
             }
         }

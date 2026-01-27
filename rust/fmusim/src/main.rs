@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
 use fmi::{model_description::{Causality, ModelVariable, read_model_description}, types::fmiStatus::fmiOK, util::{Recorder, extract_fmu, sample, write_header}};
-use std::fs::File;
+use std::{fs::File, io::{Write, stdout}};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}};
 use clap::Parser;
 
@@ -49,12 +49,12 @@ fn main() {
 
     let model_description = read_model_description(xml_path.as_path()).unwrap();
     
-    println!("{model_description:#?}");
+    // println!("{model_description:#?}");
 
     // Create logging callbacks only if requested
     let log_fmi_call = if args.log_fmi_calls {
         Some(Box::new(|status: &fmi::types::fmiStatus, message: &str| {
-            println!("{message} -> {status:?}");
+            eprintln!("{message} -> {status:?}");
         }) as Box<dyn Fn(&fmi::types::fmiStatus, &str) + Send + Sync>)
     } else {
         None
@@ -62,7 +62,7 @@ fn main() {
 
     let log_message = if args.log_fmi_calls {
         Some(Box::new(|status: &fmi::types::fmiStatus, category: &str, message: &str| {
-            println!("[Message][{:?}][{}] {}", status, category, message);
+            eprintln!("[Message][{:?}][{}] {}", status, category, message);
         }) as Box<dyn Fn(&fmi::types::fmiStatus, &str, &str) + Send + Sync>)
     } else {
         None
@@ -93,14 +93,6 @@ fn main() {
     );
 
     let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
-    let mut outfile = File::create("out.csv").unwrap();
-
-    let mut recorder = Recorder {
-        variables: output_variables,
-        stream: &mut outfile,
-        fmu: &fmu,
-        sizes: vec![]
-    };
 
     let mut time = 0.0;
     let stop_time = args.stop_time
@@ -113,20 +105,13 @@ fn main() {
 
     fmu.exitInitializationMode();
 
-    // let mut buffer = if let Some(path) = args.output_file {
-    //     Some(File::create(path).expect("Failed to create output file"))
-    // } else {
-    //     None
-    // };
-
-    // let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
-    
-    recorder.write_header().unwrap();
-
-    // if let Some(ref mut file) = buffer {
-    //     write_header(&output_variables, file).unwrap();
-    //     sample(0.0, &output_variables, &fmu, file).unwrap();
-    // }
+    let mut recorder = if let Some(path) = args.output_file {
+        let file = File::create(path).expect("Failed to create output file");
+        Recorder::new(output_variables, Box::new(file) as Box<dyn Write>, &fmu)
+    } else {
+        let stdout_handle = stdout();
+        Recorder::new(output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
+    };
 
     while time < stop_time {
         
@@ -141,10 +126,6 @@ fn main() {
         }
 
         recorder.sample(time).unwrap();
-
-        // if let Some(ref mut file) = buffer {
-        //     sample(time, &output_variables, &fmu, file).unwrap();
-        // }
     }
 
     fmu.terminate();

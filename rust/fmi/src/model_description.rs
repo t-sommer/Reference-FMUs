@@ -107,10 +107,6 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
         let mut dimensions = vec![];
 
         for grand_child in child.children().filter(|e| e.has_tag_name("Dimension")) {
-            println!();
-            println!("{child:?}");
-            println!();
-            println!("{grand_child:#?}");
             let dimension = if let Some(value) = grand_child.attribute("start") {
                 Dimension::Fixed(value.parse().unwrap())
             } else {

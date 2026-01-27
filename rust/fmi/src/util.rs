@@ -60,14 +60,25 @@ macro_rules! write_values {
     };
 }
 
-pub struct Recorder<'a> {
+pub struct Recorder<'a, T: Write> {
     pub variables: Vec<&'a ModelVariable>,
-    pub stream: &'a mut dyn Write,
+    pub stream: T,
     pub fmu: &'a FMU3<'a>,
-    pub sizes: Vec<usize>,
+    sizes: Vec<usize>,
 }
 
-impl Recorder<'_> {
+impl<'a, T: Write> Recorder<'a, T> {
+
+    pub fn new(variables: Vec<&'a ModelVariable>, stream: T, fmu: &'a FMU3<'a>) -> Recorder<'a, T> {
+        let mut recorder = Recorder { 
+            variables,
+            stream, 
+            fmu, 
+            sizes: vec![],
+        };
+        recorder.write_header().unwrap();
+        recorder
+    }
 
     pub fn write_header(&mut self) -> std::io::Result<()> {
         write!(self.stream, "\"time\"")?;
@@ -87,6 +98,7 @@ impl Recorder<'_> {
                     Dimension::Fixed(value) => *value,
                     Dimension::Variable(value_reference) => {
                         let mut values = [0u64];
+                        // TODO: handle status
                         self.fmu.getUInt64(&[*value_reference], &mut values);
                         values[0] as usize
                     },
@@ -103,7 +115,7 @@ impl Recorder<'_> {
         }
 
         write!(self.stream, "{time}")?;
-        
+
         for (i, variable) in self.variables.iter().enumerate() {
             let size = self.sizes.get(i).unwrap();
             write!(self.stream, ",")?;

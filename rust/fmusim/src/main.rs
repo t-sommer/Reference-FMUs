@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use fmi::{model_description::{Causality, ModelVariable, read_model_description}, util::{extract_fmu, sample, write_header}};
+use fmi::{model_description::{Causality, ModelVariable, read_model_description}, types::fmiStatus::fmiOK, util::{Recorder, extract_fmu, sample, write_header}};
 use std::fs::File;
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}};
 use clap::Parser;
@@ -49,7 +49,7 @@ fn main() {
 
     let model_description = read_model_description(xml_path.as_path()).unwrap();
     
-    // println!("{model_description:#?}");
+    println!("{model_description:#?}");
 
     // Create logging callbacks only if requested
     let log_fmi_call = if args.log_fmi_calls {
@@ -92,6 +92,16 @@ fn main() {
         &[]
     );
 
+    let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
+    let mut outfile = File::create("out.csv").unwrap();
+
+    let mut recorder = Recorder {
+        variables: output_variables,
+        stream: &mut outfile,
+        fmu: &fmu,
+        sizes: vec![]
+    };
+
     let mut time = 0.0;
     let stop_time = args.stop_time
         .or_else(|| model_description.defaultExperiment.as_ref().and_then(|exp| exp.stopTime.as_ref().and_then(|s| s.parse().ok())))
@@ -103,18 +113,20 @@ fn main() {
 
     fmu.exitInitializationMode();
 
-    let mut buffer = if let Some(path) = args.output_file {
-        Some(File::create(path).expect("Failed to create output file"))
-    } else {
-        None
-    };
+    // let mut buffer = if let Some(path) = args.output_file {
+    //     Some(File::create(path).expect("Failed to create output file"))
+    // } else {
+    //     None
+    // };
 
-    let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
+    // let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
     
-    if let Some(ref mut file) = buffer {
-        write_header(&output_variables, file).unwrap();
-        sample(0.0, &output_variables, &fmu, file).unwrap();
-    }
+    recorder.write_header().unwrap();
+
+    // if let Some(ref mut file) = buffer {
+    //     write_header(&output_variables, file).unwrap();
+    //     sample(0.0, &output_variables, &fmu, file).unwrap();
+    // }
 
     while time < stop_time {
         
@@ -122,11 +134,17 @@ fn main() {
         let mut terminateSimulation = false;
         let mut earlyReturn = false;
 
-        fmu.doStep(time, output_interval, true, &mut eventHandlingNeeded, &mut terminateSimulation, &mut earlyReturn, &mut time); 
+        let status = fmu.doStep(time, output_interval, true, &mut eventHandlingNeeded, &mut terminateSimulation, &mut earlyReturn, &mut time); 
         
-        if let Some(ref mut file) = buffer {
-            sample(time, &output_variables, &fmu, file).unwrap();
+        if status != fmiOK {
+            return;
         }
+
+        recorder.sample(time).unwrap();
+
+        // if let Some(ref mut file) = buffer {
+        //     sample(time, &output_variables, &fmu, file).unwrap();
+        // }
     }
 
     fmu.terminate();

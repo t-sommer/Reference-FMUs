@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 use crate::types::fmiValueReference;
 
 
@@ -8,6 +8,7 @@ use crate::types::fmiValueReference;
 pub enum VariableType {
     Float32,
     Float64,
+    UInt64,
 }   
 
 #[derive(Debug, PartialEq)]
@@ -35,11 +36,18 @@ pub struct CoSimulation {
 }
 
 #[derive(Debug)]
+pub enum Dimension {
+    Fixed(usize),
+    Variable(fmiValueReference),
+}
+
+#[derive(Debug)]
 pub struct ModelVariable {
     pub variableType: VariableType,
     pub name: String,
     pub valueReference: fmiValueReference,
     pub causality: Causality,
+    pub dimensions: Vec<Dimension>,
 }
 
 #[derive(Debug)]
@@ -70,9 +78,10 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
     
     let ModelVariables = root.descendants().find(|n| n.has_tag_name("ModelVariables")).unwrap();
     
+    let mut variables_for_vr = HashMap::new();
     let mut modelVariables = vec![];
 
-    for child in ModelVariables.children().filter(|n| n.is_element()) {
+    for (i, child) in ModelVariables.children().filter(|n| n.is_element()).enumerate() {
 
         let name = child.attribute("name").unwrap();
         let valueReference = child.attribute("valueReference").unwrap().parse().unwrap();
@@ -87,20 +96,40 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
             _ => Causality::Local,
         };
 
-        match child.tag_name().name() {
-            "Float64" => {
-                // println!("Float64!"),
-                modelVariables.push(ModelVariable {
-                    variableType: VariableType::Float64,
-                    name: name.to_string(),
-                    valueReference: valueReference,
-                    causality: causality,
-                });
-                    
-            }
-            _ => {},
+        let variableType = match child.tag_name().name() {
+            "Float64" => VariableType::Float64,
+            "Float32" => VariableType::Float32,
+            "UInt64" => VariableType::UInt64,
+            _ => todo!(),
+        };
+
+
+        let mut dimensions = vec![];
+
+        for grand_child in child.children().filter(|e| e.has_tag_name("Dimension")) {
+            println!();
+            println!("{child:?}");
+            println!();
+            println!("{grand_child:#?}");
+            let dimension = if let Some(value) = grand_child.attribute("start") {
+                Dimension::Fixed(value.parse().unwrap())
+            } else {
+                Dimension::Variable(grand_child.attribute("valueReference").unwrap().parse().unwrap())
+            };
+            dimensions.push(dimension);
         }
-        // println!("{child:?}");
+
+        let variable = ModelVariable {
+            variableType,
+            name: name.to_string(),
+            valueReference: valueReference,
+            causality,
+            dimensions
+        };
+
+        variables_for_vr.insert(valueReference, i);
+        modelVariables.push(variable);
+
     }
 
     let defaultExperiment = root.descendants().find(|n| n.has_tag_name("DefaultExperiment")).map(|e| 
@@ -111,19 +140,6 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
             stepSize: e.attribute("stepSize").map(|s| s.to_string()),
         }
     );
-
-    // let defaultExperiment = if let Some(e) = root.descendants().find(|n| n.has_tag_name("DefaultExperiment")) {
-    //     Some(
-    //         DefaultExperiment {
-    //             startTime: e.attribute("startTime").map(|s| s.to_string()),
-    //             stopTime: e.attribute("stopTime").map(|s| s.to_string()),
-    //             tolerance: e.attribute("tolerance").map(|s| s.to_string()),
-    //             stepSize: e.attribute("stepSize").map(|s| s.to_string()),
-    //         }
-    //     )
-    // } else {
-    //     None
-    // };
 
     let coSimulation = if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation")) {
         Some(

@@ -8,8 +8,7 @@ use libloading::Library;
 
 
 #[derive(Parser)]
-#[command(name = "fmusim")]
-#[command(about = "FMU simulation tool")]
+#[command(name = "fmusim", version, about = "FMU simulation tool")]
 struct Args {
     /// Path to the FMU file
     filename: String,
@@ -195,13 +194,7 @@ fn simulate_fmi3_cs(settings: &SimulationSettings, model_description: &ModelDesc
 fn main() -> ExitCode {
 
     // Parse command line arguments
-    let args = match Args::try_parse() {
-        Ok(a) => a,
-        Err(e) => {
-            eprintln!("ERROR: Failed to parse command line arguments. {e}");
-            return ExitCode::FAILURE;
-        }
-    };
+    let args = Args::parse();
 
     // Extract FMU to temporary directory
     let unzipdir = match extract_fmu(&args.filename) {

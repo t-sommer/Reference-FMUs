@@ -115,7 +115,7 @@ pub struct FMU3<'lib> {
     logFMICall: Option<Arc<LogFMICallCallback>>,
     logMessage: Option<Arc<LogMessageCallback>>,
 
-    _lib: Box<Library>,
+    // _lib: Box<Library>,
 
     fmi3GetVersion: Symbol<'lib, fmi3GetVersionTYPE>,
     fmi3SetDebugLogging: Symbol<'lib, fmi3SetDebugLoggingTYPE>,
@@ -238,12 +238,13 @@ fn get_symbol<'lib, T>(
 
 impl<'lib> FMU3<'lib> {
     pub fn new(
-        path: &Path,
+        // path: &Path,
+        lib: &Library,
         instanceName: &str,
         logFMICall: Option<Box<LogFMICallCallback>>,
         logMessage: Option<Box<LogMessageCallback>>,
     ) -> Result<FMU3<'lib>, libloading::Error> {
-        let lib = Box::new(unsafe { Library::new(path)? });
+        // let lib = Box::new(unsafe { Library::new(path)? });
 
         /***************************************************
         Common Functions
@@ -379,7 +380,7 @@ impl<'lib> FMU3<'lib> {
             // logMessage: Box::new(logMessage),
             logFMICall: logFMICall.map(|cb| Arc::from(cb)),
             logMessage: logMessage.map(|cb| Arc::from(cb)),
-            _lib: lib,
+            // _lib: lib,
             fmi3GetVersion,
             fmi3SetDebugLogging,
             fmi3InstantiateModelExchange,

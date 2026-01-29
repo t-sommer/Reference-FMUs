@@ -1,11 +1,10 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
 use fmi::{model_description::{Causality, ModelDescription, ModelVariable, VariableType, read_model_description}, types::fmiStatus::{self, fmiOK, fmiWarning}, util::{Recorder, extract_fmu}};
-use tempfile::TempDir;
-use std::{collections::HashMap, error::Error, fs::File, io::{Write, stdout}, process::ExitCode};
+use std::{collections::HashMap, error::Error, fs::File, io::{Write, stdout}, path::PathBuf, process::ExitCode};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}};
-use clap::{Parser, parser::ValueSource};
-use libloading::{Library, Symbol};
+use clap::Parser;
+use libloading::Library;
 
 
 #[derive(Parser)]
@@ -23,9 +22,17 @@ struct Args {
     #[arg(long)]
     output_interval: Option<f64>,
 
+    /// Start time for the simulation
+    #[arg(long)]
+    start_time: Option<f64>,
+
     /// Stop time for the simulation
     #[arg(long)]
     stop_time: Option<f64>,
+
+    /// Relative tolerance for the simulation
+    #[arg(long)]
+    tolerance: Option<f64>,
 
     /// File to store the output as CSV
     #[arg(long)]
@@ -34,6 +41,15 @@ struct Args {
     /// Set start values for variables (format: variable_name=value)
     #[arg(long = "start-value", value_parser = parse_start_value)]
     start_values: Vec<(String, String)>,
+}
+
+struct SimulationSettings {
+    start_time: f64,
+    stop_time: f64,
+    tolerance: Option<f64>,
+    start_values: Vec<(String, String)>,
+    output_interval: f64,
+    output_file: Option<PathBuf>,
 }
 
 fn parse_start_value(s: &str) -> Result<(String, String), String> {
@@ -137,26 +153,22 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
     Ok(fmiOK)
 }
 
-fn simulate(args: &Args, model_description: &ModelDescription, fmu: &FMU3) -> Result<(), Box<dyn Error>> {
+fn simulate_fmi3_cs(settings: &SimulationSettings, model_description: &ModelDescription, fmu: &FMU3) -> Result<(), Box<dyn Error>> {
 
-    if let Err(e) = set_start_values(&args.start_values, &model_description, &fmu) {
+    if let Err(e) = set_start_values(&settings.start_values, &model_description, &fmu) {
         return Err(format!("Failed to set start values: {e}").into());
     }
 
     let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
 
     let mut time = 0.0;
-    let stop_time = args.stop_time
-        .or_else(|| model_description.defaultExperiment.as_ref().and_then(|exp| exp.stopTime.as_ref().and_then(|s| s.parse().ok())))
-        .unwrap_or(1.0);
 
-    let output_interval = args.output_interval.unwrap_or(stop_time / 10.0);
+    let output_interval = settings.output_interval;
 
-    fmu.enterInitializationMode(None, 0.0, Some(stop_time));
-
+    fmu.enterInitializationMode(settings.tolerance, settings.start_time, Some(settings.stop_time));
     fmu.exitInitializationMode();
 
-    let mut recorder = if let Some(path) = &args.output_file {
+    let mut recorder = if let Some(path) = &settings.output_file {
         let file = File::create(path).expect("Failed to create output file");
         Recorder::new(output_variables, Box::new(file) as Box<dyn Write>, &fmu)
     } else {
@@ -164,7 +176,7 @@ fn simulate(args: &Args, model_description: &ModelDescription, fmu: &FMU3) -> Re
         Recorder::new(output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
     };
 
-    while time < stop_time {
+    while time < settings.stop_time {
         
         let mut eventHandlingNeeded = false;
         let mut terminateSimulation = false;
@@ -248,7 +260,6 @@ fn main() -> ExitCode {
     };
 
     let mut fmu = match FMU3::new(
-        // shared_library_path.as_path(), 
         &library,
         "instance1", 
         log_fmi_call, 
@@ -275,7 +286,19 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let exit_code = if let Err(e) = simulate(&args, &model_description, &fmu) {
+    let start_time = args.start_time.unwrap_or(0.0);
+    let stop_time = args.stop_time.unwrap_or(start_time + 1.0);
+
+    let settings = SimulationSettings {
+        start_time,
+        stop_time,
+        tolerance: args.tolerance,
+        start_values: args.start_values,
+        output_interval: 0.1,
+        output_file: args.output_file.map(|f| PathBuf::from(f)),
+    };
+
+    let exit_code = if let Err(e) = simulate_fmi3_cs(&settings, &model_description, &fmu) {
         eprintln!("ERROR: {e}");
         ExitCode::FAILURE
     } else {

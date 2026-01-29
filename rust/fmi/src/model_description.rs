@@ -33,6 +33,7 @@ pub struct DefaultExperiment {
 #[derive(Debug)]
 pub struct CoSimulation {
     pub modelIdentifier: String,
+    pub fixedInternalStepSize: Option<String>,
 }
 
 #[derive(Debug)]
@@ -139,7 +140,8 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
     let coSimulation = if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation")) {
         Some(
             CoSimulation {
-                modelIdentifier: cs.attribute("modelIdentifier").unwrap().to_string()
+                modelIdentifier: cs.attribute("modelIdentifier").unwrap().to_string(),
+                fixedInternalStepSize: cs.attribute("fixedInternalStepSize").map(|s| s.to_string()),
             }
         )
     } else {

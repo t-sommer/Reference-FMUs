@@ -46,9 +46,9 @@ struct Args {
 struct SimulationSettings {
     start_time: f64,
     stop_time: f64,
+    output_interval: f64,
     tolerance: Option<f64>,
     start_values: Vec<(String, String)>,
-    output_interval: f64,
     output_file: Option<PathBuf>,
 }
 
@@ -240,7 +240,15 @@ fn main() -> ExitCode {
         None
     };
 
-    let shared_library_filename = format!("{}{}", model_description.coSimulation.as_ref().unwrap().modelIdentifier, SHARED_LIBRARY_EXTENSION);
+    let co_simulation = match &model_description.coSimulation {
+        Some(cs) => cs,
+        None => {
+            eprintln!("ERROR: The FMU does not support Co-Simulation.");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let shared_library_filename = format!("{}{}", co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
 
     let shared_library_path = unzipdir.path().join("binaries").join(PLATFORM_TUPLE).join(shared_library_filename);
 
@@ -286,15 +294,37 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let start_time = args.start_time.unwrap_or(0.0);
-    let stop_time = args.stop_time.unwrap_or(start_time + 1.0);
+    let (start_time, stop_time, tolerance) = if let Some(default_experiment) = &model_description.defaultExperiment {
+        let start_time: f64 = if let Some(v) = &default_experiment.startTime { v.parse().unwrap() } else { 0.0 };
+        let stop_time: f64 = if let Some(v) = &default_experiment.stopTime { v.parse().unwrap() } else { start_time + 1.0 };
+        let tolerance: Option<f64> = default_experiment.tolerance.as_ref().map(|v| v.parse().unwrap());
+        (start_time, stop_time, tolerance)
+    } else {
+        (0.0, 1.0, None)
+    };
+
+    let internal_step_size: Option<f64> = co_simulation.fixedInternalStepSize.as_ref().map(|v| v.parse().unwrap());
+ 
+    let start_time = args.start_time.unwrap_or(start_time);
+    let stop_time = args.stop_time.unwrap_or(stop_time);
+    let tolerance = if let Some(v) = args.tolerance { Some(v) } else { tolerance };
+
+    let output_interval = if let Some(v) = args.output_interval {
+        v
+    } else {
+        if let Some(v) = internal_step_size {
+            v
+        } else {
+            (stop_time - start_time) / 10.0
+        }
+    };
 
     let settings = SimulationSettings {
         start_time,
         stop_time,
-        tolerance: args.tolerance,
+        output_interval,
+        tolerance,
         start_values: args.start_values,
-        output_interval: 0.1,
         output_file: args.output_file.map(|f| PathBuf::from(f)),
     };
 

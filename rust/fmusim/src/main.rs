@@ -135,14 +135,7 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
     Ok(fmiOK)
 }
 
-fn simulate() -> Result<(), Box<dyn Error>> {
-
-    let args = match Args::try_parse() {
-        Ok(a) => a,
-        Err(e) => {
-            return Err(format!("Failed to parse command line arguments. {e}").into());
-        }
-    };
+fn simulate(args: &Args) -> Result<(), Box<dyn Error>> {
 
     // Extract FMU to temporary directory
     let temp_dir = match extract_fmu(&args.filename) {
@@ -222,7 +215,7 @@ fn simulate() -> Result<(), Box<dyn Error>> {
 
     fmu.exitInitializationMode();
 
-    let mut recorder = if let Some(path) = args.output_file {
+    let mut recorder = if let Some(path) = &args.output_file {
         let file = File::create(path).expect("Failed to create output file");
         Recorder::new(output_variables, Box::new(file) as Box<dyn Write>, &fmu)
     } else {
@@ -249,7 +242,16 @@ fn simulate() -> Result<(), Box<dyn Error>> {
 }
 
 fn main() -> ExitCode {
-    if let Err(e) = simulate() {
+
+    let args = match Args::try_parse() {
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("ERROR: Failed to parse command line arguments. {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    if let Err(e) = simulate(&args) {
         eprintln!("ERROR: {e}");
         ExitCode::FAILURE
     } else {

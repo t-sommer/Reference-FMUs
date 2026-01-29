@@ -11,7 +11,7 @@ pub enum VariableType {
     UInt64,
 }   
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Causality {
     Parameter,
     CalculatedParameter,
@@ -102,7 +102,6 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
             "UInt64" => VariableType::UInt64,
             _ => todo!(),
         };
-
 
         let mut dimensions = vec![];
 

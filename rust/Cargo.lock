@@ -384,6 +384,7 @@ dependencies = [
 name = "fmi"
 version = "0.1.0"
 dependencies = [
+ "csv",
  "libloading",
  "roxmltree",
  "tempfile",

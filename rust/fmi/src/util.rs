@@ -131,7 +131,7 @@ impl<'a, T: Write> Recorder<'a, T> {
                     self.fmu.getFloat64(&value_references, &mut values);
                     write_values!(values, self.stream)
                 },
-                _ => todo!(),
+                _ => continue,
             }
         }
         writeln!(self.stream)?;

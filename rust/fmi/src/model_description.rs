@@ -22,6 +22,15 @@ pub enum Causality {
     Independent
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum Variability {
+    Constant, 
+    Fixed, 
+    Tunable, 
+    Discrete, 
+    Continuous
+}
+
 #[derive(Debug)]
 pub struct DefaultExperiment {
     pub startTime: Option<String>,
@@ -48,6 +57,7 @@ pub struct ModelVariable {
     pub name: String,
     pub valueReference: fmiValueReference,
     pub causality: Causality,
+    pub variability: Variability,
     pub dimensions: Vec<Dimension>,
 }
 
@@ -97,11 +107,19 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
             _ => Causality::Local,
         };
 
+        let variability = match child.attribute("variability") {
+            Some("constant") => Variability::Constant,
+            Some("fixed") => Variability::Fixed,
+            Some("tunable") => Variability::Tunable,
+            Some("discrete") => Variability::Discrete,
+            _ => Variability::Continuous,
+        };
+
         let variableType = match child.tag_name().name() {
             "Float64" => VariableType::Float64,
             "Float32" => VariableType::Float32,
             "UInt64" => VariableType::UInt64,
-            _ => todo!(),
+            _ => continue,
         };
 
         let mut dimensions = vec![];
@@ -120,6 +138,7 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
             name: name.to_string(),
             valueReference: valueReference,
             causality,
+            variability,
             dimensions
         };
 

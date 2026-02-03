@@ -124,22 +124,38 @@ impl<'a, T: Write> Recorder<'a, T> {
                 VariableType::Float32 => {
                     let mut values = vec![0f32; *size];
                     self.fmu.getFloat32(&value_references, &mut values);
-                    write_values!(values, self.stream)
+                    write_values!(values, self.stream);
                 },
                 VariableType::Float64 => {
                     let mut values = vec![0f64; *size];
                     self.fmu.getFloat64(&value_references, &mut values);
-                    write_values!(values, self.stream)
+                    write_values!(values, self.stream);
                 },
                 VariableType::UInt64 => {
                     let mut values = vec![0u64; *size];
                     self.fmu.getUInt64(&value_references, &mut values);
-                    write_values!(values, self.stream)
+                    write_values!(values, self.stream);
                 },
                 VariableType::String => {
                     let mut values = vec![String::new(); *size];
                     self.fmu.getString(&value_references, &mut values);
-                    write_values!(values, self.stream)
+                    write_values!(values, self.stream);
+                },
+                VariableType::Binary => {
+                    let mut sizes = vec![0usize; *size];
+                    let mut values = vec![std::ptr::null(); *size];
+                    self.fmu.getBinary(&value_references, &mut sizes, &mut values);
+                    let string_values: Vec<String> = values.iter().zip(sizes.iter()).map(|(ptr, size)| {
+                        if ptr.is_null() || *size == 0 {
+                            String::new()
+                        } else {
+                            unsafe {
+                                let slice = std::slice::from_raw_parts(*ptr, *size);
+                                slice.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join("")
+                            }
+                        }
+                    }).collect();
+                    write_values!(string_values, self.stream);
                 },
                 _ => continue,
             }

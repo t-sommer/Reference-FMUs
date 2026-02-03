@@ -113,6 +113,7 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
             "Float32" => VariableType::Float32,
             "UInt64" => VariableType::UInt64,
             "String" => VariableType::String,
+            "Binary" => VariableType::Binary,
             _ => continue,
         };
 

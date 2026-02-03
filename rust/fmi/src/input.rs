@@ -1,6 +1,6 @@
 use std::{collections::HashMap, error::Error, fs::File};
 
-use crate::{fmi3::FMU3, model_description::{ModelDescription, ModelVariable, Variability, VariableType}, types::fmiStatus};
+use crate::{fmi3::FMU3, model_description::{ModelDescription, ModelVariable, Variability, VariableType}, types::*};
 
 
 fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
@@ -13,21 +13,70 @@ fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
 
 #[derive(Debug, PartialEq)]
 enum VariableValue {
-    Float32(Vec<f32>),
-    Float64(Vec<f64>),
-    UInt64(Vec<u64>),
+    Float32(Vec<fmiFloat32>),
+    Float64(Vec<fmiFloat64>),
+    Int8(Vec<fmiInt8>),
+    UInt8(Vec<fmiUInt8>),
+    Int16(Vec<fmiInt16>),
+    UInt16(Vec<fmiUInt16>),
+    Int32(Vec<fmiInt32>),
+    UInt32(Vec<fmiUInt32>),
+    Int64(Vec<fmiInt64>),
+    UInt64(Vec<fmiUInt64>),
+    Boolean(Vec<fmiBoolean>),
+    String(Vec<String>),
+    Binary(Vec<Vec<fmiByte>>),
+    // Clock(fmiClock),
 }
 
 fn parse_variable_value(variable_type: &VariableType, literal: &str) -> Result<VariableValue, Box<dyn Error>> {
     match variable_type {
+        VariableType::Float32 => {
+            let values: Result<Vec<fmiFloat32>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            Ok(VariableValue::Float32(values?))
+        },
         VariableType::Float64 => {
-            let values: Result<Vec<f64>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            let values: Result<Vec<fmiFloat64>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Float64(values?))
         },
+        VariableType::Int8 => {
+            let values: Result<Vec<fmiInt8>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            Ok(VariableValue::Int8(values?))
+        },
+        VariableType::UInt8 => {
+            let values: Result<Vec<fmiUInt8>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            Ok(VariableValue::UInt8(values?))
+        },
+        VariableType::Int16 => {
+            let values: Result<Vec<fmiInt16>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            Ok(VariableValue::Int16(values?))
+        },
+        VariableType::UInt16 => {
+            let values: Result<Vec<fmiUInt16>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            Ok(VariableValue::UInt16(values?))
+        },
+        VariableType::Int32 => {
+            let values: Result<Vec<fmiInt32>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            Ok(VariableValue::Int32(values?))
+        },
+        VariableType::UInt32 => {
+            let values: Result<Vec<fmiUInt32>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            Ok(VariableValue::UInt32(values?))
+        },
+        VariableType::Int64 => {
+            let values: Result<Vec<fmiInt64>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            Ok(VariableValue::Int64(values?))
+        },
         VariableType::UInt64 => {
-            let values: Result<Vec<u64>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            let values: Result<Vec<fmiUInt64>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt64(values?))
         },
+        VariableType::Boolean => todo!(),
+        VariableType::String => {
+            let values: Vec<String> = literal.split_whitespace().map(|v| v.to_string()).collect();
+            Ok(VariableValue::String(values))
+        },
+        VariableType::Binary => todo!(),
         _ => todo!()
     }
 }
@@ -183,8 +232,15 @@ impl<'a> CSVInput<'a> {
                     VariableValue::Float64(values) => {
                         fmu.setFloat64(&[variable.valueReference], values);
                     },
+                    VariableValue::Int64(values) => {
+                        fmu.setInt64(&[variable.valueReference], values);
+                    },
                     VariableValue::UInt64(values) => {
                         fmu.setUInt64(&[variable.valueReference], values);
+                    },
+                    VariableValue::String(values) => {
+                        let string_refs: Vec<&str> = values.iter().map(|x| x.as_str()).collect();
+                        fmu.setString(&[variable.valueReference], &string_refs);
                     },
                     _ => todo!(),
                 }
@@ -272,27 +328,30 @@ impl<'a> CSVInput<'a> {
                             call(fmu.setFloat64(&[variable.valueReference], &interpolated_values))?;
                         }
                     },
-                    _ => panic!(),
+                    _ => panic!("Cannot set {value0:?}!"),
                 }
     
             }
 
         } else {
 
+            
             let row = &self.rows[row_index];
-    
+            
             for (variable, value) in self.variables.iter().zip(row.iter()) {
+                
+                if variable.variability != Variability::Continuous {
+                    continue
+                }
     
-                if variable.variability == Variability::Continuous {
-                    match value {
-                        VariableValue::Float32(values) => {
-                            fmu.setFloat32(&[variable.valueReference], values);
-                        },
-                        VariableValue::Float64(values) => {
-                            fmu.setFloat64(&[variable.valueReference], values);
-                        },
-                        _ => panic!(),
-                    }
+                match value {
+                    VariableValue::Float32(values) => {
+                        fmu.setFloat32(&[variable.valueReference], values);
+                    },
+                    VariableValue::Float64(values) => {
+                        fmu.setFloat64(&[variable.valueReference], values);
+                    },
+                    _ => panic!("Cannot set {value:?}!"),
                 }
             }
         }

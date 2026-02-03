@@ -181,6 +181,7 @@ fn simulate_fmi3_cs(settings: &SimulationSettings, model_description: &ModelDesc
 
     while time < settings.stop_time {
         
+        input.set_discrete_inputs(time, true, fmu)?;
         input.set_continuous_inputs(time, true, fmu)?;
 
         let mut eventHandlingNeeded = false;
@@ -217,16 +218,22 @@ fn main() -> ExitCode {
     let model_description = match read_model_description(xml_path.as_path()) {
         Ok(desc) => desc,
         Err(e) => {
-            eprintln!("ERROR: Failed to read model description: {e}");
+            eprintln!("Failed to read model description: {e}");
             return ExitCode::FAILURE;
         }
     };
 
     let path = args.input_file.unwrap();
 
-    let file = File::open(path).unwrap();
+    let file = File::open(&path).unwrap();
 
-    let input = CSVInput::new(&file, &model_description).unwrap();
+    let input = match CSVInput::new(&file, &model_description) {
+        Ok(input) => input,
+        Err(e) => {
+            eprintln!("Failed to load input from {path:?}. {e}");
+            return ExitCode::FAILURE; 
+        }
+    };
 
     println!("next event time: {:?}", input.next_event_time(1.0));
 

@@ -8,7 +8,18 @@ use crate::types::fmiValueReference;
 pub enum VariableType {
     Float32,
     Float64,
+    Int8,
+    UInt8,
+    Int16,
+    UInt16,
+    Int32,
+    UInt32,
+    Int64,
     UInt64,
+    Boolean,
+    String,
+    Binary,
+    Clock,
 }   
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -97,6 +108,14 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
         let name = child.attribute("name").unwrap();
         let valueReference = child.attribute("valueReference").unwrap().parse().unwrap();
 
+        let variableType = match child.tag_name().name() {
+            "Float64" => VariableType::Float64,
+            "Float32" => VariableType::Float32,
+            "UInt64" => VariableType::UInt64,
+            "String" => VariableType::String,
+            _ => continue,
+        };
+
         let causality = match child.attribute("causality") {
             Some("parameter") => Causality::Parameter,
             Some("calculatedParameter") => Causality::CalculatedParameter,
@@ -112,14 +131,15 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
             Some("fixed") => Variability::Fixed,
             Some("tunable") => Variability::Tunable,
             Some("discrete") => Variability::Discrete,
-            _ => Variability::Continuous,
-        };
+            Some("continuous") => Variability::Continuous,
+            _ => { if matches!(variableType, VariableType::Float32 | VariableType::Float64) 
+                && !matches!(causality, Causality::Parameter | Causality::StructuralParameter | Causality::CalculatedParameter) {
+                    Variability::Continuous
+                } else {
+                    Variability::Discrete
+                }
+            },
 
-        let variableType = match child.tag_name().name() {
-            "Float64" => VariableType::Float64,
-            "Float32" => VariableType::Float32,
-            "UInt64" => VariableType::UInt64,
-            _ => continue,
         };
 
         let mut dimensions = vec![];

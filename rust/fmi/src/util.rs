@@ -131,6 +131,16 @@ impl<'a, T: Write> Recorder<'a, T> {
                     self.fmu.getFloat64(&value_references, &mut values);
                     write_values!(values, self.stream)
                 },
+                VariableType::UInt64 => {
+                    let mut values = vec![0u64; *size];
+                    self.fmu.getUInt64(&value_references, &mut values);
+                    write_values!(values, self.stream)
+                },
+                VariableType::String => {
+                    let mut values = vec![String::new(); *size];
+                    self.fmu.getString(&value_references, &mut values);
+                    write_values!(values, self.stream)
+                },
                 _ => continue,
             }
         }
@@ -138,27 +148,4 @@ impl<'a, T: Write> Recorder<'a, T> {
         Ok(())
     }
 
-}
-
-pub fn sample(time: f64, variables: &[&ModelVariable], fmu: &FMU3, stream: &mut dyn Write) -> std::io::Result<()> {
-    write!(stream, "{time}")?;
-    for variable in variables {
-        write!(stream, ",")?;
-        let value_references = [variable.valueReference];
-        match variable.variableType {
-            VariableType::Float32 => {
-                let mut values = [0.0f32];
-                fmu.getFloat32(&value_references, &mut values);
-                write_values!(values, stream)
-            },
-            VariableType::Float64 => {
-                let mut values = [0.0];
-                fmu.getFloat64(&value_references, &mut values);
-                write_values!(values, stream)
-            },
-            _ => todo!(),
-        }
-    }
-    writeln!(stream)?;
-    Ok(())
 }

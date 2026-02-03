@@ -1,4 +1,4 @@
-"time","Float64_continuous_input"
-1,2
-2,4
-3,5
+"time","String_input"
+1,two
+2,four
+3,five

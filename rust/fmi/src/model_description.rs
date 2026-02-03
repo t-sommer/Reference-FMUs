@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, str::FromStr};
 use crate::types::fmiValueReference;
 
 
@@ -20,7 +20,34 @@ pub enum VariableType {
     String,
     Binary,
     Clock,
-}   
+    Enumeration,
+}
+
+impl FromStr for VariableType {
+
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Float32" => Ok(VariableType::Float32),
+            "Float64" => Ok(VariableType::Float64),
+            "Int8" => Ok(VariableType::Int8),
+            "UInt8" => Ok(VariableType::UInt8),
+            "Int16" => Ok(VariableType::Int16),
+            "UInt16" => Ok(VariableType::UInt16),
+            "Int32" => Ok(VariableType::Int32),
+            "UInt32" => Ok(VariableType::UInt32),
+            "Int64" => Ok(VariableType::Int64),
+            "UInt64" => Ok(VariableType::UInt64),
+            "Boolean" => Ok(VariableType::Boolean),
+            "String" => Ok(VariableType::String),
+            "Binary" => Ok(VariableType::Binary),
+            "Clock" => Ok(VariableType::Clock),
+            "Enumeration" => Ok(VariableType::Enumeration),
+            _ => Err(format!("Unknown variable type: {}", s)),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Causality {
@@ -108,14 +135,17 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
         let name = child.attribute("name").unwrap();
         let valueReference = child.attribute("valueReference").unwrap().parse().unwrap();
 
-        let variableType = match child.tag_name().name() {
-            "Float64" => VariableType::Float64,
-            "Float32" => VariableType::Float32,
-            "UInt64" => VariableType::UInt64,
-            "String" => VariableType::String,
-            "Binary" => VariableType::Binary,
-            _ => continue,
-        };
+        let variableType = VariableType::from_str(child.tag_name().name())?;
+        // let variableType = match child.tag_name().name() {
+        //     "Float64" => VariableType::Float64,
+        //     "Float32" => VariableType::Float32,
+        //     "Int64" => VariableType::Int64,
+        //     "UInt64" => VariableType::UInt64,
+        //     "String" => VariableType::String,
+        //     "Binary" => VariableType::Binary,
+        //     "Enumeration" => VariableType::Enumeration,
+        //     _ => continue,
+        // };
 
         let causality = match child.attribute("causality") {
             Some("parameter") => Causality::Parameter,

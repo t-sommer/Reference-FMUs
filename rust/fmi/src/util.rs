@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write};
+use std::{error::Error, fmt::Display, fs::File, io::{self, Write}};
 use zip::ZipArchive;
 use tempfile::TempDir;
 
@@ -59,6 +59,16 @@ macro_rules! write_values {
         }}  
     };
 }
+
+// fn write_values2<T: Display, U: Write>(values: Vec<T>, &mut stream: U) -> Result<(), Box<dyn Error>> {
+//     for (i, value) in values.iter().enumerate() {
+//         if i > 0 {
+//             write!(stream, " ")?;
+//         }
+//         write!(stream, "{value}")?;
+//     }
+//     Ok(())
+// }
 
 pub struct Recorder<'a, T: Write> {
     pub variables: Vec<&'a ModelVariable>,
@@ -131,9 +141,49 @@ impl<'a, T: Write> Recorder<'a, T> {
                     self.fmu.getFloat64(&value_references, &mut values);
                     write_values!(values, self.stream);
                 },
+                VariableType::Int8 => {
+                    let mut values = vec![0i8; *size];
+                    self.fmu.getInt8(&value_references, &mut values);
+                    write_values!(values, self.stream);
+                },
+                VariableType::UInt8 => {
+                    let mut values = vec![0u8; *size];
+                    self.fmu.getUInt8(&value_references, &mut values);
+                    write_values!(values, self.stream);
+                },
+                VariableType::Int16 => {
+                    let mut values = vec![0i16; *size];
+                    self.fmu.getInt16(&value_references, &mut values);
+                    write_values!(values, self.stream);
+                },
+                VariableType::UInt16 => {
+                    let mut values = vec![0u16; *size];
+                    self.fmu.getUInt16(&value_references, &mut values);
+                    write_values!(values, self.stream);
+                },
+                VariableType::Int32 => {
+                    let mut values = vec![0i32; *size];
+                    self.fmu.getInt32(&value_references, &mut values);
+                    write_values!(values, self.stream);
+                },
+                VariableType::UInt32 => {
+                    let mut values = vec![0u32; *size];
+                    self.fmu.getUInt32(&value_references, &mut values);
+                    write_values!(values, self.stream);
+                },
+                VariableType::Int64 => {
+                    let mut values = vec![0i64; *size];
+                    self.fmu.getInt64(&value_references, &mut values);
+                    write_values!(values, self.stream);
+                },
                 VariableType::UInt64 => {
                     let mut values = vec![0u64; *size];
                     self.fmu.getUInt64(&value_references, &mut values);
+                    write_values!(values, self.stream);
+                },
+                VariableType::Boolean => {
+                    let mut values = vec![false; *size];
+                    self.fmu.getBoolean(&value_references, &mut values);
                     write_values!(values, self.stream);
                 },
                 VariableType::String => {
@@ -156,6 +206,11 @@ impl<'a, T: Write> Recorder<'a, T> {
                         }
                     }).collect();
                     write_values!(string_values, self.stream);
+                },
+                VariableType::Enumeration => {
+                    let mut values = vec![0i64; *size];
+                    self.fmu.getInt64(&value_references, &mut values);
+                    write_values!(values, self.stream);
                 },
                 _ => continue,
             }

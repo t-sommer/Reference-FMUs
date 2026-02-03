@@ -63,7 +63,7 @@ fn parse_variable_value(variable_type: &VariableType, literal: &str) -> Result<V
             let values: Result<Vec<fmiUInt32>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt32(values?))
         },
-        VariableType::Int64 => {
+        VariableType::Int64 | VariableType::Enumeration => {
             let values: Result<Vec<fmiInt64>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Int64(values?))
         },
@@ -71,13 +71,37 @@ fn parse_variable_value(variable_type: &VariableType, literal: &str) -> Result<V
             let values: Result<Vec<fmiUInt64>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt64(values?))
         },
-        VariableType::Boolean => todo!(),
+        VariableType::Boolean | VariableType::Clock => {
+            let values: Result<Vec<fmiBoolean>, _> = literal.split_whitespace().map(|v| v.parse()).collect();
+            Ok(VariableValue::Boolean(values?))
+        },
         VariableType::String => {
             let values: Vec<String> = literal.split_whitespace().map(|v| v.to_string()).collect();
             Ok(VariableValue::String(values))
         },
-        VariableType::Binary => todo!(),
-        _ => todo!()
+        VariableType::Binary => {
+            let values: Result<Vec<Vec<fmiByte>>, Box<dyn Error>> = literal.split_whitespace()
+                .map(|hex_str| {
+                    
+                    if hex_str.len() % 2 != 0 {
+                        return Err(format!("Invalid hex string length: {}", hex_str).into());
+                    }
+                    
+                    let mut bytes = Vec::new();
+
+                    for i in (0..hex_str.len()).step_by(2) {
+                        let byte_str = &hex_str[i..i+2];
+                        match u8::from_str_radix(byte_str, 16) {
+                            Ok(byte) => bytes.push(byte),
+                            Err(e) => return Err(format!("Invalid hex byte '{}': {}", byte_str, e).into()),
+                        }
+                    }
+
+                    Ok(bytes)
+                })
+                .collect();
+            Ok(VariableValue::Binary(values?))
+        },
     }
 }
 
@@ -227,23 +251,51 @@ impl<'a> CSVInput<'a> {
 
         for (variable, value) in self.variables.iter().zip(row.iter()) {
 
-            if variable.variability != Variability::Continuous {
-                match value {
-                    VariableValue::Float64(values) => {
-                        fmu.setFloat64(&[variable.valueReference], values);
-                    },
-                    VariableValue::Int64(values) => {
-                        fmu.setInt64(&[variable.valueReference], values);
-                    },
-                    VariableValue::UInt64(values) => {
-                        fmu.setUInt64(&[variable.valueReference], values);
-                    },
-                    VariableValue::String(values) => {
-                        let string_refs: Vec<&str> = values.iter().map(|x| x.as_str()).collect();
-                        fmu.setString(&[variable.valueReference], &string_refs);
-                    },
-                    _ => todo!(),
-                }
+            if variable.variability == Variability::Continuous { continue; }
+
+            match value {
+                VariableValue::Float32(values) => {
+                    fmu.setFloat32(&[variable.valueReference], values);
+                },
+                VariableValue::Float64(values) => {
+                    fmu.setFloat64(&[variable.valueReference], values);
+                },
+                VariableValue::Int8(values) => {
+                    fmu.setInt8(&[variable.valueReference], values);
+                },
+                VariableValue::UInt8(values) => {
+                    fmu.setUInt8(&[variable.valueReference], values);
+                },
+                VariableValue::Int16(values) => {
+                    fmu.setInt16(&[variable.valueReference], values);
+                },
+                VariableValue::UInt16(values) => {
+                    fmu.setUInt16(&[variable.valueReference], values);
+                },
+                VariableValue::Int32(values) => {
+                    fmu.setInt32(&[variable.valueReference], values);
+                },
+                VariableValue::UInt32(values) => {
+                    fmu.setUInt32(&[variable.valueReference], values);
+                },
+                VariableValue::Int64(values) => {
+                    fmu.setInt64(&[variable.valueReference], values);
+                },
+                VariableValue::UInt64(values) => {
+                    fmu.setUInt64(&[variable.valueReference], values);
+                },
+                VariableValue::Boolean(values) => {
+                    fmu.setBoolean(&[variable.valueReference], values);
+                },
+                VariableValue::String(values) => {
+                    let string_refs: Vec<&str> = values.iter().map(|x| x.as_str()).collect();
+                    fmu.setString(&[variable.valueReference], &string_refs);
+                },
+                VariableValue::Binary(values) => {
+                    let sizes: Vec<usize> = values.iter().map(|v| v.len()).collect();
+                    let values: Vec<*const u8> = values.iter().map(|v| v.as_ptr()).collect();
+                    fmu.setBinary(&[variable.valueReference], &sizes, &values);
+                },
             }
         }
 

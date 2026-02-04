@@ -207,12 +207,18 @@ fn main() -> ExitCode {
         output_file: args.output_file.map(|f| PathBuf::from(f)),
     };
 
+    let start_time = std::time::Instant::now();
+    
     let exit_code = if let Err(e) = simulate_fmi3_cs(&settings, &model_description, &fmu, input.as_ref()) {
         eprintln!("ERROR: {e}");
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS
     };
+    
+    let simulation_duration = start_time.elapsed();
+    
+    eprintln!("Simulation took in {:.3} seconds", simulation_duration.as_secs_f64());
 
     fmu.freeInstance();
 

@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use fmi::{input::CSVInput, model_description::{Causality, ModelDescription, ModelVariable, Variability, VariableType, read_model_description}, types::fmiStatus::{self, fmiOK, fmiWarning}, util::{Recorder, extract_fmu}};
+use fmi::{input::CSVInput, model_description::{Causality, ModelDescription, ModelVariable, Variability, VariableType, read_model_description}, types::fmiStatus::{self, fmiOK, fmiWarning}, util::{extract_fmu}, recorder::Recorder};
 use std::{collections::HashMap, error::Error, fs::File, io::{Write, stdout}, path::PathBuf, process::ExitCode};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}};
 use clap::Parser;

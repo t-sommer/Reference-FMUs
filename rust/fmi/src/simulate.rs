@@ -104,7 +104,7 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
     Ok(fmiOK)
 }
 
-pub fn simulate_fmi3_cs(settings: &SimulationSettings, model_description: &ModelDescription, fmu: &FMU3, input: &CSVInput) -> Result<(), Box<dyn Error>> {
+pub fn simulate_fmi3_cs(settings: &SimulationSettings, model_description: &ModelDescription, fmu: &FMU3, input: Option<&CSVInput>) -> Result<(), Box<dyn Error>> {
 
     if let Err(e) = set_start_values(&settings.start_values, &model_description, &fmu) {
         return Err(format!("Failed to set start values: {e}").into());
@@ -129,8 +129,10 @@ pub fn simulate_fmi3_cs(settings: &SimulationSettings, model_description: &Model
 
     while time < settings.stop_time {
         
-        input.set_discrete_inputs(time, true, fmu)?;
-        input.set_continuous_inputs(time, true, fmu)?;
+        if let Some(input) = input {
+            input.set_discrete_inputs(time, true, fmu)?;
+            input.set_continuous_inputs(time, true, fmu)?;
+        }
 
         let mut eventHandlingNeeded = false;
         let mut terminateSimulation = false;

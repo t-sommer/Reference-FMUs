@@ -82,19 +82,25 @@ fn main() -> ExitCode {
         }
     };
 
-    let path = args.input_file.unwrap();
-
-    let file = File::open(&path).unwrap();
-
-    let input = match CSVInput::new(&file, &model_description) {
-        Ok(input) => input,
-        Err(e) => {
-            eprintln!("Failed to load input from {path:?}. {e}");
-            return ExitCode::FAILURE; 
+    let input = if let Some(path) = &args.input_file {
+        match File::open(&path) {
+            Ok(file) => {
+                match CSVInput::new(&file, &model_description) {
+                    Ok(input) => Some(input),
+                    Err(e) => {
+                        eprintln!("Failed to load input from {path:?}. {e}");
+                        return ExitCode::FAILURE; 
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to open input file {path:?}. {e}");
+                return ExitCode::FAILURE;
+            }
         }
+    } else {
+        None
     };
-
-    println!("next event time: {:?}", input.next_event_time(1.0));
 
     // Create logging callbacks only if requested
     let log_fmi_call = if args.log_fmi_calls {
@@ -201,7 +207,7 @@ fn main() -> ExitCode {
         output_file: args.output_file.map(|f| PathBuf::from(f)),
     };
 
-    let exit_code = if let Err(e) = simulate_fmi3_cs(&settings, &model_description, &fmu, &input) {
+    let exit_code = if let Err(e) = simulate_fmi3_cs(&settings, &model_description, &fmu, input.as_ref()) {
         eprintln!("ERROR: {e}");
         ExitCode::FAILURE
     } else {

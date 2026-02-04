@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use fmi::{fmi2::{self, types::fmi2Type}, input::CSVInput, model_description::{self, Causality, CoSimulation, ModelDescription, ModelVariable, read_model_description}, sim::{SimulationSettings, fmi3::{call, simulate_fmi3_cs}}, util::extract_fmu};
+use fmi::{fmi2::self, input::CSVInput, model_description::{self, Causality, CoSimulation, ModelDescription, ModelVariable, read_model_description}, sim::{self, SimulationSettings, fmi2::simulate_cs, fmi3::{call, simulate_fmi3_cs}}, util::extract_fmu};
 use tempfile::TempDir;
 use std::{error::Error, fs::File, path::PathBuf, process::ExitCode};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, fmi2::FMU2};
@@ -156,6 +156,8 @@ fn simulate_fmi3(args: &Args, model_description: &ModelDescription, unzipdir: &T
         tolerance,
         start_values: args.start_values.clone(),
         output_file: args.output_file.clone().map(|f| PathBuf::from(f)),
+        log_fmi_calls: args.log_fmi_calls,
+        instance_name: "instance1".to_string(),
     };
 
     let start_time = std::time::Instant::now();
@@ -221,67 +223,67 @@ fn simulate_fmi3(args: &Args, model_description: &ModelDescription, unzipdir: &T
     exit_code
 }
 
-fn simulate_fmi2(args: &Args, model_description: &ModelDescription, unzipdir: &TempDir) -> Result<(), Box<dyn Error>> {
+// fn simulate_fmi2(args: &Args, model_description: &ModelDescription, unzipdir: &TempDir) -> Result<(), Box<dyn Error>> {
 
-    // Create logging callbacks only if requested
-    let log_fmi_call = if args.log_fmi_calls {
-        Some(Box::new(|status: &fmi::types::fmiStatus, message: &str| {
-            eprintln!("{message} -> {status:?}");
-        }) as Box<dyn Fn(&fmi::types::fmiStatus, &str) + Send + Sync>)
-    } else {
-        None
-    };
+//     // Create logging callbacks only if requested
+//     let log_fmi_call = if args.log_fmi_calls {
+//         Some(Box::new(|status: &fmi::types::fmiStatus, message: &str| {
+//             eprintln!("{message} -> {status:?}");
+//         }) as Box<dyn Fn(&fmi::types::fmiStatus, &str) + Send + Sync>)
+//     } else {
+//         None
+//     };
 
-    let log_message = if args.log_fmi_calls {
-        Some(Box::new(|status: &fmi::types::fmiStatus, category: &str, message: &str| {
-            eprintln!("[Message][{:?}][{}] {}", status, category, message);
-        }) as Box<dyn Fn(&fmi::types::fmiStatus, &str, &str) + Send + Sync>)
-    } else {
-        None
-    };
+//     let log_message = if args.log_fmi_calls {
+//         Some(Box::new(|status: &fmi::types::fmiStatus, category: &str, message: &str| {
+//             eprintln!("[Message][{:?}][{}] {}", status, category, message);
+//         }) as Box<dyn Fn(&fmi::types::fmiStatus, &str, &str) + Send + Sync>)
+//     } else {
+//         None
+//     };
 
-    let co_simulation = model_description.coSimulation.as_ref().unwrap();
+//     let co_simulation = model_description.coSimulation.as_ref().unwrap();
 
-    let shared_library_filename = format!("{}{}", &co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
+//     let shared_library_filename = format!("{}{}", &co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
 
-    let shared_library_path = unzipdir.path().join("binaries").join(fmi2::PLATFORM).join(shared_library_filename);
+//     let shared_library_path = unzipdir.path().join("binaries").join(fmi2::PLATFORM).join(shared_library_filename);
 
-    if !shared_library_path.is_file() {
-        return Err("The FMU contains no platform binary for {PLATFORM_TUPLE}.".into());
-    }
+//     if !shared_library_path.is_file() {
+//         return Err("The FMU contains no platform binary for {PLATFORM_TUPLE}.".into());
+//     }
 
-    let mut fmu = FMU2::new(
-        shared_library_path.as_path(),
-        "BouncingBall",
-        log_fmi_call,
-        log_message
-    ).unwrap();
+//     let mut fmu = FMU2::new(
+//         shared_library_path.as_path(),
+//         "BouncingBall",
+//         log_fmi_call,
+//         log_message
+//     ).unwrap();
 
-    call(fmu.instantiate(
-        &co_simulation.modelIdentifier, 
-        fmi2Type::fmi2CoSimulation,
-        &model_description.instantiationToken,
-        None,
-        false,
-        false))?;
+//     call(fmu.instantiate(
+//         &co_simulation.modelIdentifier, 
+//         fmi2Type::fmi2CoSimulation,
+//         &model_description.instantiationToken,
+//         None,
+//         false,
+//         false))?;
         
-    let mut time = 0.0;
+//     let mut time = 0.0;
 
-    call(fmu.setupExperiment(None, time, None))?;
-    call(fmu.enterInitializationMode())?;
-    call(fmu.exitInitializationMode())?;
+//     call(fmu.setupExperiment(None, time, None))?;
+//     call(fmu.enterInitializationMode())?;
+//     call(fmu.exitInitializationMode())?;
 
-    let h = 0.1;
+//     let h = 0.1;
 
-    for i in 1..10 {
-        call(fmu.doStep(time, h, 1))?;
-        time = i as f64 * h;
-    }
+//     for i in 1..10 {
+//         call(fmu.doStep(time, h, 1))?;
+//         time = i as f64 * h;
+//     }
 
-    call(fmu.terminate())?;
+//     call(fmu.terminate())?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 fn main() -> ExitCode {
 
@@ -325,7 +327,43 @@ fn main() -> ExitCode {
         modelVariables: model_variables,
     };
 
-    return match simulate_fmi2(&args, &model_description, &unzipdir) {
+    let (start_time, stop_time, tolerance) = if let Some(default_experiment) = &model_description.defaultExperiment {
+        let start_time: f64 = if let Some(v) = &default_experiment.startTime { v.parse().unwrap() } else { 0.0 };
+        let stop_time: f64 = if let Some(v) = &default_experiment.stopTime { v.parse().unwrap() } else { start_time + 1.0 };
+        let tolerance: Option<f64> = default_experiment.tolerance.as_ref().map(|v| v.parse().unwrap());
+        (start_time, stop_time, tolerance)
+    } else {
+        (0.0, 1.0, None)
+    };
+
+    let internal_step_size: Option<f64> = model_description.coSimulation.as_ref().unwrap().fixedInternalStepSize.as_ref().map(|v| v.parse().unwrap());
+ 
+    let start_time = args.start_time.unwrap_or(start_time);
+    let stop_time = args.stop_time.unwrap_or(stop_time);
+    let tolerance = if let Some(v) = args.tolerance { Some(v) } else { tolerance };
+
+    let output_interval = if let Some(v) = args.output_interval {
+        v
+    } else {
+        if let Some(v) = internal_step_size {
+            v
+        } else {
+            (stop_time - start_time) / 10.0
+        }
+    };
+
+    let settings = SimulationSettings {
+        start_time,
+        stop_time,
+        output_interval,
+        tolerance,
+        start_values: args.start_values.clone(),
+        output_file: args.output_file.clone().map(|f| PathBuf::from(f)),
+        log_fmi_calls: args.log_fmi_calls,
+        instance_name: "instance1".to_string(),
+    };
+
+    return match sim::fmi2::simulate_cs(&settings, &model_description, &unzipdir) {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => ExitCode::FAILURE,
     }

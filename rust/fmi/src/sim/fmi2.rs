@@ -1,6 +1,8 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use crate::{fmi2::{FMU2, types::fmi2Boolean}, input::CSVInput, model_description::{Causality, ModelDescription, ModelVariable}, recorder::{FMI2Recorder}, sim::SimulationSettings, types::{fmiStatus::{self, fmiOK, fmiWarning}, fmiValueReference}, util::{VariableValue}};
+use tempfile::TempDir;
+
+use crate::{SHARED_LIBRARY_EXTENSION, fmi2::{self, FMU2, types::fmi2Boolean}, input::CSVInput, model_description::{Causality, ModelDescription, ModelVariable}, recorder::FMI2Recorder, sim::SimulationSettings, types::{fmiStatus::{self, fmiOK, fmiWarning}, fmiValueReference}, util::VariableValue};
 use std::{error::Error, fs::File, io::{Write, stdout}};
 
 
@@ -62,7 +64,46 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
     Ok(fmiOK)
 }
 
-pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescription, fmu: &FMU2, input: Option<&CSVInput>) -> Result<(), Box<dyn Error>> {
+pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescription, unzipdir: &TempDir) -> Result<(), Box<dyn Error>> {
+
+    let co_simulation = &model_description.coSimulation.as_ref().unwrap();
+
+    let shared_library_filename = format!("{}{}", &co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
+
+    let shared_library_path = unzipdir.path().join("binaries").join(fmi2::PLATFORM).join(shared_library_filename);
+
+    // Create logging callbacks only if requested
+    let log_fmi_call = if settings.log_fmi_calls {
+        Some(Box::new(|status: &fmiStatus, message: &str| {
+            eprintln!("{message} -> {status:?}");
+        }) as Box<dyn Fn(&fmiStatus, &str) + Send + Sync>)
+    } else {
+        None
+    };
+
+    let log_message = if settings.log_fmi_calls {
+        Some(Box::new(|status: &fmiStatus, category: &str, message: &str| {
+            eprintln!("[Message][{:?}][{}] {}", status, category, message);
+        }) as Box<dyn Fn(&fmiStatus, &str, &str) + Send + Sync>)
+    } else {
+        None
+    };
+
+    let mut fmu = FMU2::new(
+        shared_library_path.as_path(),
+        "BouncingBall",
+        log_fmi_call,
+        log_message
+    ).unwrap();
+
+    fmu.instantiate(
+        &settings.instance_name, 
+        fmi2::types::fmi2Type::fmi2CoSimulation, 
+        &model_description.instantiationToken,
+        None,
+        false, 
+        false
+    );
 
     if let Err(e) = set_start_values(&settings.start_values, &model_description, &fmu) {
         return Err(format!("Failed to set start values: {e}").into());
@@ -70,12 +111,12 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
 
     let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
 
-    let mut time = 0.0;
+    let mut time = settings.start_time;
 
     let output_interval = settings.output_interval;
 
+    fmu.setupExperiment(settings.tolerance, time, Some(settings.stop_time));
     fmu.enterInitializationMode();
-    fmu.setupExperiment(settings.tolerance, settings.start_time, Some(settings.stop_time));
     fmu.exitInitializationMode();
 
     let mut recorder = if let Some(path) = &settings.output_file {
@@ -86,7 +127,7 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         FMI2Recorder::new(output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
     };
 
-    while time < settings.stop_time {
+    for i in 1..10 {
         
         // if let Some(input) = input {
         //     input.set_discrete_inputs(time, true, fmu)?;
@@ -95,7 +136,7 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
 
         call(fmu.doStep(time, output_interval, 0))?;
 
-        time += settings.output_interval;
+        time = i as f64 * settings.output_interval;
 
         recorder.sample(time)?;
     }

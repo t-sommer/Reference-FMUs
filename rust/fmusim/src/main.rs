@@ -1,8 +1,9 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use fmi::{input::CSVInput, model_description::read_model_description, sim::{SimulationSettings, fmi3::{call, simulate_fmi3_cs}}, util::extract_fmu};
-use std::{fs::File, path::PathBuf, process::ExitCode};
-use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}};
+use fmi::{fmi2::{self, types::fmi2Type}, input::CSVInput, model_description::{self, Causality, CoSimulation, ModelDescription, ModelVariable, read_model_description}, sim::{SimulationSettings, fmi3::{call, simulate_fmi3_cs}}, util::extract_fmu};
+use tempfile::TempDir;
+use std::{error::Error, fs::File, path::PathBuf, process::ExitCode};
+use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, fmi2::FMU2};
 use clap::Parser;
 use libloading::Library;
 
@@ -57,30 +58,7 @@ struct Args {
     start_values: Vec<(String, String)>,
 }
 
-fn main() -> ExitCode {
-
-    // Parse command line arguments
-    let args = Args::parse();
-
-    // Extract FMU to temporary directory
-    let unzipdir = match extract_fmu(&args.filename) {
-        Ok(dir) => dir,
-        Err(e) => {
-            eprintln!("Failed to extract FMU: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
-
-    // Read the modelDescription.xml
-    let xml_path = unzipdir.path().join("modelDescription.xml");
-
-    let model_description = match read_model_description(xml_path.as_path()) {
-        Ok(desc) => desc,
-        Err(e) => {
-            eprintln!("Failed to read model description: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
+fn simulate_fmi3(args: &Args, model_description: &ModelDescription, unzipdir: &TempDir) -> ExitCode {
 
     let input = if let Some(path) = &args.input_file {
         match File::open(&path) {
@@ -146,33 +124,6 @@ fn main() -> ExitCode {
         }
     };
 
-    let mut fmu = match FMU3::new(
-        &library,
-        "instance1", 
-        log_fmi_call, 
-        log_message
-    ) {
-        Ok(fmu) => fmu,
-        Err(e) => {
-            eprintln!("Failed to load shared library. {e}");
-            return ExitCode::FAILURE;
-        }
-    };
-
-    if let Err(e) = call(fmu.instantiateCoSimulation(
-        &model_description.modelName,
-        &model_description.instantiationToken,
-        None, 
-        false, 
-        false, 
-        false, 
-        false, 
-        &[]
-    )) {
-        eprintln!("ERROR: {e}");
-        return ExitCode::FAILURE;
-    }
-
     let (start_time, stop_time, tolerance) = if let Some(default_experiment) = &model_description.defaultExperiment {
         let start_time: f64 = if let Some(v) = &default_experiment.startTime { v.parse().unwrap() } else { 0.0 };
         let stop_time: f64 = if let Some(v) = &default_experiment.stopTime { v.parse().unwrap() } else { start_time + 1.0 };
@@ -203,24 +154,176 @@ fn main() -> ExitCode {
         stop_time,
         output_interval,
         tolerance,
-        start_values: args.start_values,
-        output_file: args.output_file.map(|f| PathBuf::from(f)),
+        start_values: args.start_values.clone(),
+        output_file: args.output_file.clone().map(|f| PathBuf::from(f)),
     };
 
     let start_time = std::time::Instant::now();
-    
-    let exit_code = if let Err(e) = simulate_fmi3_cs(&settings, &model_description, &fmu, input.as_ref()) {
-        eprintln!("ERROR: {e}");
-        ExitCode::FAILURE
-    } else {
-        ExitCode::SUCCESS
+
+    let exit_code = match model_description.fmiVersion.as_str() {
+        "2.0" => {
+            let mut fmu = FMU2::new(
+                shared_library_path.as_path(),
+                "",
+                log_fmi_call,
+                log_message
+            ).unwrap();
+
+            fmu.freeInstance();
+
+            ExitCode::FAILURE
+        },
+        _ => {
+            let mut fmu = match FMU3::new(
+                &library,
+                "instance1", 
+                log_fmi_call, 
+                log_message
+            ) {
+                Ok(fmu) => fmu,
+                Err(e) => {
+                    eprintln!("Failed to load shared library. {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+        
+            if let Err(e) = call(fmu.instantiateCoSimulation(
+                &model_description.modelName,
+                &model_description.instantiationToken,
+                None, 
+                false, 
+                false, 
+                false, 
+                false, 
+                &[]
+            )) {
+                eprintln!("ERROR: {e}");
+                return ExitCode::FAILURE;
+            }
+            
+            let exit_code = if let Err(e) = simulate_fmi3_cs(&settings, &model_description, &fmu, input.as_ref()) {
+                eprintln!("ERROR: {e}");
+                ExitCode::FAILURE
+            } else {
+                ExitCode::SUCCESS
+            };
+            
+            fmu.freeInstance();
+
+            exit_code            
+        },
     };
-    
+
     let simulation_duration = start_time.elapsed();
     
     eprintln!("Simulation took in {:.3} seconds", simulation_duration.as_secs_f64());
 
-    fmu.freeInstance();
-
     exit_code
+}
+
+fn simulate_fmi2(args: &Args, model_description: &ModelDescription, unzipdir: &TempDir) -> Result<(), Box<dyn Error>> {
+
+    // Create logging callbacks only if requested
+    let log_fmi_call = if args.log_fmi_calls {
+        Some(Box::new(|status: &fmi::types::fmiStatus, message: &str| {
+            eprintln!("{message} -> {status:?}");
+        }) as Box<dyn Fn(&fmi::types::fmiStatus, &str) + Send + Sync>)
+    } else {
+        None
+    };
+
+    let log_message = if args.log_fmi_calls {
+        Some(Box::new(|status: &fmi::types::fmiStatus, category: &str, message: &str| {
+            eprintln!("[Message][{:?}][{}] {}", status, category, message);
+        }) as Box<dyn Fn(&fmi::types::fmiStatus, &str, &str) + Send + Sync>)
+    } else {
+        None
+    };
+
+    let co_simulation = model_description.coSimulation.as_ref().unwrap();
+
+    let shared_library_filename = format!("{}{}", &co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
+
+    let shared_library_path = unzipdir.path().join("binaries").join(fmi2::PLATFORM).join(shared_library_filename);
+
+    if !shared_library_path.is_file() {
+        return Err("The FMU contains no platform binary for {PLATFORM_TUPLE}.".into());
+    }
+
+    let mut fmu = FMU2::new(
+        shared_library_path.as_path(),
+        "BouncingBall",
+        log_fmi_call,
+        log_message
+    ).unwrap();
+
+    fmu.instantiate(
+        &co_simulation.modelIdentifier, 
+        fmi2Type::fmi2CoSimulation,
+        &model_description.instantiationToken,
+        None,
+        false,
+        false);
+
+    // fmu.freeInstance();
+
+    Ok(())
+}
+
+fn main() -> ExitCode {
+
+    // Parse command line arguments
+    let args = Args::parse();
+
+    // Extract FMU to temporary directory
+    let unzipdir = match extract_fmu(&args.filename) {
+        Ok(dir) => dir,
+        Err(e) => {
+            eprintln!("Failed to extract FMU: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    // Read the modelDescription.xml
+    let xml_path = unzipdir.path().join("modelDescription.xml");
+
+    let co_simulation = CoSimulation {
+        modelIdentifier: "BouncingBall".to_string(),
+        fixedInternalStepSize: None,
+    };
+
+    let h = ModelVariable {
+        name: "h".to_string(),
+        variableType: model_description::VariableType::Float64,
+        valueReference: 1,
+        causality: Causality::Output,
+        variability: model_description::Variability::Continuous,
+        dimensions: vec![],
+    };
+
+    let model_variables = vec![h];
+
+    let model_description = ModelDescription {
+        fmiVersion: "2.0".to_string(),
+        modelName: "BouncingBall".to_string(),
+        defaultExperiment: None,
+        instantiationToken: "{1AE5E10D-9521-4DE3-80B9-D0EAAA7D5AF1}".to_string(),
+        coSimulation: Some(co_simulation),
+        modelVariables: model_variables,
+    };
+
+    return match simulate_fmi2(&args, &model_description, &unzipdir) {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(e) => ExitCode::FAILURE,
+    }
+
+    // let model_description = match read_model_description(xml_path.as_path()) {
+    //     Ok(desc) => desc,
+    //     Err(e) => {
+    //         eprintln!("Failed to read model description: {e}");
+    //         return ExitCode::FAILURE;
+    //     }
+    // };
+
+    // simulate_fmi3(&args, &model_description, &unzipdir)
 }

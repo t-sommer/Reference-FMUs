@@ -136,16 +136,6 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, String> {
         let valueReference = child.attribute("valueReference").unwrap().parse().unwrap();
 
         let variableType = VariableType::from_str(child.tag_name().name())?;
-        // let variableType = match child.tag_name().name() {
-        //     "Float64" => VariableType::Float64,
-        //     "Float32" => VariableType::Float32,
-        //     "Int64" => VariableType::Int64,
-        //     "UInt64" => VariableType::UInt64,
-        //     "String" => VariableType::String,
-        //     "Binary" => VariableType::Binary,
-        //     "Enumeration" => VariableType::Enumeration,
-        //     _ => continue,
-        // };
 
         let causality = match child.attribute("causality") {
             Some("parameter") => Causality::Parameter,

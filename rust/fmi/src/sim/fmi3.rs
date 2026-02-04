@@ -1,9 +1,6 @@
-use std::{collections::HashMap, error::Error, fmt::Display, fs::File, io::{self, Write, stdout}};
-use zip::ZipArchive;
-use tempfile::TempDir;
-use crate::{fmi2::{FMU2, types::fmi2Boolean}, fmi3::FMU3, model_description::{Dimension, ModelVariable, VariableType}, sim::SimulationSettings, types::*, util::VariableValue};
-use crate::{input::CSVInput, model_description::{Causality, ModelDescription, Variability, read_model_description}, recorder::{FMI2Recorder, Recorder}, types::fmiStatus::{self, fmiOK, fmiWarning}, util::extract_fmu};
-use libloading::Library;
+use std::{collections::HashMap, error::Error, fs::File, io::{Write, stdout}};
+use crate::{fmi3::FMU3, model_description::{ModelVariable, VariableType}, sim::SimulationSettings, types::*, util::VariableValue};
+use crate::{input::CSVInput, model_description::{Causality, ModelDescription}, recorder::{Recorder}, types::fmiStatus::{self, fmiOK, fmiWarning}};
 
 
 pub fn parse_variable_value(variable_type: &VariableType, literal: &str) -> Result<VariableValue, Box<dyn Error>> {

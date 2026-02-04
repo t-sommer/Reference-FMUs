@@ -106,6 +106,19 @@ macro_rules! fmi2_set {
     }};
 }
 
+impl<'lib> Drop for FMU2<'lib> {
+    fn drop(&mut self) {
+        println!("Dropping FMU2!");
+        if !self.component.is_null() {
+            unsafe { (self.fmi2FreeInstance)(self.component) };
+            self.component = null_mut();
+            if let Some(cb) = &self.logFMICall {
+                cb(&fmi2OK, "fmi2FreeInstance()");
+            }
+        }
+    }
+}
+
 pub struct FMU2<'lib> {
     instanceName: String,
 

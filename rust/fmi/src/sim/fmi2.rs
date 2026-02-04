@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use crate::{fmi2::{FMU2, types::fmi2Boolean}, input::CSVInput, model_description::{Causality, ModelDescription, ModelVariable, Variability, VariableType, read_model_description}, recorder::{FMI2Recorder, Recorder}, sim::SimulationSettings, types::{fmiStatus::{self, fmiOK, fmiWarning}, fmiValueReference}, util::{VariableValue}};
-use std::{collections::HashMap, error::Error, fs::File, io::{Write, stdout}};
+use crate::{fmi2::{FMU2, types::fmi2Boolean}, input::CSVInput, model_description::{Causality, ModelDescription, ModelVariable}, recorder::{FMI2Recorder}, sim::SimulationSettings, types::{fmiStatus::{self, fmiOK, fmiWarning}, fmiValueReference}, util::{VariableValue}};
+use std::{error::Error, fs::File, io::{Write, stdout}};
 
 
 fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
@@ -12,7 +12,7 @@ fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
     }
 }
 
-fn set_variable_value_fmi2(fmu: &FMU2, value_reference: fmiValueReference, value: &VariableValue) -> Result<fmiStatus, Box<dyn Error>> {
+fn set_variable_value(fmu: &FMU2, value_reference: fmiValueReference, value: &VariableValue) -> Result<fmiStatus, Box<dyn Error>> {
     match value {
         VariableValue::Float64(values) => {
             call(fmu.setReal(&[value_reference], values))
@@ -32,7 +32,7 @@ fn set_variable_value_fmi2(fmu: &FMU2, value_reference: fmiValueReference, value
     }
 }
 
-fn set_start_values_fmi2(start_values: &Vec<(String, String)>, model_description: &ModelDescription, fmu: &FMU2) -> Result<fmiStatus, Box<dyn Error>> {
+fn set_start_values(start_values: &Vec<(String, String)>, model_description: &ModelDescription, fmu: &FMU2) -> Result<fmiStatus, Box<dyn Error>> {
     
     // // Create a map for quick lookup of variables by name
     // let variable_map: HashMap<&str, &ModelVariable> = model_description.modelVariables
@@ -62,9 +62,9 @@ fn set_start_values_fmi2(start_values: &Vec<(String, String)>, model_description
     Ok(fmiOK)
 }
 
-pub fn simulate_fmi2_cs(settings: &SimulationSettings, model_description: &ModelDescription, fmu: &FMU2, input: Option<&CSVInput>) -> Result<(), Box<dyn Error>> {
+pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescription, fmu: &FMU2, input: Option<&CSVInput>) -> Result<(), Box<dyn Error>> {
 
-    if let Err(e) = set_start_values_fmi2(&settings.start_values, &model_description, &fmu) {
+    if let Err(e) = set_start_values(&settings.start_values, &model_description, &fmu) {
         return Err(format!("Failed to set start values: {e}").into());
     }
 

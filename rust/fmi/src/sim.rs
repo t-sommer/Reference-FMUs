@@ -14,4 +14,5 @@ pub struct SimulationSettings {
     pub start_values: Vec<(String, String)>,
     pub output_file: Option<PathBuf>,
     pub log_fmi_calls: bool,
+    pub input_file: Option<PathBuf>,
 }

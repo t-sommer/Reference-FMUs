@@ -1,5 +1,8 @@
 use std::{collections::HashMap, error::Error, fs::File, io::{Write, stdout}};
-use crate::{fmi3::FMU3, model_description::{ModelVariable, VariableType}, sim::SimulationSettings, types::*, util::VariableValue};
+use libloading::Library;
+use tempfile::TempDir;
+
+use crate::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, model_description::{ModelVariable, VariableType}, sim::SimulationSettings, types::*, util::VariableValue};
 use crate::{input::CSVInput, model_description::{Causality, ModelDescription}, recorder::{Recorder}, types::fmiStatus::{self, fmiOK, fmiWarning}};
 
 
@@ -198,7 +201,83 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
     Ok(fmiOK)
 }
 
-pub fn simulate_fmi3_cs(settings: &SimulationSettings, model_description: &ModelDescription, fmu: &FMU3, input: Option<&CSVInput>) -> Result<(), Box<dyn Error>> {
+pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescription, unzipdir: &TempDir) -> Result<(), Box<dyn Error>> {
+
+    let co_simulation = match &model_description.coSimulation {
+        Some(cs) => cs,
+        None => {
+            return Err("ERROR: The FMU does not support Co-Simulation.".into());
+        }
+    };
+
+    let input = if let Some(path) = &settings.input_file {
+        match File::open(&path) {
+            Ok(file) => {
+                match CSVInput::new(&file, &model_description) {
+                    Ok(input) => Some(input),
+                    Err(e) => {
+                        return Err(format!("Failed to load input from {path:?}. {e}").into());
+                    }
+                }
+            }
+            Err(e) => {
+                return Err(format!("Failed to open input file {path:?}. {e}").into());
+            }
+        }
+    } else {
+        None
+    };
+
+    let shared_library_filename = format!("{}{}", co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
+
+    let shared_library_path = unzipdir.path().join("binaries").join(PLATFORM_TUPLE).join(shared_library_filename);
+
+    if !shared_library_path.is_file() {
+        return Err(format!("The FMU contains no platform binary for {PLATFORM_TUPLE}.").into());
+    }
+
+    let library = unsafe {
+        match Library::new(&shared_library_path)  {
+            Ok(l) => l,
+            Err(e) => {
+                return Err(format!("Failed to load platform binary {shared_library_path:?}. {e}").into());
+            }
+        }
+    };
+
+    let log_fmi_call = if settings.log_fmi_calls {
+        Some(Box::new(|status: &fmiStatus, message: &str| {
+            eprintln!("{message} -> {status:?}");
+        }) as Box<dyn Fn(&fmiStatus, &str) + Send + Sync>)
+    } else {
+        None
+    };
+
+    let log_message = if settings.log_fmi_calls {
+        Some(Box::new(|status: &fmiStatus, category: &str, message: &str| {
+            eprintln!("[Message][{:?}][{}] {}", status, category, message);
+        }) as Box<dyn Fn(&fmiStatus, &str, &str) + Send + Sync>)
+    } else {
+        None
+    };
+
+    let mut fmu = FMU3::new(
+        &library,
+        "instance1", 
+        log_fmi_call, 
+        log_message
+    )?;
+
+    call(fmu.instantiateCoSimulation(
+        &model_description.modelName,
+        &model_description.instantiationToken,
+        None, 
+        false, 
+        false, 
+        false, 
+        false, 
+        &[]
+    ))?;
 
     if let Err(e) = set_start_values(&settings.start_values, &model_description, &fmu) {
         return Err(format!("Failed to set start values: {e}").into());
@@ -223,9 +302,9 @@ pub fn simulate_fmi3_cs(settings: &SimulationSettings, model_description: &Model
 
     while time < settings.stop_time {
         
-        if let Some(input) = input {
-            input.set_discrete_inputs(time, true, fmu)?;
-            input.set_continuous_inputs(time, true, fmu)?;
+        if let Some(input) = &input {
+            input.set_discrete_inputs(time, true, &fmu)?;
+            input.set_continuous_inputs(time, true, &fmu)?;
         }
 
         let mut eventHandlingNeeded = false;

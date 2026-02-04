@@ -72,7 +72,6 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
 
     let shared_library_path = unzipdir.path().join("binaries").join(fmi2::PLATFORM).join(shared_library_filename);
 
-    // Create logging callbacks only if requested
     let log_fmi_call = if settings.log_fmi_calls {
         Some(Box::new(|status: &fmiStatus, message: &str| {
             eprintln!("{message} -> {status:?}");

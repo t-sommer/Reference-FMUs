@@ -1,6 +1,6 @@
 use std::{collections::HashMap, error::Error, fs::File};
 
-use crate::{fmi3::FMU3, model_description::{ModelDescription, ModelVariable, Variability, VariableType}, types::*, util::{VariableValue, parse_variable_value, set_variable_value}};
+use crate::{fmi3::FMU3, model_description::{ModelDescription, ModelVariable, Variability, VariableType}, sim::fmi3::{parse_variable_value, set_variable_value}, types::*, util::VariableValue};
 
 
 fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
@@ -206,8 +206,6 @@ impl<'a> CSVInput<'a> {
                 let value0 = &row0[i];
                 let value1 = &row1[i];
 
-                println!("TODO: interpolate {variable:?} for time {time} {t0}-{t1}  {value0:?}-{value1:?}");
-
                 match value0 {
                     VariableValue::Float32(values0) => {
 
@@ -248,7 +246,6 @@ impl<'a> CSVInput<'a> {
 
         } else {
 
-            
             let row = &self.rows[row_index];
             
             for (variable, value) in self.variables.iter().zip(row.iter()) {
@@ -268,7 +265,6 @@ impl<'a> CSVInput<'a> {
                 }
             }
         }
-
 
         Ok(())
     }

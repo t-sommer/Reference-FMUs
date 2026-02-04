@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use fmi::{input::CSVInput, model_description::read_model_description, simulate::{SimulationSettings, call, simulate_fmi3_cs}, util::extract_fmu};
+use fmi::{input::CSVInput, model_description::read_model_description, sim::{SimulationSettings, fmi3::{call, simulate_fmi3_cs}}, util::extract_fmu};
 use std::{fs::File, path::PathBuf, process::ExitCode};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}};
 use clap::Parser;

@@ -257,15 +257,28 @@ fn simulate_fmi2(args: &Args, model_description: &ModelDescription, unzipdir: &T
         log_message
     ).unwrap();
 
-    fmu.instantiate(
+    call(fmu.instantiate(
         &co_simulation.modelIdentifier, 
         fmi2Type::fmi2CoSimulation,
         &model_description.instantiationToken,
         None,
         false,
-        false);
+        false))?;
+        
+    let mut time = 0.0;
 
-    // fmu.freeInstance();
+    call(fmu.setupExperiment(None, time, None))?;
+    call(fmu.enterInitializationMode())?;
+    call(fmu.exitInitializationMode())?;
+
+    let h = 0.1;
+
+    for i in 1..10 {
+        call(fmu.doStep(time, h, 1))?;
+        time = i as f64 * h;
+    }
+
+    call(fmu.terminate())?;
 
     Ok(())
 }

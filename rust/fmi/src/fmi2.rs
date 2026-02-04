@@ -92,12 +92,11 @@ macro_rules! fmi2_set {
 
         if let Some(cb) = &$self.logFMICall {
             let message = format!(
-                "{}(valueReferences={:?}, nvr={}, values={:?}) -> {:?}",
+                "{}(valueReferences={:?}, nvr={}, values={:?})",
                 stringify!($func),
                 $value_refs,
                 $value_refs.len(),
-                $values,
-                status
+                $values
             );
             cb(&status, message.as_str());
         }
@@ -108,7 +107,6 @@ macro_rules! fmi2_set {
 
 impl<'lib> Drop for FMU2<'lib> {
     fn drop(&mut self) {
-        println!("Dropping FMU2!");
         if !self.component.is_null() {
             unsafe { (self.fmi2FreeInstance)(self.component) };
             self.component = null_mut();
@@ -512,8 +510,7 @@ impl<'lib> FMU2<'lib> {
     pub fn terminate(&self) -> fmi2Status {
         let status = unsafe { (self.fmi2Terminate)(self.component) };
         if let Some(cb) = &self.logFMICall {
-            let message = format!("fmi2Terminate() -> {:?}", status);
-            cb(&status, message.as_str());
+            cb(&status, "fmi2Terminate()");
         }
         status
     }
@@ -549,8 +546,8 @@ impl<'lib> FMU2<'lib> {
 
         if let Some(cb) = &self.logFMICall {
             let message = format!(
-                "fmi2SetupExperiment(toleranceDefined={}, tolerance={}, startTime={}, stopTimeDefined={}, stopTime={}) -> {:?}",
-                toleranceDefined, tolerance, startTime, stopTimeDefined, stopTime, status
+                "fmi2SetupExperiment(toleranceDefined={}, tolerance={}, startTime={}, stopTimeDefined={}, stopTime={})",
+                toleranceDefined, tolerance, startTime, stopTimeDefined, stopTime
             );
             cb(&status, message.as_str());
         }
@@ -561,8 +558,7 @@ impl<'lib> FMU2<'lib> {
     pub fn enterInitializationMode(&self) -> fmi2Status {
         let status = unsafe { (self.fmi2EnterInitializationMode)(self.component) };
         if let Some(cb) = &self.logFMICall {
-            let message = format!("fmi2EnterInitializationMode() -> {:?}", status);
-            cb(&status, message.as_str());
+            cb(&status, "fmi2EnterInitializationMode()");
         }
         status
     }
@@ -570,8 +566,7 @@ impl<'lib> FMU2<'lib> {
     pub fn exitInitializationMode(&self) -> fmi2Status {
         let status = unsafe { (self.fmi2ExitInitializationMode)(self.component) };
         if let Some(cb) = &self.logFMICall {
-            let message = format!("fmi2ExitInitializationMode() -> {:?}", status);
-            cb(&status, message.as_str());
+            cb(&status, "fmi2ExitInitializationMode()");
         }
         status
     }
@@ -579,8 +574,7 @@ impl<'lib> FMU2<'lib> {
     pub fn reset(&self) -> fmi2Status {
         let status = unsafe { (self.fmi2Reset)(self.component) };
         if let Some(cb) = &self.logFMICall {
-            let message = format!("fmi2Reset() -> {:?}", status);
-            cb(&status, message.as_str());
+            cb(&status, "fmi2Reset()");
         }
         status
     }
@@ -733,11 +727,10 @@ impl<'lib> FMU2<'lib> {
 
         if let Some(cb) = &self.logFMICall {
             let message = format!(
-                "fmi2DoStep(currentCommunicationPoint={}, communicationStepSize={}, noSetFMUStatePriorToCurrentPoint={}) -> {:?}",
+                "fmi2DoStep(currentCommunicationPoint={}, communicationStepSize={}, noSetFMUStatePriorToCurrentPoint={})",
                 currentCommunicationPoint,
                 communicationStepSize,
-                noSetFMUStatePriorToCurrentPoint,
-                status
+                noSetFMUStatePriorToCurrentPoint
             );
             cb(&status, message.as_str());
         }

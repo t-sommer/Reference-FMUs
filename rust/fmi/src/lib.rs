@@ -5,6 +5,7 @@ pub mod model_description;
 pub mod util;
 pub mod input;
 pub mod recorder;
+pub mod simulate;
 
 #[cfg(all(target_os = "linux"))]
 pub const SHARED_LIBRARY_EXTENSION: &str = ".so";

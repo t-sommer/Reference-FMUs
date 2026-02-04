@@ -14,7 +14,7 @@
                     // "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\3.0\\StateSpace.fmu",
                     "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\3.0\\Feedthrough.fmu",
                     // "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\3.0\\BouncingBall.fmu",
-                    "--log-fmi-calls",
+                    // "--log-fmi-calls",
                     "--output-interval=0.5",
                     "--stop-time=3",
                     // "--output-file", 
@@ -23,7 +23,7 @@
                     // "n=3",
                     // "--start-value",
                     // "A=1 2 3 4 5 6 7 8 9",
-                    "--input-file=Feedthrough_types_in.csv"
+                    "--input-file=fmusim/tests/resources/Feedthrough_types_in.csv"
                 ]
             }
         }

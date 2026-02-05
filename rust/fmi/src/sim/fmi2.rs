@@ -1,8 +1,10 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
+pub mod recorder;
+
 use tempfile::TempDir;
 
-use crate::{SHARED_LIBRARY_EXTENSION, fmi2::{self, FMU2, types::fmi2Boolean}, input::CSVInput, model_description::{Causality, ModelDescription, ModelVariable}, recorder::FMI2Recorder, sim::SimulationSettings, types::{fmiStatus::{self, fmiOK, fmiWarning}, fmiValueReference}, util::VariableValue};
+use crate::{SHARED_LIBRARY_EXTENSION, fmi2::{self, FMU2, types::fmi2Boolean}, model_description::{Causality, ModelDescription, ModelVariable}, sim::{SimulationSettings, fmi2::recorder::Recorder}, types::{fmiStatus::{self, fmiOK, fmiWarning}, fmiValueReference}, util::VariableValue};
 use std::{error::Error, fs::File, io::{Write, stdout}};
 
 
@@ -120,10 +122,10 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
 
     let mut recorder = if let Some(path) = &settings.output_file {
         let file = File::create(path).expect("Failed to create output file");
-        FMI2Recorder::new(output_variables, Box::new(file) as Box<dyn Write>, &fmu)
+        Recorder::new(output_variables, Box::new(file) as Box<dyn Write>, &fmu)
     } else {
         let stdout_handle = stdout();
-        FMI2Recorder::new(output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
+        Recorder::new(output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
     };
 
     for i in 1..10 {

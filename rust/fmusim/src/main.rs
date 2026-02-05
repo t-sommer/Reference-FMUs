@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use fmi::{fmi2::self, input::CSVInput, model_description::{self, Causality, CoSimulation, ModelDescription, ModelVariable, read_model_description}, sim::{self, SimulationSettings, fmi2::simulate_cs, fmi3::{call}}, util::extract_fmu};
+use fmi::{fmi2::self, model_description::{self, Causality, CoSimulation, ModelDescription, ModelVariable, read_model_description}, sim::{self, SimulationSettings, fmi2::simulate_cs, fmi3::{call}}, util::extract_fmu};
 use tempfile::TempDir;
 use std::{error::Error, fs::File, path::PathBuf, process::ExitCode};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, fmi2::FMU2};

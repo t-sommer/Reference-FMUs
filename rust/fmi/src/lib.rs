@@ -3,8 +3,6 @@ pub mod fmi2;
 pub mod fmi3;
 pub mod model_description;
 pub mod util;
-pub mod input;
-pub mod recorder;
 pub mod sim;
 
 #[cfg(all(target_os = "linux"))]

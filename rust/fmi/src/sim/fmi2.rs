@@ -1,11 +1,12 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
+pub mod input;
 pub mod recorder;
 
 use tempfile::TempDir;
 
-use crate::{SHARED_LIBRARY_EXTENSION, fmi2::{self, FMU2, types::fmi2Boolean}, model_description::{Causality, ModelDescription, ModelVariable}, sim::{SimulationSettings, fmi2::recorder::Recorder}, types::{fmiStatus::{self, fmiOK, fmiWarning}, fmiValueReference}, util::VariableValue};
-use std::{error::Error, fs::File, io::{Write, stdout}};
+use crate::{SHARED_LIBRARY_EXTENSION, fmi2::{self, FMU2, types::fmi2Boolean}, model_description::{Causality, ModelDescription, ModelVariable, VariableType}, sim::{SimulationSettings, fmi2::{input::CSVInput, recorder::Recorder}}, types::{fmiStatus::{self, fmiOK, fmiWarning}, fmiValueReference}, util::VariableValue};
+use std::{collections::HashMap, error::Error, fs::File, io::{Write, stdout}};
 
 
 fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
@@ -13,6 +14,28 @@ fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
         Ok(status)
     } else {
         Err(format!("FMI call failed with status: {:?}", status).into())
+    }
+}
+
+pub fn parse_variable_value(variable_type: &VariableType, literal: &str) -> Result<VariableValue, Box<dyn Error>> {
+    match variable_type {
+        VariableType::Float64 => {
+            let value: Result<f64, _> = literal.parse();
+            Ok(VariableValue::Float64(vec![value?]))
+        },
+        VariableType::Int32 => {
+            let value: Result<i32, _> = literal.parse();
+            Ok(VariableValue::Int32(vec![value?]))
+        },
+        VariableType::Boolean => {
+            let value: Result<bool, _> = literal.parse();
+            Ok(VariableValue::Boolean(vec![value?]))
+        },
+        VariableType::String => {
+            let values: Vec<String> = literal.split_whitespace().map(|v| v.to_string()).collect();
+            Ok(VariableValue::String(values))
+        },
+        _ => Err(format!("Unsupported variable type {variable_type:?}.").into())
     }
 }
 
@@ -38,30 +61,30 @@ fn set_variable_value(fmu: &FMU2, value_reference: fmiValueReference, value: &Va
 
 fn set_start_values(start_values: &Vec<(String, String)>, model_description: &ModelDescription, fmu: &FMU2) -> Result<fmiStatus, Box<dyn Error>> {
     
-    // // Create a map for quick lookup of variables by name
-    // let variable_map: HashMap<&str, &ModelVariable> = model_description.modelVariables
-    //     .iter()
-    //     .map(|var| (var.name.as_str(), var))
-    //     .collect();
+    // Create a map for quick lookup of variables by name
+    let variable_map: HashMap<&str, &ModelVariable> = model_description.modelVariables
+        .iter()
+        .map(|var| (var.name.as_str(), var))
+        .collect();
 
-    // // then the remaining start values
-    // for (var_name, literal) in start_values {
+    // then the remaining start values
+    for (var_name, literal) in start_values {
 
-    //     if let Some(variable) = variable_map.get(var_name.as_str()) {
+        if let Some(variable) = variable_map.get(var_name.as_str()) {
 
-    //         if variable.causality == Causality::StructuralParameter { continue; }
+            if variable.causality == Causality::StructuralParameter { continue; }
                 
-    //         match parse_variable_value(&variable.variableType, literal) {
-    //             Ok(value) => { 
-    //                 set_variable_value_fmi2(fmu, variable.valueReference, &value)?;
-    //             }
-    //             Err(e) => {
-    //                 return Err(format!("Invalid value {literal:?} for variable {var_name:?}. {e}").into());
-    //             }
-    //         }
-    //     }
+            match parse_variable_value(&variable.variableType, literal) {
+                Ok(value) => { 
+                    set_variable_value(fmu, variable.valueReference, &value)?;
+                }
+                Err(e) => {
+                    return Err(format!("Invalid value {literal:?} for variable {var_name:?}. {e}").into());
+                }
+            }
+        }
 
-    // }
+    }
 
     Ok(fmiOK)
 }
@@ -69,6 +92,24 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
 pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescription, unzipdir: &TempDir) -> Result<(), Box<dyn Error>> {
 
     let co_simulation = &model_description.coSimulation.as_ref().unwrap();
+
+    let input = if let Some(path) = &settings.input_file {
+        match File::open(&path) {
+            Ok(file) => {
+                match CSVInput::new(&file, &model_description) {
+                    Ok(input) => Some(input),
+                    Err(e) => {
+                        return Err(format!("Failed to load input from {path:?}. {e}").into());
+                    }
+                }
+            }
+            Err(e) => {
+                return Err(format!("Failed to open input file {path:?}. {e}").into());
+            }
+        }
+    } else {
+        None
+    };
 
     let shared_library_filename = format!("{}{}", &co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
 
@@ -130,10 +171,10 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
 
     for i in 1..10 {
         
-        // if let Some(input) = input {
-        //     input.set_discrete_inputs(time, true, fmu)?;
-        //     input.set_continuous_inputs(time, true, fmu)?;
-        // }
+        if let Some(input) = &input {
+            input.set_discrete_inputs(time, true, &fmu)?;
+            input.set_continuous_inputs(time, true, &fmu)?;
+        }
 
         call(fmu.doStep(time, output_interval, 0))?;
 

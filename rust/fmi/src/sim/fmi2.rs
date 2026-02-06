@@ -91,7 +91,12 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
 
 pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescription, unzipdir: &TempDir) -> Result<(), Box<dyn Error>> {
 
-    let co_simulation = &model_description.coSimulation.as_ref().unwrap();
+    let co_simulation = match &model_description.coSimulation {
+        Some(cs) => cs,
+        None => {
+            return Err("The FMU does not support Co-Simulation.".into());
+        }
+    };
 
     let input = if let Some(path) = &settings.input_file {
         match File::open(&path) {

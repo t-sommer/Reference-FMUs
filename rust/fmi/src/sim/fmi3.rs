@@ -209,7 +209,7 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
     let co_simulation = match &model_description.coSimulation {
         Some(cs) => cs,
         None => {
-            return Err("ERROR: The FMU does not support Co-Simulation.".into());
+            return Err("The FMU does not support Co-Simulation.".into());
         }
     };
 
@@ -264,23 +264,19 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         None
     };
 
-    let mut fmu = FMU3::new(
-        &library,
-        "instance1", 
+    let fmu = FMU3::instantiateCoSimulation(
+        unzipdir.as_ref(),
+        &co_simulation.modelIdentifier,
+        "instance1",
+        &model_description.instantiationToken,
+        false,
+        false,
+        false,
+        false,
+        &[],
         log_fmi_call, 
         log_message
     )?;
-
-    call(fmu.instantiateCoSimulation(
-        &model_description.modelName,
-        &model_description.instantiationToken,
-        None, 
-        false, 
-        false, 
-        false, 
-        false, 
-        &[]
-    ))?;
 
     if let Err(e) = set_start_values(&settings.start_values, &model_description, &fmu) {
         return Err(format!("Failed to set start values: {e}").into());

@@ -1,0 +1,2 @@
+time,Float64_continuous_input,Float64_discrete_input,Int32_input,Boolean_input,String_input,Enumeration_input
+0,-0.64,0.64,32,true,bar,2

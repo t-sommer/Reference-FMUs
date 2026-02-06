@@ -23,7 +23,7 @@ pub fn parse_variable_value(variable_type: &VariableType, literal: &str) -> Resu
             let value: Result<f64, _> = literal.parse();
             Ok(VariableValue::Float64(vec![value?]))
         },
-        VariableType::Int32 => {
+        VariableType::Int32 | VariableType::Enumeration => {
             let value: Result<i32, _> = literal.parse();
             Ok(VariableValue::Int32(vec![value?]))
         },

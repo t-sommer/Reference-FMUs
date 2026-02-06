@@ -111,9 +111,9 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         None
     };
 
-    let shared_library_filename = format!("{}{}", &co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
+    // let shared_library_filename = format!("{}{}", &co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
 
-    let shared_library_path = unzipdir.path().join("binaries").join(fmi2::PLATFORM).join(shared_library_filename);
+    // let shared_library_path = unzipdir.path().join("binaries").join(fmi2::PLATFORM).join(shared_library_filename);
 
     let log_fmi_call = if settings.log_fmi_calls {
         Some(Box::new(|status: &fmiStatus, message: &str| {
@@ -131,21 +131,31 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         None
     };
 
-    let mut fmu = FMU2::new(
-        shared_library_path.as_path(),
-        "BouncingBall",
+    let fmu = match FMU2::new(
+        unzipdir.as_ref(),
+        &co_simulation.modelIdentifier,
+        "instance1",
+        fmi2::types::fmi2Type::fmi2CoSimulation,
+        &model_description.instantiationToken,
+        false,
+        false,
         log_fmi_call,
         log_message
-    ).unwrap();
+    ) {
+        Ok(fmu) => fmu,
+        Err(e) => {
+            return Err(format!("Failed to instantiate FMU. {e}").into());
+        }
+    };
 
-    fmu.instantiate(
-        &settings.instance_name, 
-        fmi2::types::fmi2Type::fmi2CoSimulation, 
-        &model_description.instantiationToken,
-        None,
-        false, 
-        false
-    );
+    // fmu.instantiate(
+    //     &settings.instance_name, 
+    //     fmi2::types::fmi2Type::fmi2CoSimulation, 
+    //     &model_description.instantiationToken,
+    //     None,
+    //     false, 
+    //     false
+    // );
 
     if let Err(e) = set_start_values(&settings.start_values, &model_description, &fmu) {
         return Err(format!("Failed to set start values: {e}").into());
@@ -154,8 +164,6 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
     let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
 
     let mut time = settings.start_time;
-
-    let output_interval = settings.output_interval;
 
     fmu.setupExperiment(settings.tolerance, time, Some(settings.stop_time));
     fmu.enterInitializationMode();
@@ -169,16 +177,24 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         Recorder::new(output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
     };
 
-    for i in 1..10 {
+    let mut n_steps = 0;
+
+    loop {
+
+        if time >= settings.stop_time { break; }
+
+        let next_communication_point = settings.start_time + (n_steps + 1) as f64 * settings.output_interval;
         
         if let Some(input) = &input {
             input.set_discrete_inputs(time, true, &fmu)?;
             input.set_continuous_inputs(time, true, &fmu)?;
         }
 
-        call(fmu.doStep(time, output_interval, 0))?;
+        call(fmu.doStep(time, settings.output_interval, 0))?;
 
-        time = i as f64 * settings.output_interval;
+        n_steps += 1;
+
+        time = next_communication_point;
 
         recorder.sample(time)?;
     }

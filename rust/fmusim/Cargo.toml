@@ -10,3 +10,6 @@ fmi = { path = "../fmi" }
 zip = "2.1"
 tempfile = "3.8"
 csv = "1.4.0"
+
+[dev-dependencies]
+rstest = "0.26.1"

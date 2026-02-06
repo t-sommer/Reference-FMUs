@@ -90,14 +90,14 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
 }
 
 pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescription, unzipdir: &TempDir) -> Result<(), Box<dyn Error>> {
-
+    
     let co_simulation = match &model_description.coSimulation {
         Some(cs) => cs,
         None => {
             return Err("The FMU does not support Co-Simulation.".into());
         }
     };
-
+    
     let input = if let Some(path) = &settings.input_file {
         match File::open(&path) {
             Ok(file) => {
@@ -115,11 +115,9 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
     } else {
         None
     };
-
-    // let shared_library_filename = format!("{}{}", &co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
-
-    // let shared_library_path = unzipdir.path().join("binaries").join(fmi2::PLATFORM).join(shared_library_filename);
-
+    
+    let mut time = settings.start_time;
+    
     let log_fmi_call = if settings.log_fmi_calls {
         Some(Box::new(|status: &fmiStatus, message: &str| {
             eprintln!("{message} -> {status:?}");
@@ -153,26 +151,21 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         }
     };
 
-    // fmu.instantiate(
-    //     &settings.instance_name, 
-    //     fmi2::types::fmi2Type::fmi2CoSimulation, 
-    //     &model_description.instantiationToken,
-    //     None,
-    //     false, 
-    //     false
-    // );
-
     if let Err(e) = set_start_values(&settings.start_values, &model_description, &fmu) {
         return Err(format!("Failed to set start values: {e}").into());
     }
 
-    let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
-
-    let mut time = settings.start_time;
-
     fmu.setupExperiment(settings.tolerance, time, Some(settings.stop_time));
     fmu.enterInitializationMode();
+
+    if let Some(input) = &input {
+        input.set_discrete_inputs(time, true, &fmu)?;
+        input.set_continuous_inputs(time, true, &fmu)?;
+    }
+
     fmu.exitInitializationMode();
+    
+    let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
 
     let mut recorder = if let Some(path) = &settings.output_file {
         let file = File::create(path).expect("Failed to create output file");
@@ -185,6 +178,7 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
     let mut n_steps = 0;
 
     loop {
+        recorder.sample(time)?;
 
         if time >= settings.stop_time { break; }
 
@@ -200,8 +194,6 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         n_steps += 1;
 
         time = next_communication_point;
-
-        recorder.sample(time)?;
     }
 
     call(fmu.terminate())?;

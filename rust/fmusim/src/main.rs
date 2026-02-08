@@ -40,6 +40,10 @@ struct Args {
     /// Stop time for the simulation
     #[arg(long)]
     stop_time: Option<f64>,
+    
+    /// Set stop time explicitly
+    #[arg(long)]
+    set_stop_time: bool,
 
     /// Relative tolerance for the simulation
     #[arg(long)]
@@ -363,6 +367,7 @@ fn main() -> ExitCode {
     let settings = SimulationSettings {
         start_time,
         stop_time,
+        set_stop_time: args.set_stop_time,
         output_interval,
         tolerance,
         start_values: args.start_values.clone(),

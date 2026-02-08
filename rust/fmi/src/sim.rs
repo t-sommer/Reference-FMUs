@@ -9,6 +9,7 @@ pub struct SimulationSettings {
     pub instance_name: String,
     pub start_time: f64,
     pub stop_time: f64,
+    pub set_stop_time: bool,
     pub output_interval: f64,
     pub tolerance: Option<f64>,
     pub start_values: Vec<(String, String)>,

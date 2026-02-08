@@ -88,6 +88,7 @@ pub struct DefaultExperiment {
 pub struct CoSimulation {
     pub modelIdentifier: String,
     pub fixedInternalStepSize: Option<String>,
+    pub canHandleVariableCommunicationStepSize: bool,
 }
 
 #[derive(Debug)]
@@ -231,6 +232,7 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             CoSimulation {
                 modelIdentifier: cs.required_attribute("modelIdentifier")?,
                 fixedInternalStepSize: cs.optional_attribute("fixedInternalStepSize"),
+                canHandleVariableCommunicationStepSize: cs.bool_attribute("canHandleVariableCommunicationStepSize", false),
             }
         )
     } else {
@@ -252,6 +254,7 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
 trait StringAttribute {
     fn optional_attribute(&self, name: &str) -> Option<String>;
     fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>>;
+    fn bool_attribute(&self, name: &str, default: bool) -> bool;
 }
 
 impl<'a, 'input> StringAttribute for Node<'a, 'input> {
@@ -264,6 +267,14 @@ impl<'a, 'input> StringAttribute for Node<'a, 'input> {
     
     fn optional_attribute(&self, name: &str) -> Option<String> {
         self.attribute(name).map(|v| v.to_string())
+    }
+
+    fn bool_attribute(&self, name: &str, default: bool) -> bool {
+        if let Some(value) = self.attribute(name) {
+            value.parse().unwrap_or(default)
+        } else {
+            default
+        }
     }
 }
 
@@ -346,6 +357,7 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             CoSimulation {
                 modelIdentifier: cs.attribute("modelIdentifier").unwrap().to_string(),
                 fixedInternalStepSize: cs.attribute("fixedInternalStepSize").map(|s| s.to_string()),
+                canHandleVariableCommunicationStepSize: cs.bool_attribute("canHandleVariableCommunicationStepSize", false),
             }
         )
     } else {

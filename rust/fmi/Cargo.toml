@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+approx = "0.5.1"
 csv = "1.4.0"
 libloading = "0.8.8"
 url = "2"

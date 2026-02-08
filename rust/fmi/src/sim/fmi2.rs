@@ -91,12 +91,19 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
 
 pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescription, unzipdir: &TempDir) -> Result<(), Box<dyn Error>> {
     
+    let start_time = settings.start_time;
+    let stop_time = settings.stop_time;
+    let set_stop_time = settings.set_stop_time;
+    let output_interval = settings.output_interval;
+    
     let co_simulation = match &model_description.coSimulation {
         Some(cs) => cs,
         None => {
             return Err("The FMU does not support Co-Simulation.".into());
         }
     };
+    
+    let can_handle_variable_communication_step_size = co_simulation.canHandleVariableCommunicationStepSize.clone();
     
     let input = if let Some(path) = &settings.input_file {
         match File::open(&path) {
@@ -128,13 +135,13 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
 
     let log_message = if settings.log_fmi_calls {
         Some(Box::new(|status: &fmiStatus, category: &str, message: &str| {
-            eprintln!("[Message][{:?}][{}] {}", status, category, message);
+            eprintln!("[{status:?}][{category}] {message}");
         }) as Box<dyn Fn(&fmiStatus, &str, &str) + Send + Sync>)
     } else {
         None
     };
 
-    let fmu = match FMU2::new(
+    let fmu = FMU2::new(
         unzipdir.as_ref(),
         &co_simulation.modelIdentifier,
         "instance1",
@@ -144,26 +151,24 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         false,
         log_fmi_call,
         log_message
-    ) {
-        Ok(fmu) => fmu,
-        Err(e) => {
-            return Err(format!("Failed to instantiate FMU. {e}").into());
-        }
-    };
+    )?;
 
-    if let Err(e) = set_start_values(&settings.start_values, &model_description, &fmu) {
-        return Err(format!("Failed to set start values: {e}").into());
-    }
+    set_start_values(&settings.start_values, &model_description, &fmu)?;
 
-    fmu.setupExperiment(settings.tolerance, time, Some(settings.stop_time));
-    fmu.enterInitializationMode();
+    call(fmu.setupExperiment(
+        settings.tolerance, 
+        time, 
+        if set_stop_time { Some(stop_time) } else { None }
+    ))?;
+
+    call(fmu.enterInitializationMode())?;
 
     if let Some(input) = &input {
         input.set_discrete_inputs(time, true, &fmu)?;
         input.set_continuous_inputs(time, true, &fmu)?;
     }
 
-    fmu.exitInitializationMode();
+    call(fmu.exitInitializationMode())?;
     
     let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
 
@@ -175,25 +180,65 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         Recorder::new(output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
     };
 
+    recorder.sample(time)?;
+
     let mut n_steps = 0;
 
     loop {
-        recorder.sample(time)?;
+        if time > stop_time || relative_eq!(time, stop_time) { 
+            break; 
+        }
 
-        if time >= settings.stop_time { break; }
+        let next_regular_point = start_time + (n_steps + 1) as f64 * output_interval;
 
-        let next_communication_point = settings.start_time + (n_steps + 1) as f64 * settings.output_interval;
+        let mut next_communication_point = next_regular_point;
+
+        if can_handle_variable_communication_step_size {
+            if let Some(input) = &input {
+                if let Some(next_input_event_time) = input.next_event_time(time) {
+                    if next_regular_point > next_input_event_time && !relative_eq!(next_regular_point, next_input_event_time) {
+                        next_communication_point = next_input_event_time;
+                    }
+                }
+            }            
+        };
+
+        if next_communication_point > stop_time && !relative_eq!(next_communication_point, stop_time) {
+            if can_handle_variable_communication_step_size {
+                next_communication_point = stop_time;
+            } else {
+                break;
+            }
+        }
+
+        let communication_step_size = next_communication_point - time;
         
         if let Some(input) = &input {
             input.set_discrete_inputs(time, true, &fmu)?;
             input.set_continuous_inputs(time, true, &fmu)?;
         }
 
-        call(fmu.doStep(time, settings.output_interval, 0))?;
+        let do_step_status = fmu.doStep(time, communication_step_size, 0);
 
-        n_steps += 1;
+        let mut terminate_simulation = 0;
 
-        time = next_communication_point;
+        if do_step_status == fmiStatus::fmiDiscard {
+            call(fmu.getRealStatus(&fmi2::types::fmi2StatusKind::fmi2LastSuccessfulTime, &mut time))?;
+            call(fmu.getBooleanStatus(&fmi2::types::fmi2StatusKind::fmi2Terminated, &mut terminate_simulation))?;
+        } else {
+            call(do_step_status)?;
+            time = next_communication_point;
+        }
+
+        if relative_eq!(time, next_communication_point) {
+            n_steps += 1;
+        }
+
+        recorder.sample(time)?;
+
+        if terminate_simulation != 0 {
+            break;
+        }
     }
 
     call(fmu.terminate())?;

@@ -89,14 +89,14 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
     Ok(fmiOK)
 }
 
-pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescription, unzipdir: &TempDir) -> Result<(), Box<dyn Error>> {
+pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
     
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;
     let output_interval = settings.output_interval;
     
-    let co_simulation = match &model_description.coSimulation {
+    let co_simulation = match &settings.model_description.coSimulation {
         Some(cs) => cs,
         None => {
             return Err("The FMU does not support Co-Simulation.".into());
@@ -108,7 +108,7 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
     let input = if let Some(path) = &settings.input_file {
         match File::open(&path) {
             Ok(file) => {
-                match CSVInput::new(&file, &model_description) {
+                match CSVInput::new(&file, &settings.model_description) {
                     Ok(input) => Some(input),
                     Err(e) => {
                         return Err(format!("Failed to load input from {path:?}. {e}").into());
@@ -142,18 +142,18 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
     };
 
     let fmu = FMU2::new(
-        unzipdir.as_ref(),
+        settings.unzipdir.as_ref(),
         &co_simulation.modelIdentifier,
         "instance1",
         fmi2::types::fmi2Type::fmi2CoSimulation,
-        &model_description.instantiationToken,
+        &settings.model_description.instantiationToken,
         false,
         false,
         log_fmi_call,
         log_message
     )?;
 
-    set_start_values(&settings.start_values, &model_description, &fmu)?;
+    set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
 
     call(fmu.setupExperiment(
         settings.tolerance, 

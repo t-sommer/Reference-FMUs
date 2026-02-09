@@ -407,6 +407,8 @@ fn main() -> ExitCode {
     };
 
     let settings = SimulationSettings {
+        unzipdir: unzipdir.path(),
+        model_description: &model_description,
         start_time,
         stop_time,
         set_stop_time: args.set_stop_time,
@@ -426,8 +428,8 @@ fn main() -> ExitCode {
     // }
 
     let result = match model_description.majorVersion {
-        MajorVersion::V2 => sim::fmi2::simulate_cs(&settings, &model_description, &unzipdir),
-        MajorVersion::V3 => sim::fmi3::simulate_cs(&settings, &model_description, &unzipdir),
+        MajorVersion::V2 => sim::fmi2::simulate_cs(&settings),
+        MajorVersion::V3 => sim::fmi3::simulate_cs(&settings),
     };
 
     match result {

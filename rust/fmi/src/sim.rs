@@ -1,13 +1,15 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use crate::model_description::ModelVariable;
+use crate::model_description::{ModelDescription, ModelVariable};
 pub mod fmi2;
 pub mod fmi3;
 
 
 pub struct SimulationSettings<'a> {
+    pub unzipdir: &'a Path,
+    pub model_description: &'a ModelDescription,
     pub instance_name: String,
     pub start_time: f64,
     pub stop_time: f64,

@@ -169,15 +169,13 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
     }
 
     call(fmu.exitInitializationMode())?;
-    
-    let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
 
     let mut recorder = if let Some(path) = &settings.output_file {
         let file = File::create(path).expect("Failed to create output file");
-        Recorder::new(output_variables, Box::new(file) as Box<dyn Write>, &fmu)
+        Recorder::new(&settings.output_variables, Box::new(file) as Box<dyn Write>, &fmu)
     } else {
         let stdout_handle = stdout();
-        Recorder::new(output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
+        Recorder::new(&settings.output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
     };
 
     recorder.sample(time)?;

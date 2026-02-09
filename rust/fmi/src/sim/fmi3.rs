@@ -231,23 +231,6 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         None
     };
 
-    let shared_library_filename = format!("{}{}", co_simulation.modelIdentifier, SHARED_LIBRARY_EXTENSION);
-
-    let shared_library_path = unzipdir.path().join("binaries").join(PLATFORM_TUPLE).join(shared_library_filename);
-
-    if !shared_library_path.is_file() {
-        return Err(format!("The FMU contains no platform binary for {PLATFORM_TUPLE}.").into());
-    }
-
-    let library = unsafe {
-        match Library::new(&shared_library_path)  {
-            Ok(l) => l,
-            Err(e) => {
-                return Err(format!("Failed to load platform binary {shared_library_path:?}. {e}").into());
-            }
-        }
-    };
-
     let log_fmi_call = if settings.log_fmi_calls {
         Some(Box::new(|status: &fmiStatus, message: &str| {
             eprintln!("{message} -> {status:?}");
@@ -282,8 +265,6 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
         return Err(format!("Failed to set start values: {e}").into());
     }
 
-    let output_variables: Vec<&ModelVariable> = model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect();
-
     let mut time = 0.0;
 
     let output_interval = settings.output_interval;
@@ -293,10 +274,10 @@ pub fn simulate_cs(settings: &SimulationSettings, model_description: &ModelDescr
 
     let mut recorder = if let Some(path) = &settings.output_file {
         let file = File::create(path).expect("Failed to create output file");
-        Recorder::new(output_variables, Box::new(file) as Box<dyn Write>, &fmu)
+        Recorder::new(&settings.output_variables, Box::new(file) as Box<dyn Write>, &fmu)
     } else {
         let stdout_handle = stdout();
-        Recorder::new(output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
+        Recorder::new(&settings.output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
     };
 
     while time < settings.stop_time {

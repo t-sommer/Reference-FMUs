@@ -2,7 +2,7 @@
 
 use fmi::{fmi2::self, model_description::{self, Causality, CoSimulation, MajorVersion, ModelDescription, ModelVariable, read_model_description}, sim::{self, SimulationSettings, fmi2::simulate_cs, fmi3::call}, util::extract_fmu};
 use tempfile::TempDir;
-use std::{error::Error, fs::File, path::PathBuf, process::ExitCode};
+use std::{collections::HashMap, error::Error, fs::File, path::PathBuf, process::ExitCode};
 use fmi::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, fmi2::FMU2};
 use clap::Parser;
 use libloading::Library;
@@ -60,6 +60,10 @@ struct Args {
     /// Set start values for variables (format: variable_name=value)
     #[arg(long = "start-value", value_parser = parse_start_value)]
     start_values: Vec<(String, String)>,
+
+    /// Record a specific variable
+    #[arg(long)]
+    output_variable: Vec<String>,
 }
 
 // fn simulate_fmi3(args: &Args, model_description: &ModelDescription, unzipdir: &TempDir) -> ExitCode {
@@ -364,6 +368,44 @@ fn main() -> ExitCode {
         }
     };
 
+    // dbg!(args.output_variable);
+
+    // let output_variables = if args.output_variable.is_empty() {
+    //     model_description.modelVariables.iter()
+    //         .filter(|v| v.causality == Causality::Output)
+    //         .map(|v| v.name.clone())
+    //         .collect()
+    // } else {
+    //     args.output_variable.clone()
+    // };
+
+    // let output_variables: Vec<String> = model_description.modelVariables.iter()
+    //     .filter(|v| v.causality == Causality::Output)
+    //     .map(|v| v.name.clone())
+    //     .collect();
+
+    let output_variables: Vec<&ModelVariable> = if args.output_variable.is_empty() {
+        model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect()
+    } else {
+        let variable_map: HashMap<&str, &ModelVariable> = model_description.modelVariables
+            .iter()
+            .map(|var| (var.name.as_str(), var))
+            .collect();
+
+        let mut output_variables = vec![];
+
+        for variable_name in args.output_variable {
+            if let Some(&variable) = variable_map.get(variable_name.as_str()) {
+                output_variables.push(variable);
+            } else {
+                eprintln!("The requested output variable {variable_name:?} does not exist.");
+                return ExitCode::FAILURE;
+            }
+        }
+        
+        output_variables
+    };
+
     let settings = SimulationSettings {
         start_time,
         stop_time,
@@ -371,6 +413,7 @@ fn main() -> ExitCode {
         output_interval,
         tolerance,
         start_values: args.start_values.clone(),
+        output_variables,
         output_file: args.output_file.as_ref().map(|f| PathBuf::from(f)),
         log_fmi_calls: args.log_fmi_calls,
         instance_name: "instance1".to_string(),

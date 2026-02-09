@@ -12,14 +12,14 @@ macro_rules! write_values {
     };
 }
 pub struct Recorder<'a, T: Write> {
-    pub variables: Vec<&'a ModelVariable>,
+    pub variables: &'a Vec<&'a ModelVariable>,
     pub stream: T,
     pub fmu: &'a FMU2<'a>,
 }
 
 impl<'a, T: Write> Recorder<'a, T> {
 
-    pub fn new(variables: Vec<&'a ModelVariable>, stream: T, fmu: &'a FMU2<'a>) -> Recorder<'a, T> {
+    pub fn new(variables: &'a Vec<&'a ModelVariable>, stream: T, fmu: &'a FMU2<'a>) -> Recorder<'a, T> {
         let mut recorder = Recorder { 
             variables,
             stream, 
@@ -42,7 +42,7 @@ impl<'a, T: Write> Recorder<'a, T> {
 
         write!(self.stream, "{time}")?;
 
-        for variable in &self.variables {
+        for variable in self.variables {
             write!(self.stream, ",")?;
             let value_references = [variable.valueReference];
             match variable.variableType {

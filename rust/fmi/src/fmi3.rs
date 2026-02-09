@@ -254,7 +254,6 @@ impl<'lib> FMU3<'lib> {
     fn new(
         unzipdir: &Path,
         modelIdentifier: &str,
-        instanceName: &str,
         logFMICall: Option<Box<LogFMICallCallback>>,
         logMessage: Option<Box<LogMessageCallback>>,
     ) -> Result<FMU3<'lib>, Box<dyn Error>> {
@@ -510,7 +509,7 @@ impl<'lib> FMU3<'lib> {
         logMessage: Option<Box<LogMessageCallback>>,
     ) -> Result<FMU3<'lib>, Box<dyn Error>> {
         
-        let mut fmu = FMU3::new(unzipdir, modelIdentifier, instanceName, logFMICall, logMessage)?;
+        let mut fmu = FMU3::new(unzipdir, modelIdentifier, logFMICall, logMessage)?;
 
         let resource_path = unzipdir.join("resources").join("");
 

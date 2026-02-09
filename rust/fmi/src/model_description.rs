@@ -1,4 +1,4 @@
-// #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
 use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 use roxmltree::Node;
@@ -170,7 +170,7 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     
     let mut modelVariables = vec![];
 
-    for (i, child) in ModelVariables.children().filter(|n| n.has_tag_name("ScalarVariable")).enumerate() {
+    for (_i, child) in ModelVariables.children().filter(|n| n.has_tag_name("ScalarVariable")).enumerate() {
 
         let name = child.required_attribute("name")?;
         let valueReference = child.required_attribute("valueReference")?.parse().unwrap();
@@ -200,7 +200,6 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
                     Variability::Discrete
                 }
             },
-
         };
 
         let dimensions = vec![];

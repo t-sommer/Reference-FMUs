@@ -1,8 +1,8 @@
-use std::{error::Error, fmt::Display, fs::File, io::{self, Write}};
+use std::fs::File;
 use zip::ZipArchive;
 use tempfile::TempDir;
 
-use crate::{fmi2::{FMU2, types::fmi2Boolean}, fmi3::FMU3, model_description::{Dimension, ModelVariable, VariableType}, types::*};
+use crate::types::*;
 
 #[derive(Debug, PartialEq)]
 pub enum VariableValue {

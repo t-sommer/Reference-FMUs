@@ -3,9 +3,7 @@
 pub mod input;
 pub mod recorder;
 
-use tempfile::TempDir;
-
-use crate::{SHARED_LIBRARY_EXTENSION, fmi2::{self, FMU2, types::fmi2Boolean}, model_description::{Causality, ModelDescription, ModelVariable, VariableType}, sim::{SimulationSettings, fmi2::{input::CSVInput, recorder::Recorder}}, types::{fmiStatus::{self, fmiOK, fmiWarning}, fmiValueReference}, util::VariableValue};
+use crate::{fmi2::{self, FMU2, types::fmi2Boolean}, model_description::{Causality, ModelDescription, ModelVariable, VariableType}, sim::{SimulationSettings, fmi2::{input::CSVInput, recorder::Recorder}}, types::{fmiStatus::{self, fmiOK, fmiWarning}, fmiValueReference}, util::VariableValue};
 use std::{collections::HashMap, error::Error, fs::File, io::{Write, stdout}};
 
 

@@ -2,10 +2,8 @@ pub mod input;
 pub mod recorder;
 
 use std::{collections::HashMap, error::Error, fs::File, io::{Write, stdout}};
-use libloading::Library;
-use tempfile::TempDir;
 
-use crate::{SHARED_LIBRARY_EXTENSION, fmi3::{FMU3, PLATFORM_TUPLE}, model_description::{ModelVariable, VariableType}, sim::{SimulationSettings, fmi3::{input::CSVInput, recorder::Recorder}}, types::*, util::VariableValue};
+use crate::{fmi3::FMU3, model_description::{ModelVariable, VariableType}, sim::{SimulationSettings, fmi3::{input::CSVInput, recorder::Recorder}}, types::*, util::VariableValue};
 use crate::{model_description::{Causality, ModelDescription}, types::fmiStatus::{self, fmiOK, fmiWarning}};
 
 

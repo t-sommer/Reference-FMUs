@@ -1,6 +1,6 @@
 use std::{collections::HashMap, error::Error, fs::File};
 
-use crate::{fmi3::FMU3, model_description::{ModelDescription, ModelVariable, Variability, VariableType}, sim::fmi3::{parse_variable_value, set_variable_value}, types::*, util::VariableValue};
+use crate::{fmi3::FMU3, model_description::{ModelDescription, ModelVariable, Variability}, sim::fmi3::{parse_variable_value, set_variable_value}, types::*, util::VariableValue};
 
 
 fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {

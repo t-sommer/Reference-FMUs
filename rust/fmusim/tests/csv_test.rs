@@ -30,14 +30,26 @@ fn test_input_interpolation(workspace_root: PathBuf) {
             "--output-file", &output_file.to_string_lossy(),
             // "--log-fmi-calls",
             "--stop-time=3",
-            "--output-interval=0.1",
+            "--output-interval=0.25",
             "--output-variable=Float64_continuous_input",
         ])
         .current_dir(&workspace_root)
         .output()
         .expect("Failed to run fmusim");
 
-    assert!(simulation_output.status.success());
+    // let out = String::from_utf8_lossy(&simulation_output.stdout);
+    // print!("{out}");
+
+    // let err = String::from_utf8_lossy(&simulation_output.stderr);
+    // print!("{err}");
+    
+    if !simulation_output.status.success() {
+        panic!(
+            "Simulation failed: {}\nStderr: {}",
+            String::from_utf8_lossy(&simulation_output.stdout),
+            String::from_utf8_lossy(&simulation_output.stderr)
+        );
+    }
 
     let expected = read_to_string(expected_file).unwrap();
     let actual = read_to_string(output_file).unwrap();

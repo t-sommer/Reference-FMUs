@@ -8,7 +8,7 @@ pub fn workspace_root() -> PathBuf {
 }
 
 #[rstest]
-fn test_input_interpolation(workspace_root: PathBuf) {
+fn test_input_interpolation_fmi2(workspace_root: PathBuf) {
 
     let fmu_file = workspace_root
         .join("fmusim")
@@ -29,6 +29,60 @@ fn test_input_interpolation(workspace_root: PathBuf) {
             "--input-file", &input_file.to_string_lossy(),
             "--output-file", &output_file.to_string_lossy(),
             // "--log-fmi-calls",
+            "--stop-time=3",
+            "--output-interval=0.25",
+            "--output-variable=Float64_continuous_input",
+            "--output-variable=Float64_discrete_input",
+        ])
+        .current_dir(&workspace_root)
+        .output()
+        .expect("Failed to run fmusim");
+
+    // let out = String::from_utf8_lossy(&simulation_output.stdout);
+    // print!("{out}");
+
+    // let err = String::from_utf8_lossy(&simulation_output.stderr);
+    // print!("{err}");
+    
+    if !simulation_output.status.success() {
+        panic!(
+            "Simulation failed: {}\nStderr: {}",
+            String::from_utf8_lossy(&simulation_output.stdout),
+            String::from_utf8_lossy(&simulation_output.stderr)
+        );
+    }
+
+    let expected = read_to_string(expected_file).unwrap();
+    let actual = read_to_string(output_file).unwrap();
+    
+    let expected_lines: Vec<&str> = expected.lines().collect();
+    let actual_lines: Vec<&str> = actual.lines().collect();
+    
+    assert_eq!(expected_lines, actual_lines);
+}
+
+#[rstest]
+fn test_input_interpolation_fmi3(workspace_root: PathBuf) {
+
+    let fmu_file = workspace_root
+        .join("fmusim")
+        .join("tests")
+        .join("resources")
+        .join("Reference-FMUs")
+        .join("3.0")
+        .join("Feedthrough.fmu");
+
+    let fmusim_path = workspace_root.join("target/debug/fmusim");
+    let input_file = workspace_root.join("fmusim/tests/resources/fmi3/Feedthrough_interpolation_in.csv");
+    let output_file = workspace_root.join("fmusim/tests/resources/fmi3/Feedthrough_interpolation_out.csv");
+    let expected_file = workspace_root.join("fmusim/tests/resources/fmi3/Feedthrough_interpolation_expected.csv");
+
+    let simulation_output = Command::new(&fmusim_path)
+        .args(&[
+            &fmu_file.to_string_lossy(),
+            "--input-file", &input_file.to_string_lossy(),
+            "--output-file", &output_file.to_string_lossy(),
+            "--log-fmi-calls",
             "--stop-time=3",
             "--output-interval=0.25",
             "--output-variable=Float64_continuous_input",

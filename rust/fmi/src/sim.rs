@@ -10,9 +10,9 @@ pub mod fmi3;
 pub struct SimulationSettings<'a> {
     pub unzipdir: &'a Path,
     pub model_description: &'a ModelDescription,
-    pub instance_name: String,
     pub start_time: f64,
     pub stop_time: f64,
+    pub logging_on: bool,
     pub set_stop_time: bool,
     pub output_interval: f64,
     pub tolerance: Option<f64>,
@@ -21,4 +21,6 @@ pub struct SimulationSettings<'a> {
     pub output_file: Option<PathBuf>,
     pub log_fmi_calls: bool,
     pub input_file: Option<PathBuf>,
+    pub early_return_allowed: bool,
+    pub event_mode_used: bool,
 }

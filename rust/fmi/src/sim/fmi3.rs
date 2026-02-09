@@ -248,20 +248,18 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
     let fmu = FMU3::instantiateCoSimulation(
         settings.unzipdir.as_ref(),
         &co_simulation.modelIdentifier,
-        "instance1",
+        &settings.model_description.modelName,
         &settings.model_description.instantiationToken,
         false,
-        false,
-        false,
-        false,
+        settings.logging_on,
+        settings.event_mode_used,
+        settings.early_return_allowed,
         &[],
         log_fmi_call, 
-        log_message
+        log_message,
     )?;
 
-    if let Err(e) = set_start_values(&settings.start_values, &settings.model_description, &fmu) {
-        return Err(format!("Failed to set start values: {e}").into());
-    }
+    set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
 
     let mut time = 0.0;
 

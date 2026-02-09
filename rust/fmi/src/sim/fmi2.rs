@@ -142,11 +142,11 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
     let fmu = FMU2::new(
         settings.unzipdir.as_ref(),
         &co_simulation.modelIdentifier,
-        "instance1",
+        &settings.model_description.modelName,
         fmi2::types::fmi2Type::fmi2CoSimulation,
         &settings.model_description.instantiationToken,
         false,
-        false,
+        settings.logging_on,
         log_fmi_call,
         log_message
     )?;

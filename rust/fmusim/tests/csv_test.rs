@@ -32,6 +32,7 @@ fn test_input_interpolation(workspace_root: PathBuf) {
             "--stop-time=3",
             "--output-interval=0.25",
             "--output-variable=Float64_continuous_input",
+            "--output-variable=Float64_discrete_input",
         ])
         .current_dir(&workspace_root)
         .output()

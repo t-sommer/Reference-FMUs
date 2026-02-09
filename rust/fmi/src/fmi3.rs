@@ -1616,49 +1616,32 @@ impl<'lib> FMU3<'lib> {
 
     pub fn updateDiscreteStates(
         &self,
-    ) -> Result<
-        (
-            fmi3Boolean,
-            fmi3Boolean,
-            fmi3Boolean,
-            fmi3Boolean,
-            fmi3Float64,
-        ),
-        fmi3Status,
-    > {
-        let mut discreteStatesNeedUpdate = false;
-        let mut terminateSimulation = false;
-        let mut nominalsOfContinuousStatesChanged = false;
-        let mut valuesOfContinuousStatesChanged = false;
-        let mut nextEventTime = 0.0;
+        discreteStatesNeedUpdate: &mut fmi3Boolean,
+        terminateSimulation: &mut fmi3Boolean,
+        nominalsOfContinuousStatesChanged: &mut fmi3Boolean,
+        valuesOfContinuousStatesChanged: &mut fmi3Boolean,
+        nextEventTimeDefined: &mut fmi3Boolean,
+        nextEventTime: &mut fmi3Float64,
+    ) -> fmi3Status {
 
         let status = unsafe {
             (self.fmi3UpdateDiscreteStates)(
                 self.instance,
-                &mut discreteStatesNeedUpdate,
-                &mut terminateSimulation,
-                &mut nominalsOfContinuousStatesChanged,
-                &mut valuesOfContinuousStatesChanged,
-                &mut nextEventTime,
-            )
-        };
-
-        if let Some(cb) = &self.logFMICall {
-            let message = format!("fmi3UpdateDiscreteStates()");
-            cb(&status, &message);
-        }
-
-        if status == fmi3OK {
-            Ok((
                 discreteStatesNeedUpdate,
                 terminateSimulation,
                 nominalsOfContinuousStatesChanged,
                 valuesOfContinuousStatesChanged,
+                nextEventTimeDefined,
                 nextEventTime,
-            ))
-        } else {
-            Err(status)
+            )
+        };
+
+        if let Some(cb) = &self.logFMICall {
+            let message = format!("fmi3UpdateDiscreteStates(discreteStatesNeedUpdate={discreteStatesNeedUpdate}, terminateSimulation={terminateSimulation}, nominalsOfContinuousStatesChanged={nominalsOfContinuousStatesChanged}, valuesOfContinuousStatesChanged={valuesOfContinuousStatesChanged}, nextEventTimeDefined={nextEventTimeDefined}, nextEventTime={nextEventTime})");
+            cb(&status, &message);
         }
+
+        status
     }
 
     pub fn getOutputDerivatives(

@@ -94,6 +94,8 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
     let set_stop_time = settings.set_stop_time;
     let output_interval = settings.output_interval;
     
+    let mut time = start_time;
+    
     let co_simulation = match &settings.model_description.coSimulation {
         Some(cs) => cs,
         None => {
@@ -120,8 +122,6 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
     } else {
         None
     };
-    
-    let mut time = settings.start_time;
     
     let log_fmi_call = if settings.log_fmi_calls {
         Some(Box::new(|status: &fmiStatus, message: &str| {

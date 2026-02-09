@@ -204,12 +204,22 @@ fn set_start_values(start_values: &Vec<(String, String)>, model_description: &Mo
 
 pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
 
+    let start_time = settings.start_time;
+    let stop_time = settings.stop_time;
+    let set_stop_time = settings.set_stop_time;
+    let output_interval = settings.output_interval;
+    let event_mode_used = settings.event_mode_used;
+    
+    let mut time = start_time;
+
     let co_simulation = match &settings.model_description.coSimulation {
         Some(cs) => cs,
         None => {
             return Err("The FMU does not support Co-Simulation.".into());
         }
     };
+
+    let can_handle_variable_communication_step_size = co_simulation.canHandleVariableCommunicationStepSize.clone();
 
     let input = if let Some(path) = &settings.input_file {
         match File::open(&path) {
@@ -261,12 +271,50 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
 
     set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
 
-    let mut time = 0.0;
+    fmu.enterInitializationMode(
+        settings.tolerance,
+        start_time, 
+        if set_stop_time { Some(stop_time) } else { None }
+    );
 
-    let output_interval = settings.output_interval;
+    if let Some(input) = &input {
+        input.set_discrete_inputs(time, true, &fmu)?;
+        input.set_continuous_inputs(time, true, &fmu)?;
+    }
 
-    fmu.enterInitializationMode(settings.tolerance, settings.start_time, Some(settings.stop_time));
-    fmu.exitInitializationMode();
+    call(fmu.exitInitializationMode())?;
+
+    if event_mode_used {
+
+        loop {
+            let mut discreteStatesNeedUpdate = false;
+            let mut terminateSimulation = false;
+            let mut nominalsOfContinuousStatesChanged = false;
+            let mut valuesOfContinuousStatesChanged = false;
+            let mut nextEventTimeDefined = false;
+            let mut nextEventTime = 0.0;
+            
+            call(fmu.updateDiscreteStates(
+                &mut discreteStatesNeedUpdate,
+                &mut terminateSimulation,
+                &mut nominalsOfContinuousStatesChanged,
+                &mut valuesOfContinuousStatesChanged,
+                &mut nextEventTimeDefined,
+                &mut nextEventTime,
+            ))?;
+
+            if terminateSimulation {
+                call(fmu.terminate())?;
+                return Ok(())
+            }
+        
+            if !discreteStatesNeedUpdate {
+                break;
+            }
+        }
+
+        call(fmu.enterStepMode())?;
+    }
 
     let mut recorder = if let Some(path) = &settings.output_file {
         let file = File::create(path).expect("Failed to create output file");
@@ -276,20 +324,140 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         Recorder::new(&settings.output_variables, Box::new(stdout_handle) as Box<dyn Write>, &fmu)
     };
 
-    while time < settings.stop_time {
-        
-        if let Some(input) = &input {
-            input.set_discrete_inputs(time, true, &fmu)?;
-            input.set_continuous_inputs(time, true, &fmu)?;
+    recorder.sample(time)?;
+
+    let mut n_steps = 0;
+
+    let mut input_applied = false;
+
+    loop {
+
+        if time > stop_time || relative_eq!(time, stop_time) { 
+            break; 
+        }        
+                
+        let next_regular_point = start_time + (n_steps + 1) as f64 * output_interval;
+
+        let mut next_communication_point = next_regular_point;
+
+        let next_input_event_time = if let Some(input) = &input {
+            input.next_event_time(time)
+        } else {
+            None
+        };
+
+        if let Some(next_input_event_time) = next_input_event_time {
+            if can_handle_variable_communication_step_size 
+                && next_communication_point > next_input_event_time 
+                && !relative_eq!(next_regular_point, next_input_event_time) {
+                next_communication_point = next_input_event_time;
+            }
+        }
+    
+        if next_communication_point > stop_time && !relative_eq!(next_communication_point, stop_time) {
+            if can_handle_variable_communication_step_size {
+                next_communication_point = stop_time;
+            } else {
+                break;
+            }
         }
 
-        let mut eventHandlingNeeded = false;
-        let mut terminateSimulation = false;
-        let mut earlyReturn = false;
+        if !input_applied {
+            if let Some(input) = &input {
+                input.set_discrete_inputs(time, !event_mode_used, &fmu)?;
+                input.set_continuous_inputs(time, !event_mode_used, &fmu)?;
+            }
+        }
+        
+        let communication_step_size = next_communication_point - time;
+        let mut event_handling_needed = false;
+        let mut terminate_simulation = false;
+        let mut early_return = false;
+        let mut last_successful_time = 0.0;
+        
+        call(fmu.doStep(
+            time, 
+            communication_step_size, 
+            true, 
+            &mut event_handling_needed, 
+            &mut terminate_simulation, 
+            &mut early_return, 
+            &mut last_successful_time
+        ))?;
 
-        call(fmu.doStep(time, output_interval, true, &mut eventHandlingNeeded, &mut terminateSimulation, &mut earlyReturn, &mut time))?; 
+        if early_return && !settings.early_return_allowed {
+            return Err("The FMU returned early from fmi3DoStep() but early return is not allowed.".into())
+        }
+        
+        time = if early_return && last_successful_time < next_communication_point {
+            last_successful_time
+        } else {
+            next_communication_point
+        };
+
+        if relative_eq!(time, next_regular_point) {
+            n_steps += 1;
+        }
 
         recorder.sample(time)?;
+
+        if terminate_simulation {
+            call(fmu.terminate())?;
+            return Ok(())
+        }
+
+        let input_event = if let Some(next_input_event_time) = next_input_event_time {
+            relative_eq!(next_communication_point, next_input_event_time) 
+        } else {
+            false
+        };
+
+        input_applied = if event_mode_used && (input_event || event_handling_needed) {
+            
+            call(fmu.enterEventMode())?;
+
+            if input_event {
+                if let Some(input) = &input {
+                    input.set_discrete_inputs(time, true, &fmu)?;
+                    input.set_continuous_inputs(time, true, &fmu)?;
+                }
+            }
+
+            loop {
+                let mut discreteStatesNeedUpdate = false;
+                let mut terminateSimulation = false;
+                let mut nominalsOfContinuousStatesChanged = false;
+                let mut valuesOfContinuousStatesChanged = false;
+                let mut nextEventTimeDefined = false;
+                let mut nextEventTime = 0.0;
+                
+                call(fmu.updateDiscreteStates(
+                    &mut discreteStatesNeedUpdate,
+                    &mut terminateSimulation,
+                    &mut nominalsOfContinuousStatesChanged,
+                    &mut valuesOfContinuousStatesChanged,
+                    &mut nextEventTimeDefined,
+                    &mut nextEventTime,
+                ))?;
+
+                if terminateSimulation {
+                    call(fmu.terminate())?;
+                    return Ok(())
+                }
+            
+                if !discreteStatesNeedUpdate {
+                    break;
+                }
+            }
+
+            call(fmu.enterStepMode())?;
+
+            recorder.sample(time)?;
+
+            true
+        } else {
+            false
+        };
     }
 
     call(fmu.terminate())?;

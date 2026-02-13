@@ -43,6 +43,7 @@ fn zip_dir<P: AsRef<Path>>(src_dir: P, dst_file: P) -> Result<(), Box<dyn std::e
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
+    // Build and package BouncingBall
     fs::create_dir_all("BouncingBall/deploy/binaries/x86_64-windows")?;
 
     fs::copy(
@@ -52,6 +53,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let src_dir = PathBuf::from("BouncingBall/deploy");
     let dst_file = PathBuf::from("BouncingBall.fmu");
+
+    zip_dir(src_dir, dst_file)?;
+
+    // Build and package Dahlquist
+    fs::create_dir_all("Dahlquist/deploy/binaries/x86_64-windows")?;
+
+    fs::copy(
+        "target/debug/Dahlquist.dll",
+        "Dahlquist/deploy/binaries/x86_64-windows/Dahlquist.dll",
+    )?;
+
+    let src_dir = PathBuf::from("Dahlquist/deploy");
+    let dst_file = PathBuf::from("Dahlquist.fmu");
 
     zip_dir(src_dir, dst_file)?;
 

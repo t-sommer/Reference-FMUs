@@ -3,26 +3,11 @@
 mod fmi3;
 
 use fmi::fmi3::types::*;
-use std::{f64, ffi::CString};
+use fmi_export::{InterfaceType, ModelMode};
+use std::{error::Error, f64, ffi::CString};
 use serde::{Deserialize, Serialize};
 
 type LogError = dyn Fn(&str);
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-enum InterfaceType {
-    ModelExchange,
-    CoSimulation,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-enum ModelMode {
-    Instantiated,
-    InitializationMode,
-    EventMode,
-    ContinuousTimeMode,
-    StepMode,
-    Terminated,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct ModelData {
@@ -60,6 +45,7 @@ struct ModelInstance {
     logError: Box<LogError>,
 }
 
+#[derive(Debug)]
 enum ValueReference {
     time,
     h,
@@ -129,6 +115,35 @@ impl ModelInstance {
             self.data.h = 0.0;
             self.data.v = -self.data.e * self.data.v;
         }
+    }
+
+    fn getFloat64(&self, value_reference: &ValueReference) -> Result<&f64, Box<dyn Error>> {
+
+        match value_reference {
+            ValueReference::time => Ok(&self.data.time),
+            ValueReference::h => Ok(&self.data.h),
+            ValueReference::der_h => Ok(&self.data.v),
+            ValueReference::v => Ok(&self.data.v),
+            ValueReference::der_v => Ok(&self.data.g),
+            ValueReference::g => Ok(&self.data.g),
+            ValueReference::e => Ok(&self.data.e),
+            ValueReference::v_min => Ok(&self.data.v_min),
+        }
+
+        // match ValueReference::try_from(value_reference) {
+        //     Ok(ValueReference::time) => Ok(&self.data.time),
+        //     Ok(ValueReference::h) => Ok(&self.data.h),
+        //     Ok(ValueReference::der_h) => Ok(&self.data.v),
+        //     Ok(ValueReference::v) => Ok(&self.data.v),
+        //     Ok(ValueReference::der_v) => Ok(&self.data.g),
+        //     Ok(ValueReference::g) => Ok(&self.data.g),
+        //     Ok(ValueReference::e) => Ok(&self.data.e),
+        //     Ok(ValueReference::v_min) => Ok(&self.data.v_min),
+        //     _ => {
+        //         Err(format!("Unknown value reference for type Float64: {value_reference:?}.").into())
+        //     }
+        //     Err(_) => todo!(),
+        // }
     }
 
 }

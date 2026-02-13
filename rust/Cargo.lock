@@ -7,6 +7,7 @@ name = "BouncingBall"
 version = "0.1.0"
 dependencies = [
  "fmi",
+ "fmi-export",
  "serde",
  "serde_json",
  "static_vcruntime",
@@ -412,6 +413,15 @@ dependencies = [
  "tempfile",
  "url",
  "zip 2.4.2",
+]
+
+[[package]]
+name = "fmi-export"
+version = "0.1.0"
+dependencies = [
+ "fmi",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

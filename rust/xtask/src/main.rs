@@ -43,14 +43,14 @@ fn zip_dir<P: AsRef<Path>>(src_dir: P, dst_file: P) -> Result<(), Box<dyn std::e
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    fs::create_dir_all("deploy/binaries/x86_64-windows")?;
+    fs::create_dir_all("BouncingBall/deploy/binaries/x86_64-windows")?;
 
     fs::copy(
         "target/debug/BouncingBall.dll",
-        "deploy/binaries/x86_64-windows/BouncingBall.dll",
+        "BouncingBall/deploy/binaries/x86_64-windows/BouncingBall.dll",
     )?;
 
-    let src_dir = PathBuf::from("deploy");
+    let src_dir = PathBuf::from("BouncingBall/deploy");
     let dst_file = PathBuf::from("BouncingBall.fmu");
 
     zip_dir(src_dir, dst_file)?;

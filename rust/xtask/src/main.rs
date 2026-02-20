@@ -5,6 +5,7 @@ use walkdir::WalkDir;
 use zip::write::FileOptions;
 use zip::CompressionMethod;
 use std::fs;
+use std::process::Command;
 use fmi::fmi3::PLATFORM_TUPLE;
 use fmi::SHARED_LIBRARY_EXTENSION;
 
@@ -51,6 +52,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for model_name in model_names {
         
+        let status = Command::new("cargo")
+            .args(["build", "--package", model_name])
+            .status()?;
+
+        if !status.success() {
+            return Err(format!("Failed to build {}", model_name).into());
+        }
+
         let binary_dir = PathBuf::from(model_name).join(deploy_dir).join("binaries").join(PLATFORM_TUPLE);
         
         fs::create_dir_all(&binary_dir)?;

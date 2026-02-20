@@ -126,4 +126,8 @@ impl ModelInstance {
 
 // Include shared FMI3 implementation
 // This compiles common functions directly into this DLL
-include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fmi-export/src/shared_impl.rs"));
+#[cfg(feature = "fmi2")]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fmi-export/src/fmi2.rs"));
+
+#[cfg(not(feature = "fmi2"))]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fmi-export/src/fmi3.rs"));

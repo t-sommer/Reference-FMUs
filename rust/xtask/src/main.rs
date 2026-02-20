@@ -5,6 +5,8 @@ use walkdir::WalkDir;
 use zip::write::FileOptions;
 use zip::CompressionMethod;
 use std::fs;
+use fmi::fmi3::PLATFORM_TUPLE;
+use fmi::SHARED_LIBRARY_EXTENSION;
 
 
 fn zip_dir<P: AsRef<Path>>(src_dir: P, dst_file: P) -> Result<(), Box<dyn std::error::Error>> {
@@ -43,31 +45,39 @@ fn zip_dir<P: AsRef<Path>>(src_dir: P, dst_file: P) -> Result<(), Box<dyn std::e
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    // Build and package BouncingBall
-    fs::create_dir_all("BouncingBall/deploy/binaries/x86_64-windows")?;
+    let model_names = ["BouncingBall", "Dahlquist"];
 
-    fs::copy(
-        "target/debug/BouncingBall.dll",
-        "BouncingBall/deploy/binaries/x86_64-windows/BouncingBall.dll",
-    )?;
+    let deploy_dir = "fmi3";
 
-    let src_dir = PathBuf::from("BouncingBall/deploy");
-    let dst_file = PathBuf::from("BouncingBall.fmu");
+    for model_name in model_names {
+        
+        let binary_dir = PathBuf::from(model_name).join(deploy_dir).join("binaries").join(PLATFORM_TUPLE);
+        
+        fs::create_dir_all(&binary_dir)?;
+        
+        dbg!(&binary_dir);
 
-    zip_dir(src_dir, dst_file)?;
+        let shared_library_name = format!("{}{}", model_name, SHARED_LIBRARY_EXTENSION);
+        
+        let dll_src = format!("target/debug/{shared_library_name}");
+        let dll_dst = binary_dir.join(shared_library_name);
+        
+        dbg!(&dll_src);
+        dbg!(&dll_dst);
+        
+        fs::copy(
+            dll_src,
+            dll_dst,
+        )?;
 
-    // Build and package Dahlquist
-    fs::create_dir_all("Dahlquist/deploy/binaries/x86_64-windows")?;
+        let src_dir = PathBuf::from(model_name).join(deploy_dir);
+        let dst_file = PathBuf::from(format!("{}.fmu", model_name));
 
-    fs::copy(
-        "target/debug/Dahlquist.dll",
-        "Dahlquist/deploy/binaries/x86_64-windows/Dahlquist.dll",
-    )?;
+        dbg!(&src_dir);
+        dbg!(&dst_file);
 
-    let src_dir = PathBuf::from("Dahlquist/deploy");
-    let dst_file = PathBuf::from("Dahlquist.fmu");
-
-    zip_dir(src_dir, dst_file)?;
+        zip_dir(src_dir, dst_file)?;
+    }
 
     Ok(())
 }

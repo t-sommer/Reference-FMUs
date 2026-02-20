@@ -1,5 +1,8 @@
 #![allow(non_camel_case_types, non_snake_case, unused_variables)]
 
+#[cfg(feature = "fmi2")]
+use fmi::fmi2::types::*;
+#[cfg(not(feature = "fmi2"))]
 use fmi::fmi3::types::*;
 use std::any::type_name_of_val;
 use std::os::raw::c_void;
@@ -138,4 +141,8 @@ impl ModelInstance {
 
 // Include shared FMI3 implementation
 // This compiles common functions directly into this DLL
-include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fmi-export/src/shared_impl.rs"));
+#[cfg(feature = "fmi2")]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fmi-export/src/fmi2.rs"));
+
+#[cfg(not(feature = "fmi2"))]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fmi-export/src/fmi3.rs"));

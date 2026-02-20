@@ -15,3 +15,6 @@ serde_json = "1.0"
 
 [build-dependencies]
 static_vcruntime = "2.0"
+
+[features]
+fmi2 = []

@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+fmi = { path = "../fmi" }
 walkdir = "2.5.0"
 zip = { version = "7.4.0", default-features = false, features = ["deflate"] }

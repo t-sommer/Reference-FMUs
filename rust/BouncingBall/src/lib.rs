@@ -2,8 +2,9 @@
 
 #[cfg(feature = "fmi2")]
 use fmi::fmi2::types::*;
-#[cfg(not(feature = "fmi2"))]
+// #[cfg(not(feature = "fmi2"))]
 use fmi::fmi3::types::*;
+use fmi::types::fmiInstanceEnvironment;
 use std::any::type_name_of_val;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
@@ -66,7 +67,7 @@ enum ValueReference {
 
 impl ModelInstance {
 
-    fn new(interfaceType: InterfaceType, instanceEnvironment: fmi3InstanceEnvironment, logMessage: Option<fmi3LogMessageCallback>) -> Self {
+    fn new(interfaceType: InterfaceType, instanceEnvironment: fmiInstanceEnvironment, logMessage: Option<fmi3LogMessageCallback>) -> Self {
   
         // convert raw pointer to thread-safe representation
         let instance_environment = instanceEnvironment as usize;
@@ -77,14 +78,15 @@ impl ModelInstance {
 
             let message = CString::new(message).unwrap();
             
-            unsafe { 
-                logMessage(
-                    instanceEnvironment,
-                    fmi3Error,
-                    b"error\0".as_ptr() as fmi3String,
-                    message.as_ptr() as fmi3String,
-                ) 
-            };
+            todo!("Handle FMI 2 / 3 logging callback properly");
+            // unsafe { 
+            //     logMessage(
+            //         instanceEnvironment,
+            //         fmi3Error,
+            //         b"error\0".as_ptr() as fmi3String,
+            //         message.as_ptr() as fmi3String,
+            //     ) 
+            // };
 
         };
 

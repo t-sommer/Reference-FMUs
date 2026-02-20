@@ -102,7 +102,7 @@ pub extern "C" fn fmi2SetDebugLogging(
     nCategories: usize,
     categories: *const fmi2String,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(instance)
+    NOT_IMPLEMENTED!(c)
 }
 
 /* Creation and destruction of FMU instances and setting debug status */
@@ -124,13 +124,13 @@ pub extern "C" fn fmi2Instantiate(
     visible: fmi2Boolean,
     loggingOn: fmi2Boolean,
 ) -> fmi2Component {
-    NOT_IMPLEMENTED!(instance)
+    todo!()
 }
 
 // typedef void          fmi2FreeInstanceTYPE(fmi2Component c);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2FreeInstance(c: fmi2Component) {
-    NOT_IMPLEMENTED!(instance)
+    todo!()
 }
 
 // /* Enter and exit initialization mode, terminate and reset */

@@ -1,6 +1,9 @@
 #![allow(non_camel_case_types, non_snake_case, unused_variables)]
 
-use fmi::{fmi3::types::*, model_description::CoSimulation};
+#[cfg(feature = "fmi2")]
+use fmi::fmi2::types::*;
+// #[cfg(not(feature = "fmi2"))]
+use fmi::fmi3::types::*;
 use std::any::type_name_of_val;
 use std::os::raw::c_void;
 use std::ptr::null_mut;

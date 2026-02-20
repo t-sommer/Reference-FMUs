@@ -179,12 +179,12 @@ pub extern "C" fn fmi3EnterInitializationMode(
 }
 
 macro_rules! assert_interface_type {
-    ($instance:expr, $itype:expr) => {
-        if $instance.data.interfaceType != $itype {
+    ($instance:expr, $itype:pat) => {
+        if !matches!($instance.data.interfaceType, $itype) {
             error!($instance, 
                 "Function {} may only be called for interface type {:?} but current interface type is {:?}.",
                 current_fn!(),
-                $itype,
+                stringify!($itype),
                 $instance.data.interfaceType
             );
         }
@@ -735,22 +735,24 @@ pub extern "C" fn fmi3UpdateDiscreteStates(
     assert_not_null!(nextEventTimeDefined, instance);
     assert_not_null!(nextEventTime, instance);
 
-    let data = &mut instance.data;
+    instance.update_discrete_states();
 
-    if data.h <= 0.0 {
+    // let data = &mut instance.data;
 
-        data.h = f64::MIN_POSITIVE;  // slightly above 0 to avoid zero-crossing
-        data.v = -data.e * data.v;
+    // if data.h <= 0.0 {
 
-        if data.v.abs() < data.v_min {
-            data.v = 0.0;
-            data.g = 0.0;  // stop bouncing
-        }
+    //     data.h = f64::MIN_POSITIVE;  // slightly above 0 to avoid zero-crossing
+    //     data.v = -data.e * data.v;
 
-        unsafe { *valuesOfContinuousStatesChanged = fmi3True };
-    } else {
-        unsafe { *valuesOfContinuousStatesChanged = fmi3False };
-    }
+    //     if data.v.abs() < data.v_min {
+    //         data.v = 0.0;
+    //         data.g = 0.0;  // stop bouncing
+    //     }
+
+    //     unsafe { *valuesOfContinuousStatesChanged = fmi3True };
+    // } else {
+    //     unsafe { *valuesOfContinuousStatesChanged = fmi3False };
+    // }
 
     unsafe { 
         *discreteStatesNeedUpdate = fmi3False;
@@ -815,8 +817,10 @@ pub extern "C" fn fmi3SetContinuousStates(
 
     let continuous_states = unsafe { std::slice::from_raw_parts(continuousStates, nContinuousStates) };
 
-    instance.data.h = continuous_states[0];
-    instance.data.v = continuous_states[1]; 
+    instance.set_continuous_states(continuous_states);
+
+    // instance.data.h = continuous_states[0];
+    // instance.data.v = continuous_states[1]; 
 
     fmi3OK
 }
@@ -837,8 +841,9 @@ pub extern "C" fn fmi3GetContinuousStateDerivatives(
 
     let derivatives = unsafe { std::slice::from_raw_parts_mut(derivatives, nContinuousStates) };
 
-    derivatives[0] = instance.data.v;
-    derivatives[1] = instance.data.g; 
+    instance.get_continuous_state_derivatives(derivatives);
+    // derivatives[0] = instance.data.v;
+    // derivatives[1] = instance.data.g; 
 
     fmi3OK
 }
@@ -859,9 +864,12 @@ pub extern "C" fn fmi3GetEventIndicators(
 
     let event_indicators = unsafe { std::slice::from_raw_parts_mut(eventIndicators, nEventIndicators) };
 
-    event_indicators[0] = instance.data.h;
+    // event_indicators[0] = instance.data.h;
 
-    fmi3OK}
+    instance.get_event_indicators(event_indicators);
+
+    fmi3OK
+}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3GetContinuousStates(
@@ -874,14 +882,15 @@ pub extern "C" fn fmi3GetContinuousStates(
 
     assert_not_null!(continuousStates, instance);
 
-    if nContinuousStates != 2 {
-        error!(instance, "Number of continuous states requested ({}) does not match the model (2).", nContinuousStates);
-    }
+    // let x = &instance.data.x;
+
+    // if nContinuousStates != x.len() {
+    //     error!(instance, "Number of continuous states requested ({}) does not match the model ({}).", nContinuousStates, x.len());
+    // }
 
     let continuous_states = unsafe { std::slice::from_raw_parts_mut(continuousStates, nContinuousStates) };
 
-    continuous_states[0] = instance.data.h;
-    continuous_states[1] = instance.data.v; 
+    instance.get_continuous_states(continuous_states);
 
     fmi3OK
 }

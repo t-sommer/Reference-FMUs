@@ -1,11 +1,11 @@
 #![allow(non_camel_case_types, non_snake_case, unused_variables)]
 
-use fmi::fmi3::types::*;
+use fmi::{fmi3::types::*, model_description::CoSimulation};
 use std::any::type_name_of_val;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
 
-use fmi_export::{InterfaceType, ModelMode};
+use fmi_export::{InterfaceType, ModelMode, ValueReference};
 use std::{error::Error, f64, ffi::CString};
 use serde::{Deserialize, Serialize};
 
@@ -17,11 +17,9 @@ struct ModelData {
     mode: ModelMode,
     eventModeUsed: bool,
     time: f64,
-    h: f64,
-    v: f64,
-    e: f64,
-    g: f64,
-    v_min: f64,
+    x: f64,
+    der_x: f64,
+    k: f64,
 }
 
 impl ModelData {
@@ -32,11 +30,9 @@ impl ModelData {
             mode: ModelMode::Instantiated,
             eventModeUsed: false,
             time: 0.0,
-            h: 1.0,  // initial height
-            v: 0.0,  // initial velocity
-            e: 0.8,  // coefficient of restitution
-            g: -9.81, // gravity
-            v_min: 0.01, // minimum velocity threshold
+            x: 1.0,
+            der_x: 0.0,
+            k: 1.0,
         }
     }
     
@@ -47,36 +43,13 @@ struct ModelInstance {
     logError: Box<LogError>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, ValueReference)]
+#[repr(u32)]
 enum ValueReference {
-    time,
-    h,
-    der_h,
-    v,
-    der_v,
-    g,
-    e,
-    v_min,
-}
-
-impl TryFrom<u32> for ValueReference {
-    
-    type Error = ();
-    
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        match value {
-            x if x == ValueReference::time as u32 => Ok(ValueReference::time),
-            x if x == ValueReference::h as u32 => Ok(ValueReference::h),
-            x if x == ValueReference::der_h as u32 => Ok(ValueReference::der_h),
-            x if x == ValueReference::v as u32 => Ok(ValueReference::v),
-            x if x == ValueReference::der_v as u32 => Ok(ValueReference::der_v),
-            x if x == ValueReference::g as u32 => Ok(ValueReference::g),
-            x if x == ValueReference::e as u32 => Ok(ValueReference::e),
-            x if x == ValueReference::v_min as u32 => Ok(ValueReference::v_min),
-            _ => Err(()),
-        }
-    }
-
+    time = 0,
+    x = 1,
+    der_x = 2,
+    k = 3,
 }
 
 impl ModelInstance {
@@ -110,42 +83,43 @@ impl ModelInstance {
     }
 
     fn doFixedStep(&mut self, stepSize: f64) {
-        self.data.v += self.data.g * stepSize;
-        self.data.h += self.data.v * stepSize;
 
-        if self.data.h <= 0.0 {
-            self.data.h = 0.0;
-            self.data.v = -self.data.e * self.data.v;
-        }
+        let mut der_x = [0.0];
+
+        self.get_continuous_state_derivatives(&mut der_x);
+
+        self.data.der_x = -self.data.k * self.data.x;
+
+        self.data.x += self.data.der_x * stepSize;
+    }
+
+    fn get_event_indicators(&self, z: &mut [f64]) {
+        // nothing to do
+    }
+
+    fn get_continuous_states(&self, x: &mut [f64]) {
+        x[0] = self.data.x;
+    }
+
+    fn update_discrete_states(&self) {
+        // nothing to do
+    }
+
+    fn set_continuous_states(&mut self, x: &[f64]) {
+        self.data.x = x[0];
+    }
+
+    fn get_continuous_state_derivatives(&self, der_x: &mut [f64]) {
+        der_x[0] = -self.data.k * self.data.x;
     }
 
     fn getFloat64(&self, value_reference: &ValueReference) -> Result<&f64, Box<dyn Error>> {
-
         match value_reference {
             ValueReference::time => Ok(&self.data.time),
-            ValueReference::h => Ok(&self.data.h),
-            ValueReference::der_h => Ok(&self.data.v),
-            ValueReference::v => Ok(&self.data.v),
-            ValueReference::der_v => Ok(&self.data.g),
-            ValueReference::g => Ok(&self.data.g),
-            ValueReference::e => Ok(&self.data.e),
-            ValueReference::v_min => Ok(&self.data.v_min),
+            ValueReference::x => Ok(&self.data.x),
+            ValueReference::der_x => Ok(&self.data.der_x),
+            ValueReference::k => Ok(&self.data.k),
         }
-
-        // match ValueReference::try_from(value_reference) {
-        //     Ok(ValueReference::time) => Ok(&self.data.time),
-        //     Ok(ValueReference::h) => Ok(&self.data.h),
-        //     Ok(ValueReference::der_h) => Ok(&self.data.v),
-        //     Ok(ValueReference::v) => Ok(&self.data.v),
-        //     Ok(ValueReference::der_v) => Ok(&self.data.g),
-        //     Ok(ValueReference::g) => Ok(&self.data.g),
-        //     Ok(ValueReference::e) => Ok(&self.data.e),
-        //     Ok(ValueReference::v_min) => Ok(&self.data.v_min),
-        //     _ => {
-        //         Err(format!("Unknown value reference for type Float64: {value_reference:?}.").into())
-        //     }
-        //     Err(_) => todo!(),
-        // }
     }
 
 }

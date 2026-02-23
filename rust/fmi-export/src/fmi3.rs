@@ -102,7 +102,23 @@ pub extern "C" fn fmi3InstantiateModelExchange(
     instanceEnvironment: fmi3InstanceEnvironment,
     logMessage: Option<fmi3LogMessageCallback>,
 ) -> fmi3Instance {
-    let instance = ModelInstance::new(InterfaceType::ModelExchange, instanceEnvironment, logMessage);
+
+    let log_message = logMessage.unwrap();
+
+    let log_error = move |message: &str| {
+        if let Ok(message) = std::ffi::CString::new(message) {
+            unsafe {
+                log_message(
+                    instanceEnvironment,
+                    fmi3Error,
+                    b"error\0".as_ptr() as fmi3String,
+                    message.as_ptr() as fmi3String,
+                )
+            };    
+        }    
+    };
+
+    let instance = ModelInstance::new(InterfaceType::ModelExchange, instanceEnvironment, Box::new(log_error));
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi3Instance
 }
@@ -122,7 +138,23 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
     logMessage: Option<fmi3LogMessageCallback>,
     intermediateUpdate: fmi3IntermediateUpdateCallback,
 ) -> fmi3Instance {
-    let instance = ModelInstance::new(InterfaceType::CoSimulation, instanceEnvironment, logMessage);
+
+    let log_message = logMessage.unwrap();
+
+    let log_error = move |message: &str| {
+        if let Ok(message) = std::ffi::CString::new(message) {
+            unsafe {
+                log_message(
+                    instanceEnvironment,
+                    fmi3Error,
+                    b"error\0".as_ptr() as fmi3String,
+                    message.as_ptr() as fmi3String,
+                )
+            };    
+        }    
+    };
+
+    let instance = ModelInstance::new(InterfaceType::CoSimulation, instanceEnvironment, Box::new(log_error));
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi3Instance
 }

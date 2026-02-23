@@ -132,19 +132,19 @@ pub extern "C" fn fmi2Instantiate(
 
     let logger = unsafe { (*functions).logger };
     
-    let instanceName = unsafe { CStr::from_ptr(instanceName) }.to_owned();
+    let instanceName = unsafe { std::ffi::CStr::from_ptr(instanceName) }.to_owned();
 
     let componentEnvironment = unsafe { (*functions).componentEnvironment };
     
     let log_error = move |message: &str| {
-        if let Ok(message) = CString::new(message) {
+        if let Ok(message) = std::ffi::CString::new(message) {
             unsafe {
                 logger(
                     componentEnvironment,
                     instanceName.as_ptr() as fmi2String,
                     fmi2Error,
                     b"error\0".as_ptr() as fmi2String,
-                    message.as_ptr(),
+                    message.as_ptr() as fmi2String,
                 )    
             };    
         }    

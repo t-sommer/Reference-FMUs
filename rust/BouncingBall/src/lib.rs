@@ -8,9 +8,8 @@ use fmi::types::fmiInstanceEnvironment;
 use std::any::type_name_of_val;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
-use std::ffi::CStr;
 use fmi_export::{InterfaceType, ModelMode, ValueReference};
-use std::{error::Error, f64, ffi::CString};
+use std::{error::Error, f64};
 use serde::{Deserialize, Serialize};
 
 

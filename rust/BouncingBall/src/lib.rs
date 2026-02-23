@@ -8,7 +8,7 @@ use fmi::types::fmiInstanceEnvironment;
 use std::any::type_name_of_val;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
-
+use std::ffi::CStr;
 use fmi_export::{InterfaceType, ModelMode, ValueReference};
 use std::{error::Error, f64, ffi::CString};
 use serde::{Deserialize, Serialize};
@@ -67,32 +67,32 @@ enum ValueReference {
 
 impl ModelInstance {
 
-    fn new(interfaceType: InterfaceType, instanceEnvironment: fmiInstanceEnvironment, logMessage: Option<fmi3LogMessageCallback>) -> Self {
+    fn new(interfaceType: InterfaceType, instanceEnvironment: fmiInstanceEnvironment, logMessage: Box<LogError>) -> Self {
   
         // convert raw pointer to thread-safe representation
         let instance_environment = instanceEnvironment as usize;
 
-        let logMessage = logMessage.unwrap();
+        // let logMessage = logMessage.unwrap();
 
-        let log_error = move |message: &str| {
+        // let log_error = move |message: &str| {
 
-            let message = CString::new(message).unwrap();
+        //     let message = CString::new(message).unwrap();
             
-            todo!("Handle FMI 2 / 3 logging callback properly");
-            // unsafe { 
-            //     logMessage(
-            //         instanceEnvironment,
-            //         fmi3Error,
-            //         b"error\0".as_ptr() as fmi3String,
-            //         message.as_ptr() as fmi3String,
-            //     ) 
-            // };
+        //     todo!("Handle FMI 2 / 3 logging callback properly");
+        //     // unsafe { 
+        //     //     logMessage(
+        //     //         instanceEnvironment,
+        //     //         fmi3Error,
+        //     //         b"error\0".as_ptr() as fmi3String,
+        //     //         message.as_ptr() as fmi3String,
+        //     //     ) 
+        //     // };
 
-        };
+        // };
 
         ModelInstance {
             data: ModelData::default(interfaceType),
-            logError: Box::new(log_error),
+            logError: logMessage,
         }
     }
 

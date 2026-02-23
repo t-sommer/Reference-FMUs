@@ -145,13 +145,8 @@ pub extern "C" fn fmi3InstantiateScheduledExecution(
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3FreeInstance(instance: fmi3Instance) {
-    
-    if instance.is_null() {
-        return;
-    }
-
-    unsafe {
-        let _ = Box::from_raw(instance as *mut ModelInstance);
+    if !instance.is_null() {
+        let _ = unsafe { Box::from_raw(instance as *mut ModelInstance)};
     }
 }
 

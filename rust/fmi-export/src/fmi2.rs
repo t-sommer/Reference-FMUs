@@ -113,14 +113,57 @@ pub extern "C" fn fmi2Instantiate(
     visible: fmi2Boolean,
     loggingOn: fmi2Boolean,
 ) -> fmi2Component {
-    null_mut()
+    
+    if instanceName.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    if fmuGUID.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    if functions.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    if unsafe { (*functions).logger as *const c_void }.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let logger = unsafe { (*functions).logger };
+    
+    let instanceName = unsafe { CStr::from_ptr(instanceName) }.to_owned();
+
+    let componentEnvironment = unsafe { (*functions).componentEnvironment };
+    
+    let log_error = move |message: &str| {
+        if let Ok(message) = CString::new(message) {
+            unsafe {
+                logger(
+                    componentEnvironment,
+                    instanceName.as_ptr() as fmi2String,
+                    fmi2Error,
+                    b"error\0".as_ptr() as fmi2String,
+                    message.as_ptr(),
+                )    
+            };    
+        }    
+    };    
+
+    let instance = ModelInstance::new(InterfaceType::CoSimulation, componentEnvironment, Box::new(log_error));
+    let instance = Box::new(instance);
+    Box::into_raw(instance) as fmi2Component
 }
 
 // typedef void          fmi2FreeInstanceTYPE(fmi2Component c);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2FreeInstance(c: fmi2Component) {
-    // TODO
+    if !c.is_null() {
+        let _ = unsafe { Box::from_raw(c as *mut ModelInstance)};
+    }
 }
+
+/* Enter and exit initialization mode, enter event mode, terminate and reset */
 
 // /* Enter and exit initialization mode, terminate and reset */
 // typedef fmi2Status fmi2SetupExperimentTYPE       (fmi2Component c,
@@ -138,25 +181,25 @@ pub extern "C" fn fmi2SetupExperiment(
     stopTimeDefined: fmi2Boolean,
     stopTime: fmi2Real,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    fmi2OK
 }
 
 // typedef fmi2Status fmi2EnterInitializationModeTYPE(fmi2Component c);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2EnterInitializationMode(c: fmi2Component) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    fmi2OK
 }
 
 // typedef fmi2Status fmi2ExitInitializationModeTYPE (fmi2Component c);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2ExitInitializationMode(c: fmi2Component) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    fmi2OK
 }
 
 // typedef fmi2Status fmi2TerminateTYPE              (fmi2Component c);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2Terminate(c: fmi2Component) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    fmi2OK
 }
 
 // typedef fmi2Status fmi2ResetTYPE                  (fmi2Component c);
@@ -175,7 +218,30 @@ pub extern "C" fn fmi2GetReal(
     nvr: usize,
     value: *mut fmi2Real,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance!(c);
+
+    assert_not_null!(vr, instance);
+    assert_not_null!(value, instance);
+
+    let valueReferences =
+        unsafe { std::slice::from_raw_parts(vr, nvr) };
+
+    let values = unsafe { std::slice::from_raw_parts_mut(value, nvr) };
+
+    for (i, &vr) in valueReferences.iter().enumerate() {
+
+        if let Ok(value_reference) = ValueReference::try_from(vr) {
+            if let Ok(value) = instance.getFloat64(&value_reference) {
+                values[i] = *value;
+            } else {
+                error!(instance, "Failed to get value for value reference: {}", vr);
+            }
+        } else {
+            error!(instance, "Unknown value reference: {}", vr);
+        }
+    }
+
+    fmi2OK
 }
 
 // typedef fmi2Status fmi2GetIntegerTYPE(fmi2Component c, const fmi2ValueReference vr[], size_t nvr, fmi2Integer value[]);
@@ -479,7 +545,10 @@ pub extern "C" fn fmi2DoStep(
     communicationStepSize: fmi2Real,
     noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance_mut!(c);
+    instance.doFixedStep(communicationStepSize);
+    instance.data.time = currentCommunicationPoint + communicationStepSize;
+    fmi2OK
 }
 
 // typedef fmi2Status fmi2CancelStepTYPE(fmi2Component c);

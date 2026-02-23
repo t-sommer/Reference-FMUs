@@ -67,28 +67,6 @@ enum ValueReference {
 impl ModelInstance {
 
     fn new(interfaceType: InterfaceType, instanceEnvironment: fmiInstanceEnvironment, logMessage: Box<LogError>) -> Self {
-  
-        // convert raw pointer to thread-safe representation
-        let instance_environment = instanceEnvironment as usize;
-
-        // let logMessage = logMessage.unwrap();
-
-        // let log_error = move |message: &str| {
-
-        //     let message = CString::new(message).unwrap();
-            
-        //     todo!("Handle FMI 2 / 3 logging callback properly");
-        //     // unsafe { 
-        //     //     logMessage(
-        //     //         instanceEnvironment,
-        //     //         fmi3Error,
-        //     //         b"error\0".as_ptr() as fmi3String,
-        //     //         message.as_ptr() as fmi3String,
-        //     //     ) 
-        //     // };
-
-        // };
-
         ModelInstance {
             data: ModelData::default(interfaceType),
             logError: logMessage,
@@ -96,33 +74,42 @@ impl ModelInstance {
     }
 
     fn doFixedStep(&mut self, stepSize: f64) {
-        // self.data.v += self.data.g * stepSize;
-        // self.data.h += self.data.v * stepSize;
+        self.data.v += self.data.g * stepSize;
+        self.data.h += self.data.v * stepSize;
 
-        // if self.data.h <= 0.0 {
-        //     self.data.h = 0.0;
-        //     self.data.v = -self.data.e * self.data.v;
-        // }
+        if self.data.h <= 0.0 {
+            self.data.h = 0.0;
+            self.data.v = -self.data.e * self.data.v;
+        }
     }
 
     fn get_event_indicators(&self, z: &mut [f64]) {
-        todo!()
+        z[0] = self.data.h;
     }
 
     fn get_continuous_states(&self, x: &mut [f64]) {
-        todo!()
+        x[0] = self.data.h;
+        x[1] = self.data.v;
     }
 
-    fn update_discrete_states(&self) {
-        todo!()
+    fn update_discrete_states(&mut self) {
+        if self.data.h <= 0.0 && self.data.v < 0.0 {
+            self.data.h = 0.0;
+            self.data.v = -self.data.e * self.data.v;
+            if self.data.v.abs() < self.data.v_min {
+                self.data.v = 0.0;
+            }
+        }
     }
 
-    fn set_continuous_states(&self, x: &[f64]) {
-        todo!()
+    fn set_continuous_states(&mut self, x: &[f64]) {
+        self.data.h = x[0];
+        self.data.v = x[1];
     }
 
     fn get_continuous_state_derivatives(&self, der_x: &mut [f64]) {
-        todo!()
+        der_x[0] = self.data.v;
+        der_x[1] = self.data.g;
     }
 
     fn getFloat64(&self, value_reference: &ValueReference) -> Result<&f64, Box<dyn Error>> {

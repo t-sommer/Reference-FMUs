@@ -73,6 +73,32 @@ macro_rules! NOT_IMPLEMENTED {
 }};
 }
 
+macro_rules! assert_interface_type {
+    ($instance:expr, $itype:pat) => {
+        if !matches!($instance.data.interfaceType, $itype) {
+            error!($instance, 
+                "Function {} may only be called for interface type {:?} but current interface type is {:?}.",
+                current_fn!(),
+                stringify!($itype),
+                $instance.data.interfaceType
+            );
+        }
+    };
+}
+
+macro_rules! assert_mode {
+    ($instance:expr, $mode:pat) => {
+        if !matches!($instance.data.mode, $mode) {
+            error!($instance, 
+                "Function {} may only be called in mode {:?} but current mode is {:?}.",
+                current_fn!(),
+                stringify!($mode),
+                $instance.data.mode
+            );
+        }
+    };
+}
+
 /* Inquire version numbers and setting logging status */
 
 #[unsafe(no_mangle)]
@@ -203,32 +229,6 @@ pub extern "C" fn fmi3EnterInitializationMode(
     instance.data.mode = ModelMode::InitializationMode;
 
     fmi3OK
-}
-
-macro_rules! assert_interface_type {
-    ($instance:expr, $itype:pat) => {
-        if !matches!($instance.data.interfaceType, $itype) {
-            error!($instance, 
-                "Function {} may only be called for interface type {:?} but current interface type is {:?}.",
-                current_fn!(),
-                stringify!($itype),
-                $instance.data.interfaceType
-            );
-        }
-    };
-}
-
-macro_rules! assert_mode {
-    ($instance:expr, $mode:pat) => {
-        if !matches!($instance.data.mode, $mode) {
-            error!($instance, 
-                "Function {} may only be called in mode {:?} but current mode is {:?}.",
-                current_fn!(),
-                stringify!($mode),
-                $instance.data.mode
-            );
-        }
-    };
 }
 
 #[unsafe(no_mangle)]
@@ -824,6 +824,8 @@ pub extern "C" fn fmi3CompletedIntegratorStep(
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3SetTime(instance: fmi3Instance, time: fmi3Float64) -> fmi3Status {
     let instance = get_instance_mut!(instance);
+    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_mode!(instance, ModelMode::ContinuousTimeMode);
     instance.data.time = time;
     fmi3OK
 }
@@ -845,9 +847,6 @@ pub extern "C" fn fmi3SetContinuousStates(
     let continuous_states = unsafe { std::slice::from_raw_parts(continuousStates, nContinuousStates) };
 
     instance.set_continuous_states(continuous_states);
-
-    // instance.data.h = continuous_states[0];
-    // instance.data.v = continuous_states[1]; 
 
     fmi3OK
 }

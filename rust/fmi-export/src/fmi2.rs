@@ -62,6 +62,32 @@ macro_rules! NOT_IMPLEMENTED {
 }};
 }
 
+macro_rules! assert_interface_type {
+    ($instance:expr, $itype:pat) => {
+        if !matches!($instance.data.interfaceType, $itype) {
+            error!($instance, 
+                "Function {} may only be called for interface type {:?} but current interface type is {:?}.",
+                current_fn!(),
+                stringify!($itype),
+                $instance.data.interfaceType
+            );
+        }
+    };
+}
+
+macro_rules! assert_mode {
+    ($instance:expr, $mode:pat) => {
+        if !matches!($instance.data.mode, $mode) {
+            error!($instance, 
+                "Function {} may only be called in mode {:?} but current mode is {:?}.",
+                current_fn!(),
+                stringify!($mode),
+                $instance.data.mode
+            );
+        }
+    };
+}
+
 /***************************************************
 Types for Common Functions
 ****************************************************/
@@ -148,9 +174,15 @@ pub extern "C" fn fmi2Instantiate(
                 )    
             };    
         }    
-    };    
+    };
 
-    let instance = ModelInstance::new(InterfaceType::CoSimulation, componentEnvironment, Box::new(log_error));
+    let interfaceType = match fmuType {
+        fmi::fmi2::types::fmi2Type::fmi2ModelExchange => InterfaceType::ModelExchange,
+        fmi::fmi2::types::fmi2Type::fmi2CoSimulation => InterfaceType::CoSimulation,
+        _ => return std::ptr::null_mut(),
+    };
+
+    let instance = ModelInstance::new(interfaceType, componentEnvironment, Box::new(log_error));
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi2Component
 }
@@ -181,18 +213,29 @@ pub extern "C" fn fmi2SetupExperiment(
     stopTimeDefined: fmi2Boolean,
     stopTime: fmi2Real,
 ) -> fmi2Status {
+    let instance = get_instance_mut!(c);
+    assert_mode!(instance, ModelMode::Instantiated);
     fmi2OK
 }
 
 // typedef fmi2Status fmi2EnterInitializationModeTYPE(fmi2Component c);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2EnterInitializationMode(c: fmi2Component) -> fmi2Status {
+    let instance = get_instance_mut!(c);
+    assert_mode!(instance, ModelMode::Instantiated);
+    instance.data.mode = ModelMode::InitializationMode;
     fmi2OK
 }
 
 // typedef fmi2Status fmi2ExitInitializationModeTYPE (fmi2Component c);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2ExitInitializationMode(c: fmi2Component) -> fmi2Status {
+    let instance = get_instance_mut!(c);
+    assert_mode!(instance, ModelMode::InitializationMode);
+    instance.data.mode = match instance.data.interfaceType {
+        InterfaceType::ModelExchange => ModelMode::EventMode,
+        InterfaceType::CoSimulation => ModelMode::StepMode,
+    };
     fmi2OK
 }
 
@@ -406,22 +449,46 @@ Types for Functions for FMI2 for Model Exchange
 // typedef fmi2Status fmi2EnterEventModeTYPE         (fmi2Component c);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2EnterEventMode(c: fmi2Component) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance_mut!(c);
+    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_mode!(instance, ModelMode::ContinuousTimeMode);
+    instance.data.mode = ModelMode::EventMode;
+    fmi2OK
 }
 
-// typedef fmi2Status fmi2NewDiscreteStatesTYPE      (fmi2Component c, fmi2EventInfo* fmi2eventInfo);
+// typedef fmi2Status fmi2NewDiscreteStatesTYPE      (fmi2Component c, fmi2EventInfo* eventInfo);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2NewDiscreteStates(
     c: fmi2Component,
     fmi2eventInfo: *mut fmi2EventInfo,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance_mut!(c);
+    
+    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_mode!(instance, ModelMode::EventMode);
+    
+    instance.update_discrete_states();
+
+    let event_info = unsafe { &mut *fmi2eventInfo };
+    
+    event_info.newDiscreteStatesNeeded = fmi2False;
+    event_info.terminateSimulation = fmi2False;
+    event_info.nominalsOfContinuousStatesChanged = fmi2False;
+    event_info.valuesOfContinuousStatesChanged = fmi2True;
+    event_info.nextEventTimeDefined = fmi2False;
+    event_info.nextEventTime = 0.0;
+    
+    fmi2OK
 }
 
 // typedef fmi2Status fmi2EnterContinuousTimeModeTYPE(fmi2Component c);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2EnterContinuousTimeMode(c: fmi2Component) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance_mut!(c);
+    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_mode!(instance, ModelMode::EventMode);
+    instance.data.mode = ModelMode::ContinuousTimeMode;
+    fmi2OK
 }
 
 // typedef fmi2Status fmi2CompletedIntegratorStepTYPE(fmi2Component c,
@@ -435,7 +502,10 @@ pub extern "C" fn fmi2CompletedIntegratorStep(
     enterEventMode: *mut fmi2Boolean,
     terminateSimulation: *mut fmi2Boolean,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance_mut!(c);
+    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_mode!(instance, ModelMode::ContinuousTimeMode);
+    fmi2OK
 }
 
 /* Providing independent variables and re-initialization of caching */
@@ -443,7 +513,11 @@ pub extern "C" fn fmi2CompletedIntegratorStep(
 // typedef fmi2Status fmi2SetTimeTYPE            (fmi2Component c, fmi2Real time);
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2SetTime(c: fmi2Component, time: fmi2Real) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance_mut!(c);
+    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_mode!(instance, ModelMode::ContinuousTimeMode);
+    instance.data.time = time;
+    fmi2OK
 }
 
 // typedef fmi2Status fmi2SetContinuousStatesTYPE(fmi2Component c, const fmi2Real x[], size_t nx);
@@ -453,7 +527,11 @@ pub extern "C" fn fmi2SetContinuousStates(
     x: *const fmi2Real,
     nx: usize,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance_mut!(c);
+    assert_not_null!(x, instance);
+    let continuous_states = unsafe { std::slice::from_raw_parts(x, nx) };
+    instance.set_continuous_states(continuous_states);
+    fmi2OK
 }
 
 /* Evaluation of the model equations */
@@ -465,7 +543,11 @@ pub extern "C" fn fmi2GetDerivatives(
     derivatives: *mut fmi2Real,
     nx: usize,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance!(c);
+    assert_not_null!(derivatives, instance);
+    let derivatives = unsafe { std::slice::from_raw_parts_mut(derivatives, nx) };
+    instance.get_continuous_state_derivatives(derivatives);
+    fmi2OK
 }
 
 // typedef fmi2Status fmi2GetEventIndicatorsTYPE           (fmi2Component c, fmi2Real eventIndicators[], size_t ni);
@@ -475,7 +557,11 @@ pub extern "C" fn fmi2GetEventIndicators(
     eventIndicators: *mut fmi2Real,
     ni: usize,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance!(c);
+    assert_not_null!(eventIndicators, instance);
+    let event_indicators = unsafe { std::slice::from_raw_parts_mut(eventIndicators, ni) };
+    instance.get_event_indicators(event_indicators);
+    fmi2OK
 }   
 
 // typedef fmi2Status fmi2GetContinuousStatesTYPE          (fmi2Component c, fmi2Real x[],               size_t nx);
@@ -485,7 +571,11 @@ pub extern "C" fn fmi2GetContinuousStates(
     x: *mut fmi2Real,
     nx: usize,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance!(c);
+    assert_not_null!(x, instance);
+    let continuous_states = unsafe { std::slice::from_raw_parts_mut(x, nx) };
+    instance.get_continuous_states(continuous_states);
+    fmi2OK
 }   
 
 // typedef fmi2Status fmi2GetNominalsOfContinuousStatesTYPE(fmi2Component c, fmi2Real x_nominal[],       size_t nx);
@@ -495,7 +585,12 @@ pub extern "C" fn fmi2GetNominalsOfContinuousStates(
     x_nominal: *mut fmi2Real,
     nx: usize,
 ) -> fmi2Status {
-    NOT_IMPLEMENTED!(c)
+    let instance = get_instance!(c);
+    assert_not_null!(x_nominal, instance);
+    let nominals = unsafe { std::slice::from_raw_parts_mut(x_nominal, nx) };
+    nominals[0] = 1.0;
+    nominals[1] = 1.0; 
+    fmi2OK
 }      
 
 /***************************************************

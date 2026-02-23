@@ -1,4 +1,4 @@
-use fmi::types::fmiStatus::{self, fmiOK};
+use fmi::types::fmiStatus;
 use serde::{Deserialize, Serialize};
 
 // Re-export the derive macro
@@ -23,6 +23,8 @@ pub enum ModelMode {
 pub trait BaseModel {
 
     fn log_error(&self, message: &str);
+
+    fn time(&self) -> f64;
 
     fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {
         if z.len() > 0 {
@@ -71,6 +73,12 @@ pub trait BaseModel {
         } else {
             fmiStatus::fmiOK
         }
+    }
+
+    fn get_Float64(&self, value_reference: u32, _value: &mut f64) -> fmiStatus {
+        let message = format!("Unknown value reference for type Float64: {:?}", value_reference);
+        self.log_error(&message);
+        fmiStatus::fmiError
     }
 }
 

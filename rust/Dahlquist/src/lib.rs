@@ -9,8 +9,9 @@ use std::os::raw::c_void;
 use std::ptr::null_mut;
 
 use fmi_export::{BaseModel, InterfaceType, ModelMode, ValueReference};
-use std::{error::Error, f64};
 use serde::{Deserialize, Serialize};
+
+const FIXED_STEP_SIZE: f64 = 0.1;
 
 type LogError = dyn Fn(&str);
 
@@ -19,6 +20,7 @@ struct ModelData {
     interfaceType: InterfaceType,
     mode: ModelMode,
     eventModeUsed: bool,
+    n_steps: u64,
     time: f64,
     x: f64,
     der_x: f64,
@@ -32,6 +34,7 @@ impl ModelData {
             interfaceType: interfaceType,
             mode: ModelMode::Instantiated,
             eventModeUsed: false,
+            n_steps: 0,
             time: 0.0,
             x: 1.0,
             der_x: 0.0,
@@ -50,6 +53,10 @@ impl BaseModel for ModelInstance {
     fn log_error(&self, message: &str) {
         (self.logError)(message);
     }
+
+    fn time(&self) -> f64 {
+        self.data.time
+    }
 }
 
 #[derive(Debug, ValueReference)]
@@ -63,43 +70,26 @@ enum ValueReference {
 
 impl ModelInstance {
 
-    fn new(interfaceType: InterfaceType, instanceEnvironment: fmi3InstanceEnvironment, logMessage: Box<LogError>) -> Self {
-  
-        // convert raw pointer to thread-safe representation
-        let instance_environment = instanceEnvironment as usize;
-
-        // let logMessage = logMessage.unwrap();
-
-        // let log_error = move |message: &str| {
-
-        //     let message = CString::new(message).unwrap();
-            
-        //     unsafe { 
-        //         logMessage(
-        //             instanceEnvironment,
-        //             fmi3Error,
-        //             b"error\0".as_ptr() as fmi3String,
-        //             message.as_ptr() as fmi3String,
-        //         ) 
-        //     };
-
-        // };
-
+    fn new(interfaceType: InterfaceType, logMessage: Box<LogError>) -> Self {
         ModelInstance {
             data: ModelData::default(interfaceType),
             logError: logMessage,
         }
     }
 
-    fn doFixedStep(&mut self, stepSize: f64) {
-
-        let mut der_x = [0.0];
-
+    fn do_fixed_step(&mut self) {
+        let mut x = [0.0; 1];
+        let mut der_x = [0.0; 1];
+        
+        self.get_continuous_states(&mut x);
         self.get_continuous_state_derivatives(&mut der_x);
 
-        self.data.der_x = -self.data.k * self.data.x;
+        x[0] += der_x[0] * FIXED_STEP_SIZE;
+        
+        self.data.n_steps += 1;
+        self.data.time = self.data.n_steps as f64 * FIXED_STEP_SIZE;
 
-        self.data.x += self.data.der_x * stepSize;
+        self.set_continuous_states(&x);
     }
 
     fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {
@@ -146,15 +136,20 @@ impl ModelInstance {
         fmiStatus::fmiOK
     }
 
-    fn getFloat64(&self, value_reference: &ValueReference) -> Result<&f64, Box<dyn Error>> {
-        match value_reference {
-            ValueReference::time => Ok(&self.data.time),
-            ValueReference::x => Ok(&self.data.x),
-            ValueReference::der_x => Ok(&self.data.der_x),
-            ValueReference::k => Ok(&self.data.k),
+    fn get_Float64(&self, value_reference: u32, value: &mut f64) -> fmiStatus {
+        match ValueReference::try_from(value_reference) {
+            Ok(ValueReference::time) => *value = self.data.time,
+            Ok(ValueReference::x) => *value = self.data.x,
+            Ok(ValueReference::der_x) => *value = self.data.der_x,
+            Ok(ValueReference::k) => *value = self.data.k,
+            Err(_) => {
+                let message = format!("Unknown value reference for type Float64: {}", value_reference);
+                (self.logError)(&message);
+                return fmiStatus::fmiError;
+            }
         }
+        fmiStatus::fmiOK
     }
-
 }
 
 // Include shared FMI3 implementation

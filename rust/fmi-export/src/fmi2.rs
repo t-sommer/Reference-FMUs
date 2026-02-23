@@ -182,7 +182,7 @@ pub extern "C" fn fmi2Instantiate(
         _ => return std::ptr::null_mut(),
     };
 
-    let instance = ModelInstance::new(interfaceType, componentEnvironment, Box::new(log_error));
+    let instance = ModelInstance::new(interfaceType, Box::new(log_error));
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi2Component
 }
@@ -272,15 +272,9 @@ pub extern "C" fn fmi2GetReal(
     let values = unsafe { std::slice::from_raw_parts_mut(value, nvr) };
 
     for (i, &vr) in valueReferences.iter().enumerate() {
-
-        if let Ok(value_reference) = ValueReference::try_from(vr) {
-            if let Ok(value) = instance.getFloat64(&value_reference) {
-                values[i] = *value;
-            } else {
-                error!(instance, "Failed to get value for value reference: {}", vr);
-            }
-        } else {
-            error!(instance, "Unknown value reference: {}", vr);
+        let status = instance.get_Float64(vr, &mut values[i]);
+        if status != fmi2OK {
+            return status;
         }
     }
 
@@ -635,8 +629,12 @@ pub extern "C" fn fmi2DoStep(
     noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
 ) -> fmi2Status {
     let instance = get_instance_mut!(c);
-    instance.doFixedStep(communicationStepSize);
-    instance.data.time = currentCommunicationPoint + communicationStepSize;
+    loop {
+        if instance.data.time + FIXED_STEP_SIZE >= currentCommunicationPoint + communicationStepSize {
+            break;
+        }
+        instance.do_fixed_step();
+    }    
     fmi2OK
 }
 

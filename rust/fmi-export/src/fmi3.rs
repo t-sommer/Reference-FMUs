@@ -144,7 +144,7 @@ pub extern "C" fn fmi3InstantiateModelExchange(
         }    
     };
 
-    let instance = ModelInstance::new(InterfaceType::ModelExchange, instanceEnvironment, Box::new(log_error));
+    let instance = ModelInstance::new(InterfaceType::ModelExchange, Box::new(log_error));
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi3Instance
 }
@@ -180,7 +180,7 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
         }    
     };
 
-    let instance = ModelInstance::new(InterfaceType::CoSimulation, instanceEnvironment, Box::new(log_error));
+    let instance = ModelInstance::new(InterfaceType::CoSimulation, Box::new(log_error));
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi3Instance
 }
@@ -326,36 +326,10 @@ pub extern "C" fn fmi3GetFloat64(
     let values = unsafe { std::slice::from_raw_parts_mut(values, nValues) };
 
     for (i, &vr) in valueReferences.iter().enumerate() {
-
-        if let Ok(value_reference) = ValueReference::try_from(vr) {
-            if let Ok(value) = instance.getFloat64(&value_reference) {
-                values[i] = *value;
-            } else {
-                error!(instance, "Failed to get value for value reference: {}", vr);
-            }
-        } else {
-            error!(instance, "Unknown value reference: {}", vr);
+        let status = instance.get_Float64(vr, &mut values[i]);
+        if status != fmi3OK {
+            return status;
         }
-
-        // let data = &instance.data;
-
-        // values[i] = data.time;
-
-
-                
-        // match ValueReference::try_from(vr) {
-        //     Ok(ValueReference::time) => values[i] = data.time,
-        //     Ok(ValueReference::h) => values[i] = data.h,
-        //     Ok(ValueReference::der_h) => values[i] = data.v,
-        //     Ok(ValueReference::v) => values[i] = data.v,
-        //     Ok(ValueReference::der_v) => values[i] = -data.g,
-        //     Ok(ValueReference::g) => values[i] = data.g,
-        //     Ok(ValueReference::e) => values[i] = data.e,
-        //     Ok(ValueReference::v_min) => values[i] = data.v_min,
-        //     _ => {
-        //         error!(instance, "Unknown value reference: {}", vr);
-        //     }
-        // }
     }
 
     fmi3OK
@@ -999,9 +973,12 @@ pub extern "C" fn fmi3DoStep(
 
     assert_mode!(instance, ModelMode::StepMode);
 
-    instance.doFixedStep(communicationStepSize);
-
-    instance.data.time = currentCommunicationPoint + communicationStepSize;
+    loop {
+        if instance.data.time + FIXED_STEP_SIZE >= currentCommunicationPoint + communicationStepSize {
+            break;
+        }
+        instance.do_fixed_step();
+    }
 
     fmi3OK
 }

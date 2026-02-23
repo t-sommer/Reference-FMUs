@@ -928,19 +928,9 @@ pub extern "C" fn fmi3GetNominalsOfContinuousStates(
     nNominals: usize,
 ) -> fmi3Status {
     let instance = get_instance!(instance);
-
     assert_not_null!(nominals, instance);
-
-    if nNominals != 2 {
-        error!(instance, "Number of nominals of continuous states requested ({nNominals}) does not match the model (2).");
-    }
-
     let nominals = unsafe { std::slice::from_raw_parts_mut(nominals, nNominals) };
-
-    nominals[0] = 1.0;
-    nominals[1] = 1.0; 
-
-    fmi3OK
+    instance.get_nominals_of_continuous_states(nominals)
 }
 
 #[unsafe(no_mangle)]

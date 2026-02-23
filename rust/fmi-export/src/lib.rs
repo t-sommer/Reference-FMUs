@@ -1,3 +1,4 @@
+use fmi::types::fmiStatus::{self, fmiOK};
 use serde::{Deserialize, Serialize};
 
 // Re-export the derive macro
@@ -17,6 +18,60 @@ pub enum ModelMode {
     ContinuousTimeMode,
     StepMode,
     Terminated,
+}
+
+pub trait BaseModel {
+
+    fn log_error(&self, message: &str);
+
+    fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {
+        if z.len() > 0 {
+            self.log_error("This model has no event indicators");
+            fmiStatus::fmiError
+        } else {
+            fmiStatus::fmiOK
+        }
+    }
+
+    fn get_continuous_states(&self, x: &mut [f64]) -> fmiStatus {
+        if x.len() > 0 {
+            self.log_error("This model has no continuous states");
+            return fmiStatus::fmiError;
+        } else {
+            fmiStatus::fmiOK
+        }
+    }
+
+    fn get_nominals_of_continuous_states(&self, nominals: &mut [f64]) -> fmiStatus {
+        if nominals.len() > 0 {
+            self.log_error("This model has no continuous states");
+            return fmiStatus::fmiError;
+        } else {
+            fmiStatus::fmiOK
+        }
+    }
+
+    fn update_discrete_states(&mut self) -> fmiStatus {
+        fmiStatus::fmiOK
+    }
+
+    fn set_continuous_states(&mut self, x: &[f64]) -> fmiStatus {
+        if x.len() > 0 {
+            self.log_error("This model has no continuous states");
+            return fmiStatus::fmiError;
+        } else {
+            fmiStatus::fmiOK
+        }
+    }
+
+    fn get_continuous_state_derivatives(&self, der_x: &mut [f64]) -> fmiStatus {
+        if der_x.len() > 0 {
+            self.log_error("This model has no continuous states");
+            return fmiStatus::fmiError;
+        } else {
+            fmiStatus::fmiOK
+        }
+    }
 }
 
 

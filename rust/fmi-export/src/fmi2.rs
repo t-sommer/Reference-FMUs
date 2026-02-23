@@ -530,8 +530,7 @@ pub extern "C" fn fmi2SetContinuousStates(
     let instance = get_instance_mut!(c);
     assert_not_null!(x, instance);
     let continuous_states = unsafe { std::slice::from_raw_parts(x, nx) };
-    instance.set_continuous_states(continuous_states);
-    fmi2OK
+    instance.set_continuous_states(continuous_states)
 }
 
 /* Evaluation of the model equations */
@@ -546,8 +545,7 @@ pub extern "C" fn fmi2GetDerivatives(
     let instance = get_instance!(c);
     assert_not_null!(derivatives, instance);
     let derivatives = unsafe { std::slice::from_raw_parts_mut(derivatives, nx) };
-    instance.get_continuous_state_derivatives(derivatives);
-    fmi2OK
+    instance.get_continuous_state_derivatives(derivatives)
 }
 
 // typedef fmi2Status fmi2GetEventIndicatorsTYPE           (fmi2Component c, fmi2Real eventIndicators[], size_t ni);
@@ -560,8 +558,7 @@ pub extern "C" fn fmi2GetEventIndicators(
     let instance = get_instance!(c);
     assert_not_null!(eventIndicators, instance);
     let event_indicators = unsafe { std::slice::from_raw_parts_mut(eventIndicators, ni) };
-    instance.get_event_indicators(event_indicators);
-    fmi2OK
+    instance.get_event_indicators(event_indicators)
 }   
 
 // typedef fmi2Status fmi2GetContinuousStatesTYPE          (fmi2Component c, fmi2Real x[],               size_t nx);
@@ -574,8 +571,7 @@ pub extern "C" fn fmi2GetContinuousStates(
     let instance = get_instance!(c);
     assert_not_null!(x, instance);
     let continuous_states = unsafe { std::slice::from_raw_parts_mut(x, nx) };
-    instance.get_continuous_states(continuous_states);
-    fmi2OK
+    instance.get_continuous_states(continuous_states)
 }   
 
 // typedef fmi2Status fmi2GetNominalsOfContinuousStatesTYPE(fmi2Component c, fmi2Real x_nominal[],       size_t nx);
@@ -588,9 +584,7 @@ pub extern "C" fn fmi2GetNominalsOfContinuousStates(
     let instance = get_instance!(c);
     assert_not_null!(x_nominal, instance);
     let nominals = unsafe { std::slice::from_raw_parts_mut(x_nominal, nx) };
-    nominals[0] = 1.0;
-    nominals[1] = 1.0; 
-    fmi2OK
+    instance.get_nominals_of_continuous_states(nominals)
 }      
 
 /***************************************************

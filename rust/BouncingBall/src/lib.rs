@@ -3,12 +3,12 @@
 #[cfg(feature = "fmi2")]
 use fmi::fmi2::types::*;
 // #[cfg(not(feature = "fmi2"))]
-use fmi::fmi3::types::*;
+use fmi::{fmi3::types::*, types::fmiStatus};
 use fmi::types::fmiInstanceEnvironment;
 use std::any::type_name_of_val;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
-use fmi_export::{InterfaceType, ModelMode, ValueReference};
+use fmi_export::{BaseModel, InterfaceType, ModelMode, ValueReference};
 use std::{error::Error, f64};
 use serde::{Deserialize, Serialize};
 
@@ -51,6 +51,12 @@ struct ModelInstance {
     logError: Box<LogError>,
 }
 
+impl BaseModel for ModelInstance {
+    fn log_error(&self, message: &str) {
+        (self.logError)(message);
+    }
+}
+
 #[derive(Debug, ValueReference)]
 #[repr(u32)]
 enum ValueReference {
@@ -83,13 +89,33 @@ impl ModelInstance {
         }
     }
 
-    fn get_event_indicators(&self, z: &mut [f64]) {
+    fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {
+        if z.len() != 1 {
+            self.log_error("Event indicators array must have length 1");
+            return fmiStatus::fmiError;
+        }
         z[0] = self.data.h;
+        fmiStatus::fmiOK
     }
 
-    fn get_continuous_states(&self, x: &mut [f64]) {
+    fn get_continuous_states(&self, x: &mut [f64]) -> fmiStatus {
+        if x.len() != 2 {
+            self.log_error("Continuous states array must have length 2");
+            return fmiStatus::fmiError;
+        }
         x[0] = self.data.h;
         x[1] = self.data.v;
+        fmiStatus::fmiOK
+    }
+
+    fn get_nominals_of_continuous_states(&self, nominals: &mut [f64]) -> fmiStatus {
+        if nominals.len() != 2 {
+            self.log_error("Nominals array must have length 2");
+            return fmiStatus::fmiError;
+        }
+        nominals[0] = 1.0;
+        nominals[1] = 1.0;
+        fmiStatus::fmiOK
     }
 
     fn update_discrete_states(&mut self) {
@@ -102,14 +128,24 @@ impl ModelInstance {
         }
     }
 
-    fn set_continuous_states(&mut self, x: &[f64]) {
+    fn set_continuous_states(&mut self, x: &[f64]) -> fmiStatus {
+        if x.len() != 2 {
+            self.log_error("Continuous states array must have length 2");
+            return fmiStatus::fmiError;
+        }
         self.data.h = x[0];
         self.data.v = x[1];
+        fmiStatus::fmiOK
     }
 
-    fn get_continuous_state_derivatives(&self, der_x: &mut [f64]) {
+    fn get_continuous_state_derivatives(&self, der_x: &mut [f64]) -> fmiStatus {
+        if der_x.len() != 2 {
+            self.log_error("Continuous state derivatives array must have length 2");
+            return fmiStatus::fmiError;
+        }
         der_x[0] = self.data.v;
         der_x[1] = self.data.g;
+        fmiStatus::fmiOK
     }
 
     fn getFloat64(&self, value_reference: &ValueReference) -> Result<&f64, Box<dyn Error>> {

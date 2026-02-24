@@ -248,6 +248,11 @@ pub extern "C" fn fmi3ExitInitializationMode(instance: fmi3Instance) -> fmi3Stat
             }
         },
     };
+    
+    if let Some(mut solver) = instance.data.solver.take() {
+        solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
+        instance.data.solver = Some(solver);
+    }
 
     fmi3OK
 }
@@ -977,7 +982,19 @@ pub extern "C" fn fmi3DoStep(
         if instance.data.time + FIXED_STEP_SIZE >= currentCommunicationPoint + communicationStepSize {
             break;
         }
-        instance.do_fixed_step();
+        // instance.do_fixed_step();
+        if let Some(mut solver) = instance.data.solver.take() {
+            let (update, status) = solver.step(instance, FIXED_STEP_SIZE);
+            if status != fmi3OK {
+                return status;
+            }
+            if update {
+                instance.update_discrete_states();
+                solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
+            }
+            instance.data.solver = Some(solver);
+            instance.data.time += FIXED_STEP_SIZE;
+        }
     }
 
     fmi3OK

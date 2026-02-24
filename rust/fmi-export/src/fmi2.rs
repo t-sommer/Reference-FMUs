@@ -236,6 +236,10 @@ pub extern "C" fn fmi2ExitInitializationMode(c: fmi2Component) -> fmi2Status {
         InterfaceType::ModelExchange => ModelMode::EventMode,
         InterfaceType::CoSimulation => ModelMode::StepMode,
     };
+    if let Some(mut solver) = instance.data.solver.take() {
+        solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
+        instance.data.solver = Some(solver);
+    }
     fmi2OK
 }
 
@@ -633,8 +637,21 @@ pub extern "C" fn fmi2DoStep(
         if instance.data.time + FIXED_STEP_SIZE >= currentCommunicationPoint + communicationStepSize {
             break;
         }
-        instance.do_fixed_step();
-    }    
+        // instance.do_fixed_step();
+        if let Some(mut solver) = instance.data.solver.take() {
+            let (update, status) = solver.step(instance, FIXED_STEP_SIZE);
+            if status != fmi2OK {
+                return status;
+            }
+            if update {
+                instance.update_discrete_states();
+                solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
+            }
+            instance.data.solver = Some(solver);
+            instance.data.time += FIXED_STEP_SIZE;
+        }
+    }
+
     fmi2OK
 }
 

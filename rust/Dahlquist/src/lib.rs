@@ -8,7 +8,7 @@ use std::any::type_name_of_val;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
 
-use fmi_export::{BaseModel, InterfaceType, ModelMode, ValueReference};
+use fmi_export::{BaseModel, InterfaceType, ModelMode, Solver, ValueReference};
 use serde::{Deserialize, Serialize};
 
 const FIXED_STEP_SIZE: f64 = 0.1;
@@ -25,6 +25,7 @@ struct ModelData {
     x: f64,
     der_x: f64,
     k: f64,
+    solver: Option<Solver>,
 }
 
 impl ModelData {
@@ -39,6 +40,7 @@ impl ModelData {
             x: 1.0,
             der_x: 0.0,
             k: 1.0,
+            solver: Some(Solver::new()),
         }
     }
     
@@ -56,40 +58,6 @@ impl BaseModel for ModelInstance {
 
     fn time(&self) -> f64 {
         self.data.time
-    }
-}
-
-#[derive(Debug, ValueReference)]
-#[repr(u32)]
-enum ValueReference {
-    time = 0,
-    x = 1,
-    der_x = 2,
-    k = 3,
-}
-
-impl ModelInstance {
-
-    fn new(interfaceType: InterfaceType, logMessage: Box<LogError>) -> Self {
-        ModelInstance {
-            data: ModelData::default(interfaceType),
-            logError: logMessage,
-        }
-    }
-
-    fn do_fixed_step(&mut self) {
-        let mut x = [0.0; 1];
-        let mut der_x = [0.0; 1];
-        
-        self.get_continuous_states(&mut x);
-        self.get_continuous_state_derivatives(&mut der_x);
-
-        x[0] += der_x[0] * FIXED_STEP_SIZE;
-        
-        self.data.n_steps += 1;
-        self.data.time = self.data.n_steps as f64 * FIXED_STEP_SIZE;
-
-        self.set_continuous_states(&x);
     }
 
     fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {
@@ -109,13 +77,17 @@ impl ModelInstance {
         fmiStatus::fmiOK
     }
 
-    fn get_nominals_of_continuous_states(&self, nominals: &mut [f64]) -> fmiStatus {
+        fn get_nominals_of_continuous_states(&self, nominals: &mut [f64]) -> fmiStatus {
         if nominals.len() != 1 {
             (self.logError)("Nominals array must have length 1");
             return fmiStatus::fmiError;
         }
         nominals[0] = 1.0;
         fmiStatus::fmiOK
+    }
+
+    fn get_number_of_continuous_states(&self) -> usize {
+        1
     }
 
     fn set_continuous_states(&mut self, x: &[f64]) -> fmiStatus {
@@ -151,6 +123,38 @@ impl ModelInstance {
         fmiStatus::fmiOK
     }
 }
+
+#[derive(Debug, ValueReference)]
+#[repr(u32)]
+enum ValueReference {
+    time = 0,
+    x = 1,
+    der_x = 2,
+    k = 3,
+}
+
+impl ModelInstance {
+
+    fn new(interfaceType: InterfaceType, logMessage: Box<LogError>) -> Self {
+        ModelInstance {
+            data: ModelData::default(interfaceType),
+            logError: logMessage,
+        }
+    }
+
+    fn do_fixed_step(&mut self) {
+
+        if let Some(mut solver) = self.data.solver.take() {
+            solver.step(self, FIXED_STEP_SIZE);
+            self.data.solver = Some(solver);
+        }
+
+        self.data.n_steps += 1;
+        self.data.time = self.data.n_steps as f64 * FIXED_STEP_SIZE;
+    }
+}
+
+
 
 // Include shared FMI3 implementation
 // This compiles common functions directly into this DLL

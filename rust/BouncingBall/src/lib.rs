@@ -26,7 +26,7 @@ struct ModelData {
     e: f64,
     g: f64,
     v_min: f64,
-    solver: Option<Solver>,
+    // solver: Option<Solver>,
 }
 
 impl ModelData {
@@ -43,7 +43,7 @@ impl ModelData {
             e: 0.8,  // coefficient of restitution
             g: -9.81, // gravity
             v_min: 0.01, // minimum velocity threshold
-            solver: Some(Solver::new()),
+            // solver: Some(Solver::new()),
         }
     }
     
@@ -68,28 +68,17 @@ enum ValueReference {
 }
 
 impl ModelInstance {
-
     fn new(interfaceType: InterfaceType, logMessage: Box<LogError>) -> Self {
         ModelInstance {
             data: ModelData::default(interfaceType),
             logError: logMessage,
         }
     }
-
-    // fn do_fixed_step(&mut self) {
-
-    //     if let Some(mut solver) = self.data.solver.take() {
-    //         solver.step(self, FIXED_STEP_SIZE);
-    //         self.data.solver = Some(solver);
-    //     }
-
-    //     self.data.n_steps += 1;
-    //     self.data.time = self.data.n_steps as f64 * FIXED_STEP_SIZE;
-    // }
 }
 
 
 impl BaseModel for ModelInstance {
+
     fn log_error(&self, message: &str) {
         (self.logError)(message);
     }
@@ -98,31 +87,20 @@ impl BaseModel for ModelInstance {
         self.data.time
     }
 
-    // fn do_fixed_step(&mut self) {
+    fn interface_type(&self) -> &InterfaceType {
+        &self.data.interfaceType
+    }
 
-    //     let mut x = [0.0; 2];
-    //     let mut der_x = [0.0; 2];
-    //     let mut z = [0.0];
-    //     let mut pre_z = [0.0];
-        
-    //     self.get_event_indicators(&mut pre_z);
-    //     self.get_continuous_states(&mut x);
-    //     self.get_continuous_state_derivatives(&mut der_x);
+    fn interface_type_mut(&mut self) -> &mut InterfaceType {
+        &mut self.data.interfaceType
+    }
 
-    //     for i in 0..x.len() {
-    //         x[i] += der_x[i] * FIXED_STEP_SIZE;
-    //     }
+    fn set_mode(&mut self, mode: ModelMode) {
+        self.data.mode = mode;
+    }
 
-    //     self.data.n_steps += 1;
-    //     self.data.time = self.data.n_steps as f64 * FIXED_STEP_SIZE;
-
-    //     self.set_continuous_states(&x);
-
-    //     self.get_event_indicators(&mut z);
-
-    //     if pre_z[0] < 0.0 && z[0] >= 0.0 || pre_z[0] > 0.0 && z[0] <= 0.0 {
-    //         self.update_discrete_states();
-    //     }
+    // fn solver(&mut self) -> &mut Solver {
+    //     self.data.solver.as_mut().expect("Solver should always be initialized")
     // }
 
     fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {

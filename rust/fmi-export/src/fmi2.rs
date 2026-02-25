@@ -178,7 +178,7 @@ pub extern "C" fn fmi2Instantiate(
 
     let interfaceType = match fmuType {
         fmi::fmi2::types::fmi2Type::fmi2ModelExchange => InterfaceType::ModelExchange,
-        fmi::fmi2::types::fmi2Type::fmi2CoSimulation => InterfaceType::CoSimulation,
+        fmi::fmi2::types::fmi2Type::fmi2CoSimulation => InterfaceType::CoSimulation(Some(Solver::new())),
         _ => return std::ptr::null_mut(),
     };
 
@@ -231,16 +231,20 @@ pub extern "C" fn fmi2EnterInitializationMode(c: fmi2Component) -> fmi2Status {
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2ExitInitializationMode(c: fmi2Component) -> fmi2Status {
     let instance = get_instance_mut!(c);
+    
     assert_mode!(instance, ModelMode::InitializationMode);
-    instance.data.mode = match instance.data.interfaceType {
-        InterfaceType::ModelExchange => ModelMode::EventMode,
-        InterfaceType::CoSimulation => ModelMode::StepMode,
-    };
-    if let Some(mut solver) = instance.data.solver.take() {
-        solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
-        instance.data.solver = Some(solver);
-    }
-    fmi2OK
+
+    instance.exit_initialization_mode()
+    
+
+    // instance.data.mode = match instance.data.interfaceType {
+    //     InterfaceType::ModelExchange => ModelMode::EventMode,
+    //     InterfaceType::CoSimulation(_) => {
+    //         ModelMode::StepMode
+    //     },
+    // };
+    
+    // fmi2OK
 }
 
 // typedef fmi2Status fmi2TerminateTYPE              (fmi2Component c);
@@ -637,19 +641,21 @@ pub extern "C" fn fmi2DoStep(
         if instance.data.time + FIXED_STEP_SIZE >= currentCommunicationPoint + communicationStepSize {
             break;
         }
+        instance.do_fixed_step(instance.data.time, FIXED_STEP_SIZE);
+        instance.data.time += FIXED_STEP_SIZE;
         // instance.do_fixed_step();
-        if let Some(mut solver) = instance.data.solver.take() {
-            let (update, status) = solver.step(instance, FIXED_STEP_SIZE);
-            if status != fmi2OK {
-                return status;
-            }
-            if update {
-                instance.update_discrete_states();
-                solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
-            }
-            instance.data.solver = Some(solver);
-            instance.data.time += FIXED_STEP_SIZE;
-        }
+        // if let Some(mut solver) = instance.data.solver.take() {
+        //     let (update, status) = solver.step(instance, FIXED_STEP_SIZE);
+        //     if status != fmi2OK {
+        //         return status;
+        //     }
+        //     if update {
+        //         instance.update_discrete_states();
+        //         solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
+        //     }
+        //     instance.data.solver = Some(solver);
+        //     instance.data.time += FIXED_STEP_SIZE;
+        // }
     }
 
     fmi2OK

@@ -7,7 +7,7 @@ pub use fmi_export_derive::ValueReference;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum InterfaceType {
     ModelExchange,
-    CoSimulation,
+    CoSimulation(Option<Solver>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -94,6 +94,64 @@ pub trait BaseModel {
 
     fn time(&self) -> f64;
 
+    fn interface_type(&self) -> &InterfaceType;
+    
+    fn interface_type_mut(&mut self) -> &mut InterfaceType;
+
+    fn do_fixed_step(&mut self, current_time: f64, step_size: f64) -> fmiStatus where Self: Sized {
+
+        let mut solver_opt = None;
+
+        if let InterfaceType::CoSimulation(solver) = self.interface_type_mut() {
+            solver_opt = solver.take();
+        }
+
+        if let Some(mut solver) = solver_opt {
+            let (zero_crossing_occurred, _status) = solver.step(self, step_size);
+            if zero_crossing_occurred {
+                self.update_discrete_states();
+            }
+            if let InterfaceType::CoSimulation(s) = self.interface_type_mut() {
+                *s = Some(solver);
+            }
+            fmiStatus::fmiOK
+        } else {
+            self.log_error("do_fixed_step called on a model that is not a CoSimulation");
+            fmiStatus::fmiError
+        }
+
+        // fmiStatus::fmiOK
+    }
+
+    // fn solver(&mut self) -> &mut Solver;
+
+    fn set_mode(&mut self, mode: ModelMode);
+
+    fn exit_initialization_mode(&mut self) -> fmiStatus {
+
+        let nx = self.get_number_of_continuous_states();
+        let nz = self.get_number_of_event_indicators();
+
+        let mode = match self.interface_type_mut() {
+            InterfaceType::ModelExchange => ModelMode::EventMode,
+            InterfaceType::CoSimulation(solver) => {
+                if let Some(s) = solver {
+                    s.reset(nx, nz);
+                }
+                ModelMode::StepMode
+            },
+        };
+
+        self.set_mode(mode);
+
+        // let nx = self.get_number_of_continuous_states();
+        // let nz = self.get_number_of_event_indicators();
+
+        // self.solver().reset(nx, nz);
+
+        fmiStatus::fmiOK
+    }
+
     fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {
         if z.len() > 0 {
             self.log_error("This model has no event indicators");
@@ -150,23 +208,6 @@ pub trait BaseModel {
     fn get_number_of_event_indicators(&self) -> usize {
         0
     }
-
-    // fn solver(&mut self) -> Solver;
-
-    // fn do_fixed_step(&mut self) {
-
-        // let mut solver = self.solver();
-
-        // solver.step(self, 0.1);
-
-        // if let Some(mut solver) = self.data.solver.take() {
-        //     solver.step(self, FIXED_STEP_SIZE);
-        //     self.data.solver = Some(solver);
-        // }
-
-        // self.data.n_steps += 1;
-        // self.data.time = self.data.n_steps as f64 * FIXED_STEP_SIZE;
-    // }
 
     fn get_Float64(&self, value_reference: u32, _value: &mut f64) -> fmiStatus {
         let message = format!("Unknown value reference for type Float64: {:?}", value_reference);

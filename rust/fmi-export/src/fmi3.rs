@@ -180,7 +180,7 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
         }    
     };
 
-    let instance = ModelInstance::new(InterfaceType::CoSimulation, Box::new(log_error));
+    let instance = ModelInstance::new(InterfaceType::CoSimulation(Some(Solver::new())), Box::new(log_error));
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi3Instance
 }
@@ -238,23 +238,25 @@ pub extern "C" fn fmi3ExitInitializationMode(instance: fmi3Instance) -> fmi3Stat
 
     assert_mode!(instance, ModelMode::InitializationMode);
 
-    instance.data.mode = match instance.data.interfaceType {
-        InterfaceType::ModelExchange => ModelMode::EventMode,
-        InterfaceType::CoSimulation => {
-            if instance.data.eventModeUsed {
-                ModelMode::EventMode
-            } else {
-                ModelMode::StepMode
-            }
-        },
-    };
-    
-    if let Some(mut solver) = instance.data.solver.take() {
-        solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
-        instance.data.solver = Some(solver);
-    }
+    instance.exit_initialization_mode()
 
-    fmi3OK
+    // instance.data.mode = match instance.data.interfaceType {
+    //     InterfaceType::ModelExchange => ModelMode::EventMode,
+    //     InterfaceType::CoSimulation(_) => {
+    //         if instance.data.eventModeUsed {
+    //             ModelMode::EventMode
+    //         } else {
+    //             ModelMode::StepMode
+    //         }
+    //     },
+    // };
+    
+    // if let Some(mut solver) = instance.data.solver.take() {
+    //     solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
+    //     instance.data.solver = Some(solver);
+    // }
+
+    // fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -264,7 +266,7 @@ pub extern "C" fn fmi3EnterEventMode(instance: fmi3Instance) -> fmi3Status {
 
     match instance.data.interfaceType {
         InterfaceType::ModelExchange => assert_mode!(instance, ModelMode::ContinuousTimeMode),
-        InterfaceType::CoSimulation => assert_mode!(instance, ModelMode::StepMode),
+        InterfaceType::CoSimulation(_) => assert_mode!(instance, ModelMode::StepMode),
     }
 
     instance.data.mode = ModelMode::EventMode;
@@ -937,7 +939,7 @@ pub extern "C" fn fmi3EnterStepMode(instance: fmi3Instance) -> fmi3Status {
 
     let instance = get_instance_mut!(instance);
 
-    assert_interface_type!(instance, InterfaceType::CoSimulation);
+    assert_interface_type!(instance, InterfaceType::CoSimulation(_));
     assert_mode!(instance, ModelMode::EventMode);
 
     instance.data.mode = ModelMode::StepMode;
@@ -982,19 +984,21 @@ pub extern "C" fn fmi3DoStep(
         if instance.data.time + FIXED_STEP_SIZE >= currentCommunicationPoint + communicationStepSize {
             break;
         }
+        instance.do_fixed_step(instance.data.time, FIXED_STEP_SIZE);
+        instance.data.time += FIXED_STEP_SIZE;
         // instance.do_fixed_step();
-        if let Some(mut solver) = instance.data.solver.take() {
-            let (update, status) = solver.step(instance, FIXED_STEP_SIZE);
-            if status != fmi3OK {
-                return status;
-            }
-            if update {
-                instance.update_discrete_states();
-                solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
-            }
-            instance.data.solver = Some(solver);
-            instance.data.time += FIXED_STEP_SIZE;
-        }
+        // if let Some(mut solver) = instance.data.solver.take() {
+        //     let (update, status) = solver.step(instance, FIXED_STEP_SIZE);
+        //     if status != fmi2OK {
+        //         return status;
+        //     }
+        //     if update {
+        //         instance.update_discrete_states();
+        //         solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
+        //     }
+        //     instance.data.solver = Some(solver);
+        //     instance.data.time += FIXED_STEP_SIZE;
+        // }
     }
 
     fmi3OK

@@ -25,7 +25,7 @@ struct ModelData {
     x: f64,
     der_x: f64,
     k: f64,
-    solver: Option<Solver>,
+    // solver: Option<Solver>,
 }
 
 impl ModelData {
@@ -40,7 +40,7 @@ impl ModelData {
             x: 1.0,
             der_x: 0.0,
             k: 1.0,
-            solver: Some(Solver::new()),
+            // solver: Some(Solver::new()),
         }
     }
     
@@ -60,6 +60,22 @@ impl BaseModel for ModelInstance {
         self.data.time
     }
 
+    fn interface_type(&self) -> &InterfaceType {
+        &self.data.interfaceType
+    }
+
+    fn interface_type_mut(&mut self) -> &mut InterfaceType {
+        &mut self.data.interfaceType
+    }
+
+    fn set_mode(&mut self, mode: ModelMode) {
+        self.data.mode = mode;
+    }
+
+    // fn solver(&mut self) -> &mut Solver {
+    //     self.data.solver.as_mut().expect("Solver should always be initialized")
+    // }
+
     fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {
         if z.len() != 0 {
             (self.logError)("Event indicators array must have length 0");
@@ -77,7 +93,7 @@ impl BaseModel for ModelInstance {
         fmiStatus::fmiOK
     }
 
-        fn get_nominals_of_continuous_states(&self, nominals: &mut [f64]) -> fmiStatus {
+    fn get_nominals_of_continuous_states(&self, nominals: &mut [f64]) -> fmiStatus {
         if nominals.len() != 1 {
             (self.logError)("Nominals array must have length 1");
             return fmiStatus::fmiError;
@@ -134,23 +150,11 @@ enum ValueReference {
 }
 
 impl ModelInstance {
-
     fn new(interfaceType: InterfaceType, logMessage: Box<LogError>) -> Self {
         ModelInstance {
             data: ModelData::default(interfaceType),
             logError: logMessage,
         }
-    }
-
-    fn do_fixed_step(&mut self) {
-
-        if let Some(mut solver) = self.data.solver.take() {
-            solver.step(self, FIXED_STEP_SIZE);
-            self.data.solver = Some(solver);
-        }
-
-        self.data.n_steps += 1;
-        self.data.time = self.data.n_steps as f64 * FIXED_STEP_SIZE;
     }
 }
 

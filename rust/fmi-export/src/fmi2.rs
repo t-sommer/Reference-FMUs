@@ -176,13 +176,13 @@ pub extern "C" fn fmi2Instantiate(
         }    
     };
 
-    let interfaceType = match fmuType {
-        fmi::fmi2::types::fmi2Type::fmi2ModelExchange => InterfaceType::ModelExchange,
-        fmi::fmi2::types::fmi2Type::fmi2CoSimulation => InterfaceType::CoSimulation(Some(Solver::new())),
+    let solver = match fmuType {
+        fmi::fmi2::types::fmi2Type::fmi2ModelExchange => None,
+        fmi::fmi2::types::fmi2Type::fmi2CoSimulation => Some(Solver::new()),
         _ => return std::ptr::null_mut(),
     };
 
-    let instance = ModelInstance::new(interfaceType, Box::new(log_error));
+    let instance = ModelInstance::new(solver, Box::new(log_error));
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi2Component
 }
@@ -452,7 +452,7 @@ Types for Functions for FMI2 for Model Exchange
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2EnterEventMode(c: fmi2Component) -> fmi2Status {
     let instance = get_instance_mut!(c);
-    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    // assert_interface_type!(instance, InterfaceType::ModelExchange);
     assert_mode!(instance, ModelMode::ContinuousTimeMode);
     instance.data.mode = ModelMode::EventMode;
     fmi2OK
@@ -466,7 +466,7 @@ pub extern "C" fn fmi2NewDiscreteStates(
 ) -> fmi2Status {
     let instance = get_instance_mut!(c);
     
-    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    // assert_interface_type!(instance, InterfaceType::ModelExchange);
     assert_mode!(instance, ModelMode::EventMode);
     
     instance.update_discrete_states();
@@ -487,7 +487,7 @@ pub extern "C" fn fmi2NewDiscreteStates(
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2EnterContinuousTimeMode(c: fmi2Component) -> fmi2Status {
     let instance = get_instance_mut!(c);
-    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    // assert_interface_type!(instance, InterfaceType::ModelExchange);
     assert_mode!(instance, ModelMode::EventMode);
     instance.data.mode = ModelMode::ContinuousTimeMode;
     fmi2OK
@@ -505,7 +505,7 @@ pub extern "C" fn fmi2CompletedIntegratorStep(
     terminateSimulation: *mut fmi2Boolean,
 ) -> fmi2Status {
     let instance = get_instance_mut!(c);
-    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    // assert_interface_type!(instance, InterfaceType::ModelExchange);
     assert_mode!(instance, ModelMode::ContinuousTimeMode);
     fmi2OK
 }
@@ -516,7 +516,7 @@ pub extern "C" fn fmi2CompletedIntegratorStep(
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2SetTime(c: fmi2Component, time: fmi2Real) -> fmi2Status {
     let instance = get_instance_mut!(c);
-    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    // assert_interface_type!(instance, InterfaceType::ModelExchange);
     assert_mode!(instance, ModelMode::ContinuousTimeMode);
     instance.data.time = time;
     fmi2OK

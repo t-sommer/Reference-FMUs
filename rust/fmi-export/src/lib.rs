@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize};
 // Re-export the derive macro
 pub use fmi_export_derive::ValueReference;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum InterfaceType {
-    ModelExchange,
-    CoSimulation(Option<Solver>),
-}
+// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+// pub enum InterfaceType {
+//     ModelExchange,
+//     CoSimulation,
+// }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ModelMode {
@@ -94,31 +94,52 @@ pub trait BaseModel {
 
     fn time(&self) -> f64;
 
-    fn interface_type(&self) -> &InterfaceType;
+    // fn solver(&self) -> Option<&Solver>;
     
-    fn interface_type_mut(&mut self) -> &mut InterfaceType;
+    // fn solver_mut(&mut self) -> &mut Option<Solver>;
+
+    fn solver(&mut self) -> Option<Solver>;
+
+    fn set_solver(&mut self, solver: Solver);
+
+    // fn interface_type(&self) -> &InterfaceType;
+    
+    // fn interface_type_mut(&mut self) -> &mut InterfaceType;
 
     fn do_fixed_step(&mut self, current_time: f64, step_size: f64) -> fmiStatus where Self: Sized {
 
-        let mut solver_opt = None;
+        let solver = self.solver();
 
-        if let InterfaceType::CoSimulation(solver) = self.interface_type_mut() {
-            solver_opt = solver.take();
-        }
-
-        if let Some(mut solver) = solver_opt {
+        if let Some(mut solver) = solver {
             let (zero_crossing_occurred, _status) = solver.step(self, step_size);
             if zero_crossing_occurred {
                 self.update_discrete_states();
             }
-            if let InterfaceType::CoSimulation(s) = self.interface_type_mut() {
-                *s = Some(solver);
-            }
+            self.set_solver(solver);
             fmiStatus::fmiOK
         } else {
-            self.log_error("do_fixed_step called on a model that is not a CoSimulation");
             fmiStatus::fmiError
         }
+
+        // let mut solver_opt = None;
+
+        // if let InterfaceType::CoSimulation(solver) = self.interface_type_mut() {
+        //     solver_opt = solver.take();
+        // }
+
+        // if let Some(mut solver) = solver_opt {
+        //     let (zero_crossing_occurred, _status) = solver.step(self, step_size);
+        //     if zero_crossing_occurred {
+        //         self.update_discrete_states();
+        //     }
+        //     if let InterfaceType::CoSimulation(s) = self.interface_type_mut() {
+        //         *s = Some(solver);
+        //     }
+        //     fmiStatus::fmiOK
+        // } else {
+        //     self.log_error("do_fixed_step called on a model that is not a CoSimulation");
+        //     fmiStatus::fmiError
+        // }
 
         // fmiStatus::fmiOK
     }
@@ -132,14 +153,12 @@ pub trait BaseModel {
         let nx = self.get_number_of_continuous_states();
         let nz = self.get_number_of_event_indicators();
 
-        let mode = match self.interface_type_mut() {
-            InterfaceType::ModelExchange => ModelMode::EventMode,
-            InterfaceType::CoSimulation(solver) => {
-                if let Some(s) = solver {
-                    s.reset(nx, nz);
-                }
-                ModelMode::StepMode
-            },
+        let mode = if let Some(mut solver) = self.solver() {
+            solver.reset(nx, nz);
+            self.set_solver(solver);
+            ModelMode::StepMode
+        } else {
+            ModelMode::EventMode
         };
 
         self.set_mode(mode);

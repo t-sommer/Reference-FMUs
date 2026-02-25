@@ -7,7 +7,7 @@ use fmi::{fmi3::types::*, types::fmiStatus};
 use std::any::type_name_of_val;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
-use fmi_export::{BaseModel, InterfaceType, ModelMode, Solver, ValueReference};
+use fmi_export::{BaseModel, ModelMode, Solver, ValueReference};
 use serde::{Deserialize, Serialize};
 
 const FIXED_STEP_SIZE: f64 = 1e-3;
@@ -16,7 +16,8 @@ type LogError = dyn Fn(&str);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct ModelData {
-    interfaceType: InterfaceType,
+    // interfaceType: InterfaceType,
+    solver: Option<Solver>,
     mode: ModelMode,
     eventModeUsed: bool,
     n_steps: u64,
@@ -31,9 +32,11 @@ struct ModelData {
 
 impl ModelData {
 
-    fn default(interfaceType: InterfaceType) -> Self {
+    fn default(solver: Option<Solver>) -> Self {
+            // interfaceType:) -> Self {
         ModelData {
-            interfaceType: interfaceType,
+            // interfaceType: interfaceType,
+            solver: solver,
             mode: ModelMode::Instantiated,
             eventModeUsed: false,
             n_steps: 0,
@@ -68,9 +71,9 @@ enum ValueReference {
 }
 
 impl ModelInstance {
-    fn new(interfaceType: InterfaceType, logMessage: Box<LogError>) -> Self {
+    fn new(solver: Option<Solver>, logMessage: Box<LogError>) -> Self {
         ModelInstance {
-            data: ModelData::default(interfaceType),
+            data: ModelData::default(solver),
             logError: logMessage,
         }
     }
@@ -87,13 +90,21 @@ impl BaseModel for ModelInstance {
         self.data.time
     }
 
-    fn interface_type(&self) -> &InterfaceType {
-        &self.data.interfaceType
+    fn solver(&mut self) -> Option<Solver> {
+        self.data.solver.take()
     }
 
-    fn interface_type_mut(&mut self) -> &mut InterfaceType {
-        &mut self.data.interfaceType
+    fn set_solver(&mut self, solver: Solver) {
+        self.data.solver = Some(solver);
     }
+
+    // fn interface_type(&self) -> &InterfaceType {
+    //     &self.data.interfaceType
+    // }
+
+    // fn interface_type_mut(&mut self) -> &mut InterfaceType {
+    //     &mut self.data.interfaceType
+    // }
 
     fn set_mode(&mut self, mode: ModelMode) {
         self.data.mode = mode;

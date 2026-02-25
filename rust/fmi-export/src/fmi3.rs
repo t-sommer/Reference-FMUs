@@ -144,7 +144,7 @@ pub extern "C" fn fmi3InstantiateModelExchange(
         }    
     };
 
-    let instance = ModelInstance::new(InterfaceType::ModelExchange, Box::new(log_error));
+    let instance = ModelInstance::new(None, Box::new(log_error));
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi3Instance
 }
@@ -180,7 +180,7 @@ pub extern "C" fn fmi3InstantiateCoSimulation(
         }    
     };
 
-    let instance = ModelInstance::new(InterfaceType::CoSimulation(Some(Solver::new())), Box::new(log_error));
+    let instance = ModelInstance::new(Some(Solver::new()), Box::new(log_error));
     let instance = Box::new(instance);
     Box::into_raw(instance) as fmi3Instance
 }
@@ -264,10 +264,10 @@ pub extern "C" fn fmi3EnterEventMode(instance: fmi3Instance) -> fmi3Status {
 
     let instance = get_instance_mut!(instance);
 
-    match instance.data.interfaceType {
-        InterfaceType::ModelExchange => assert_mode!(instance, ModelMode::ContinuousTimeMode),
-        InterfaceType::CoSimulation(_) => assert_mode!(instance, ModelMode::StepMode),
-    }
+    // match instance.data.solver {
+    //     InterfaceType::ModelExchange => assert_mode!(instance, ModelMode::ContinuousTimeMode),
+    //     InterfaceType::CoSimulation(_) => assert_mode!(instance, ModelMode::StepMode),
+    // }
 
     instance.data.mode = ModelMode::EventMode;
 
@@ -289,7 +289,7 @@ pub extern "C" fn fmi3Terminate(instance: fmi3Instance) -> fmi3Status {
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3Reset(instance: fmi3Instance) -> fmi3Status {
     let instance = get_instance_mut!(instance);
-    instance.data = ModelData::default(instance.data.interfaceType.clone());
+    instance.data = ModelData::default(instance.data.solver.clone());
     fmi3OK
 }
 
@@ -782,7 +782,7 @@ pub extern "C" fn fmi3EnterContinuousTimeMode(instance: fmi3Instance) -> fmi3Sta
 
     let instance = get_instance_mut!(instance);
 
-    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    // assert_interface_type!(instance, InterfaceType::ModelExchange);
     assert_mode!(instance, ModelMode::EventMode);
 
     instance.data.mode = ModelMode::ContinuousTimeMode;
@@ -805,7 +805,7 @@ pub extern "C" fn fmi3CompletedIntegratorStep(
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3SetTime(instance: fmi3Instance, time: fmi3Float64) -> fmi3Status {
     let instance = get_instance_mut!(instance);
-    assert_interface_type!(instance, InterfaceType::ModelExchange);
+    // assert_interface_type!(instance, InterfaceType::ModelExchange);
     assert_mode!(instance, ModelMode::ContinuousTimeMode);
     instance.data.time = time;
     fmi3OK
@@ -939,7 +939,7 @@ pub extern "C" fn fmi3EnterStepMode(instance: fmi3Instance) -> fmi3Status {
 
     let instance = get_instance_mut!(instance);
 
-    assert_interface_type!(instance, InterfaceType::CoSimulation(_));
+    // assert_interface_type!(instance, InterfaceType::CoSimulation(_));
     assert_mode!(instance, ModelMode::EventMode);
 
     instance.data.mode = ModelMode::StepMode;

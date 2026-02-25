@@ -25,7 +25,6 @@ struct ModelData {
     x: f64,
     der_x: f64,
     k: f64,
-    // solver: Option<Solver>,
 }
 
 impl ModelData {
@@ -40,7 +39,6 @@ impl ModelData {
             x: 1.0,
             der_x: 0.0,
             k: 1.0,
-            // solver: Some(Solver::new()),
         }
     }
     
@@ -68,21 +66,9 @@ impl BaseModel for ModelInstance {
         self.data.solver = Some(solver);
     }
 
-    // fn interface_type(&self) -> &InterfaceType {
-    //     &self.data.interfaceType
-    // }
-
-    // fn interface_type_mut(&mut self) -> &mut InterfaceType {
-    //     &mut self.data.interfaceType
-    // }
-
     fn set_mode(&mut self, mode: ModelMode) {
         self.data.mode = mode;
     }
-
-    // fn solver(&mut self) -> &mut Solver {
-    //     self.data.solver.as_mut().expect("Solver should always be initialized")
-    // }
 
     fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {
         if z.len() != 0 {

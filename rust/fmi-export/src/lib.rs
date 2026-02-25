@@ -4,12 +4,6 @@ use serde::{Deserialize, Serialize};
 // Re-export the derive macro
 pub use fmi_export_derive::ValueReference;
 
-// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-// pub enum InterfaceType {
-//     ModelExchange,
-//     CoSimulation,
-// }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ModelMode {
     Instantiated,

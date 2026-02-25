@@ -16,7 +16,6 @@ type LogError = dyn Fn(&str);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct ModelData {
-    // interfaceType: InterfaceType,
     solver: Option<Solver>,
     mode: ModelMode,
     eventModeUsed: bool,
@@ -27,15 +26,11 @@ struct ModelData {
     e: f64,
     g: f64,
     v_min: f64,
-    // solver: Option<Solver>,
 }
 
 impl ModelData {
-
     fn default(solver: Option<Solver>) -> Self {
-            // interfaceType:) -> Self {
         ModelData {
-            // interfaceType: interfaceType,
             solver: solver,
             mode: ModelMode::Instantiated,
             eventModeUsed: false,
@@ -46,10 +41,8 @@ impl ModelData {
             e: 0.8,  // coefficient of restitution
             g: -9.81, // gravity
             v_min: 0.01, // minimum velocity threshold
-            // solver: Some(Solver::new()),
         }
     }
-    
 }
 
 struct ModelInstance {
@@ -98,21 +91,9 @@ impl BaseModel for ModelInstance {
         self.data.solver = Some(solver);
     }
 
-    // fn interface_type(&self) -> &InterfaceType {
-    //     &self.data.interfaceType
-    // }
-
-    // fn interface_type_mut(&mut self) -> &mut InterfaceType {
-    //     &mut self.data.interfaceType
-    // }
-
     fn set_mode(&mut self, mode: ModelMode) {
         self.data.mode = mode;
     }
-
-    // fn solver(&mut self) -> &mut Solver {
-    //     self.data.solver.as_mut().expect("Solver should always be initialized")
-    // }
 
     fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {
         if z.len() != 1 {
@@ -203,7 +184,6 @@ impl BaseModel for ModelInstance {
         fmiStatus::fmiOK
     }
 }
-
 
 // Include shared FMI3 implementation
 // This compiles common functions directly into this DLL

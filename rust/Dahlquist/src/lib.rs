@@ -58,6 +58,11 @@ impl BaseModel for ModelInstance {
         self.data.time
     }
 
+    fn set_time(&mut self, time: f64) -> fmiStatus {
+        self.data.time = time;
+        fmiStatus::fmiOK
+    }
+
     fn solver(&mut self) -> Option<Solver> {
         self.data.solver.take()
     }
@@ -151,8 +156,6 @@ impl ModelInstance {
         }
     }
 }
-
-
 
 // Include shared FMI3 implementation
 // This compiles common functions directly into this DLL

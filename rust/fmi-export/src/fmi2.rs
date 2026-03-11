@@ -62,14 +62,23 @@ macro_rules! NOT_IMPLEMENTED {
 }};
 }
 
-macro_rules! assert_interface_type {
-    ($instance:expr, $itype:pat) => {
-        if !matches!($instance.data.interfaceType, $itype) {
+macro_rules! assert_model_exchange {
+    ($instance:expr) => {
+        if !$instance.data.solver.is_none() {
             error!($instance, 
-                "Function {} may only be called for interface type {:?} but current interface type is {:?}.",
-                current_fn!(),
-                stringify!($itype),
-                $instance.data.interfaceType
+                "Function {} may only be called for interface type Model Exchange.",
+                current_fn!()
+            );
+        }
+    };
+}
+
+macro_rules! assert_co_simulation {
+    ($instance:expr) => {
+        if $instance.data.solver.is_none() {
+            error!($instance, 
+                "Function {} may only be called for interface type Co-Simulation.",
+                current_fn!()
             );
         }
     };
@@ -452,7 +461,7 @@ Types for Functions for FMI2 for Model Exchange
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2EnterEventMode(c: fmi2Component) -> fmi2Status {
     let instance = get_instance_mut!(c);
-    // assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_model_exchange!(instance);
     assert_mode!(instance, ModelMode::ContinuousTimeMode);
     instance.data.mode = ModelMode::EventMode;
     fmi2OK
@@ -466,7 +475,7 @@ pub extern "C" fn fmi2NewDiscreteStates(
 ) -> fmi2Status {
     let instance = get_instance_mut!(c);
     
-    // assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_model_exchange!(instance);
     assert_mode!(instance, ModelMode::EventMode);
     
     instance.update_discrete_states();
@@ -487,7 +496,7 @@ pub extern "C" fn fmi2NewDiscreteStates(
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2EnterContinuousTimeMode(c: fmi2Component) -> fmi2Status {
     let instance = get_instance_mut!(c);
-    // assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_model_exchange!(instance);
     assert_mode!(instance, ModelMode::EventMode);
     instance.data.mode = ModelMode::ContinuousTimeMode;
     fmi2OK
@@ -505,7 +514,7 @@ pub extern "C" fn fmi2CompletedIntegratorStep(
     terminateSimulation: *mut fmi2Boolean,
 ) -> fmi2Status {
     let instance = get_instance_mut!(c);
-    // assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_model_exchange!(instance);
     assert_mode!(instance, ModelMode::ContinuousTimeMode);
     fmi2OK
 }
@@ -516,7 +525,7 @@ pub extern "C" fn fmi2CompletedIntegratorStep(
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi2SetTime(c: fmi2Component, time: fmi2Real) -> fmi2Status {
     let instance = get_instance_mut!(c);
-    // assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_model_exchange!(instance);
     assert_mode!(instance, ModelMode::ContinuousTimeMode);
     instance.data.time = time;
     fmi2OK
@@ -637,25 +646,13 @@ pub extern "C" fn fmi2DoStep(
     noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
 ) -> fmi2Status {
     let instance = get_instance_mut!(c);
+    assert_co_simulation!(instance);
     loop {
         if instance.data.time + FIXED_STEP_SIZE >= currentCommunicationPoint + communicationStepSize {
             break;
         }
         instance.do_fixed_step(instance.data.time, FIXED_STEP_SIZE);
         instance.data.time += FIXED_STEP_SIZE;
-        // instance.do_fixed_step();
-        // if let Some(mut solver) = instance.data.solver.take() {
-        //     let (update, status) = solver.step(instance, FIXED_STEP_SIZE);
-        //     if status != fmi2OK {
-        //         return status;
-        //     }
-        //     if update {
-        //         instance.update_discrete_states();
-        //         solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
-        //     }
-        //     instance.data.solver = Some(solver);
-        //     instance.data.time += FIXED_STEP_SIZE;
-        // }
     }
 
     fmi2OK

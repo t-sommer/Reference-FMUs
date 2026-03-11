@@ -73,14 +73,23 @@ macro_rules! NOT_IMPLEMENTED {
 }};
 }
 
-macro_rules! assert_interface_type {
-    ($instance:expr, $itype:pat) => {
-        if !matches!($instance.data.interfaceType, $itype) {
+macro_rules! assert_model_exchange {
+    ($instance:expr) => {
+        if !$instance.data.solver.is_none() {
             error!($instance, 
-                "Function {} may only be called for interface type {:?} but current interface type is {:?}.",
-                current_fn!(),
-                stringify!($itype),
-                $instance.data.interfaceType
+                "Function {} may only be called for interface type Model Exchange.",
+                current_fn!()
+            );
+        }
+    };
+}
+
+macro_rules! assert_co_simulation {
+    ($instance:expr) => {
+        if $instance.data.solver.is_none() {
+            error!($instance, 
+                "Function {} may only be called for interface type Co-Simulation.",
+                current_fn!()
             );
         }
     };
@@ -779,15 +788,10 @@ Types for Functions for Model Exchange
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterContinuousTimeMode(instance: fmi3Instance) -> fmi3Status {
-
     let instance = get_instance_mut!(instance);
-
-    // assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_model_exchange!(instance);
     assert_mode!(instance, ModelMode::EventMode);
-
-    instance.data.mode = ModelMode::ContinuousTimeMode;
-
-    fmi3OK
+    instance.enter_continuous_time_mode()
 }
 
 #[unsafe(no_mangle)]
@@ -805,7 +809,7 @@ pub extern "C" fn fmi3CompletedIntegratorStep(
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3SetTime(instance: fmi3Instance, time: fmi3Float64) -> fmi3Status {
     let instance = get_instance_mut!(instance);
-    // assert_interface_type!(instance, InterfaceType::ModelExchange);
+    assert_model_exchange!(instance);
     assert_mode!(instance, ModelMode::ContinuousTimeMode);
     instance.data.time = time;
     fmi3OK
@@ -818,18 +822,11 @@ pub extern "C" fn fmi3SetContinuousStates(
     nContinuousStates: usize,
 ) -> fmi3Status {
     let instance = get_instance_mut!(instance);
-
     assert_not_null!(continuousStates, instance);
-
-    if nContinuousStates != 2 {
-        error!(instance, "Number of continuous states ({}) does not match the model (2).", nContinuousStates);
-    }
-
+    assert_model_exchange!(instance);
+    assert_mode!(instance, ModelMode::ContinuousTimeMode);
     let continuous_states = unsafe { std::slice::from_raw_parts(continuousStates, nContinuousStates) };
-
-    instance.set_continuous_states(continuous_states);
-
-    fmi3OK
+    instance.set_continuous_states(continuous_states)
 }
 
 #[unsafe(no_mangle)]
@@ -839,20 +836,14 @@ pub extern "C" fn fmi3GetContinuousStateDerivatives(
     nContinuousStates: usize,
 ) -> fmi3Status {
     let instance = get_instance!(instance);
-
     assert_not_null!(derivatives, instance);
-
+    assert_model_exchange!(instance);
+    assert_mode!(instance, ModelMode::ContinuousTimeMode);
     if nContinuousStates != 2 {
         error!(instance, "Number of continuous state derivatives requested ({}) does not match the model (2).", nContinuousStates);
     }
-
     let derivatives = unsafe { std::slice::from_raw_parts_mut(derivatives, nContinuousStates) };
-
-    instance.get_continuous_state_derivatives(derivatives);
-    // derivatives[0] = instance.data.v;
-    // derivatives[1] = instance.data.g; 
-
-    fmi3OK
+    instance.get_continuous_state_derivatives(derivatives)
 }
 
 #[unsafe(no_mangle)]
@@ -862,20 +853,11 @@ pub extern "C" fn fmi3GetEventIndicators(
     nEventIndicators: usize,
 ) -> fmi3Status {
     let instance = get_instance!(instance);
-
     assert_not_null!(eventIndicators, instance);
-
-    if nEventIndicators != 1 {
-        error!(instance, "Number of event indicators requested ({}) does not match the model (1).", nEventIndicators);
-    }
-
+    assert_model_exchange!(instance);
+    assert_mode!(instance, ModelMode::ContinuousTimeMode);
     let event_indicators = unsafe { std::slice::from_raw_parts_mut(eventIndicators, nEventIndicators) };
-
-    // event_indicators[0] = instance.data.h;
-
-    instance.get_event_indicators(event_indicators);
-
-    fmi3OK
+    instance.get_event_indicators(event_indicators)
 }
 
 #[unsafe(no_mangle)]
@@ -884,22 +866,12 @@ pub extern "C" fn fmi3GetContinuousStates(
     continuousStates: *mut fmi3Float64,
     nContinuousStates: usize,
 ) -> fmi3Status {
-
     let instance = get_instance!(instance);
-
     assert_not_null!(continuousStates, instance);
-
-    // let x = &instance.data.x;
-
-    // if nContinuousStates != x.len() {
-    //     error!(instance, "Number of continuous states requested ({}) does not match the model ({}).", nContinuousStates, x.len());
-    // }
-
+    assert_model_exchange!(instance);
+    assert_mode!(instance, ModelMode::ContinuousTimeMode);
     let continuous_states = unsafe { std::slice::from_raw_parts_mut(continuousStates, nContinuousStates) };
-
-    instance.get_continuous_states(continuous_states);
-
-    fmi3OK
+    instance.get_continuous_states(continuous_states)
 }
 
 #[unsafe(no_mangle)]
@@ -919,7 +891,14 @@ pub extern "C" fn fmi3GetNumberOfEventIndicators(
     instance: fmi3Instance,
     nEventIndicators: *mut usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+    let instance = get_instance!(instance);
+    assert_not_null!(nEventIndicators, instance);
+    assert_model_exchange!(instance);
+    assert_mode!(instance, ModelMode::ContinuousTimeMode);
+    unsafe {
+        *nEventIndicators = instance.get_number_of_event_indicators();
+    }
+    fmi3OK
 }
 
 #[unsafe(no_mangle)]
@@ -927,7 +906,14 @@ pub extern "C" fn fmi3GetNumberOfContinuousStates(
     instance: fmi3Instance,
     nContinuousStates: *mut usize,
 ) -> fmi3Status {
-    NOT_IMPLEMENTED!(instance)
+    let instance = get_instance!(instance);
+    assert_not_null!(nContinuousStates, instance);
+    assert_model_exchange!(instance);
+    assert_mode!(instance, ModelMode::ContinuousTimeMode);
+    unsafe {
+        *nContinuousStates = instance.get_number_of_continuous_states();
+    }
+    fmi3OK
 }
 
 /***************************************************
@@ -936,14 +922,10 @@ Types for Functions for Co-Simulation
 
 #[unsafe(no_mangle)]
 pub extern "C" fn fmi3EnterStepMode(instance: fmi3Instance) -> fmi3Status {
-
     let instance = get_instance_mut!(instance);
-
-    // assert_interface_type!(instance, InterfaceType::CoSimulation(_));
+    assert_co_simulation!(instance);
     assert_mode!(instance, ModelMode::EventMode);
-
     instance.data.mode = ModelMode::StepMode;
-    
     fmi3OK
 }
 
@@ -978,6 +960,7 @@ pub extern "C" fn fmi3DoStep(
     assert_not_null!(earlyReturn, instance);
     assert_not_null!(lastSuccessfulTime, instance);
 
+    assert_co_simulation!(instance);
     assert_mode!(instance, ModelMode::StepMode);
 
     loop {
@@ -986,19 +969,6 @@ pub extern "C" fn fmi3DoStep(
         }
         instance.do_fixed_step(instance.data.time, FIXED_STEP_SIZE);
         instance.data.time += FIXED_STEP_SIZE;
-        // instance.do_fixed_step();
-        // if let Some(mut solver) = instance.data.solver.take() {
-        //     let (update, status) = solver.step(instance, FIXED_STEP_SIZE);
-        //     if status != fmi2OK {
-        //         return status;
-        //     }
-        //     if update {
-        //         instance.update_discrete_states();
-        //         solver.reset(instance.get_number_of_continuous_states(), instance.get_number_of_event_indicators());
-        //     }
-        //     instance.data.solver = Some(solver);
-        //     instance.data.time += FIXED_STEP_SIZE;
-        // }
     }
 
     fmi3OK

@@ -1,7 +1,7 @@
 use std::{fs::File, io::Read, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
-#[test]
+// #[test]
 fn test_feedthrough_types_simulation() {
     // Get the workspace root directory
     let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();

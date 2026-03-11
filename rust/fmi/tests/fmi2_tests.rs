@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
 use fmi::SHARED_LIBRARY_EXTENSION;
+use fmi::fmi2;
 use fmi::fmi2::*;
 use fmi::fmi2::{PLATFORM, types::*};
 use fmi::types::fmiStatus;
@@ -14,23 +15,12 @@ macro_rules! assert_ok {
 }
 
 fn create_fmu() -> FMU2<'static> {
-    let shared_library_name = format!("Feedthrough{SHARED_LIBRARY_EXTENSION}");
 
-    let dll_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let unzipdir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("resources")
         .join("fmi2")
-        .join("Feedthrough")
-        .join("binaries")
-        .join(PLATFORM)
-        .join(shared_library_name);
-
-    let resource_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("resources")
-        .join("fmi2")
-        .join("Feedthrough")
-        .join("resources");
+        .join("Feedthrough");
 
     let log_message = move |status: &fmiStatus, category: &str, message: &str| {
         println!("[{status:?}] [{category}] {message}")
@@ -38,28 +28,33 @@ fn create_fmu() -> FMU2<'static> {
 
     let log_fmi_call = move |status: &fmiStatus, message: &str| println!("[{status:?}] {message}");
 
-    let mut fmu = FMU2::new(
-        &dll_path,
-        "main",
+    let fmu = FMU2::new(
+        &unzipdir,
+        "Feedthrough",
+        "instance1",
+        fmi2Type::fmi2CoSimulation,
+        "{37B954F1-CC86-4D8F-B97F-C7C36F6670D2}",
+        false,
+        true,
         Some(Box::new(log_fmi_call)),
         Some(Box::new(log_message)),
     )
     .unwrap();
 
-    let resource_url = if resource_path.is_dir() {
-        Some(Url::from_directory_path(&resource_path).unwrap())
-    } else {
-        None
-    };
+    // let resource_url = if resource_path.is_dir() {
+    //     Some(Url::from_directory_path(&resource_path).unwrap())
+    // } else {
+    //     None
+    // };
 
-    assert_ok!(fmu.instantiate(
-        "main",
-        fmi2Type::fmi2CoSimulation,
-        "{37B954F1-CC86-4D8F-B97F-C7C36F6670D2}",
-        resource_url.as_ref(),
-        false,
-        true,
-    ));
+    // assert_ok!(fmu.instantiate(
+    //     "main",
+    //     fmi2Type::fmi2CoSimulation,
+    //     "{37B954F1-CC86-4D8F-B97F-C7C36F6670D2}",
+    //     resource_url.as_ref(),
+    //     false,
+    //     true,
+    // ));
 
     let version = fmu.getVersion();
     assert!(version.starts_with("2."));

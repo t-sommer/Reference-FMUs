@@ -142,6 +142,16 @@ pub trait BaseModel {
 
     fn set_mode(&mut self, mode: ModelMode);
 
+    fn enter_initialization_mode(&mut self) -> fmiStatus {
+        self.set_mode(ModelMode::InitializationMode);
+        fmiStatus::fmiOK
+    }
+
+    fn enter_continuous_time_mode(&mut self) -> fmiStatus {
+        self.set_mode(ModelMode::ContinuousTimeMode);
+        fmiStatus::fmiOK
+    }
+
     fn exit_initialization_mode(&mut self) -> fmiStatus {
 
         let nx = self.get_number_of_continuous_states();
@@ -164,6 +174,8 @@ pub trait BaseModel {
 
         fmiStatus::fmiOK
     }
+
+    fn set_time(&mut self, time: f64) -> fmiStatus;
 
     fn get_event_indicators(&self, z: &mut [f64]) -> fmiStatus {
         if z.len() > 0 {

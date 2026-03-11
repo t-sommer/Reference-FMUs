@@ -13,16 +13,12 @@ macro_rules! assert_ok {
 }
 
 fn create_fmu() -> FMU3<'static> {
-    let shared_library_name = format!("Feedthrough{SHARED_LIBRARY_EXTENSION}");
 
-    let dll_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let unzipdir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("resources")
         .join("fmi3")
-        .join("Feedthrough")
-        .join("binaries")
-        .join(PLATFORM_TUPLE)
-        .join(shared_library_name);
+        .join("Feedthrough");
 
     let log_message = move |status: &fmiStatus, category: &str, message: &str| {
         println!("[{status:?}] [{category}] {message}")
@@ -30,24 +26,20 @@ fn create_fmu() -> FMU3<'static> {
 
     let log_fmi_call = move |status: &fmiStatus, message: &str| println!("[{status:?}] {message}");
 
-    let fmu = FMU3::new(
-        &dll_path,
-        "main",
-        Some(Box::new(log_fmi_call)),
-        Some(Box::new(log_message)),
-    )
-    .unwrap();
-
-    assert_ok!(fmu.instantiateCoSimulation(
-        "main",
+    let fmu = FMU3::instantiateCoSimulation(
+        &unzipdir,
+        "Feedthrough",
+        "instance1",
         "{37B954F1-CC86-4D8F-B97F-C7C36F6670D2}",
-        None,
         false,
         true,
         false,
         false,
-        &[]
-    ));
+        &[],
+        Some(Box::new(log_fmi_call)),
+        Some(Box::new(log_message)),
+    )
+    .unwrap();
 
     let version = fmu.getVersion();
     assert!(version.starts_with("3."));

@@ -1,12 +1,9 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use fmi::SHARED_LIBRARY_EXTENSION;
-use fmi::fmi2;
 use fmi::fmi2::*;
-use fmi::fmi2::{PLATFORM, types::*};
+use fmi::fmi2::types::*;
 use fmi::types::fmiStatus;
 use std::{env, path::PathBuf};
-use url::Url;
 
 macro_rules! assert_ok {
     ($status:expr) => {
@@ -14,7 +11,7 @@ macro_rules! assert_ok {
     };
 }
 
-fn create_fmu() -> FMU2<'static> {
+fn create_fmu() -> FMU2 {
 
     let unzipdir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")

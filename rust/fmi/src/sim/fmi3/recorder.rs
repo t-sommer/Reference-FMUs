@@ -15,13 +15,13 @@ macro_rules! write_values {
 pub struct Recorder<'a, T: Write> {
     pub variables: &'a Vec<&'a ModelVariable>,
     pub stream: T,
-    pub fmu: &'a FMU3<'a>,
+    pub fmu: &'a FMU3,
     sizes: Vec<usize>,
 }
 
 impl<'a, T: Write> Recorder<'a, T> {
 
-    pub fn new(variables: &'a Vec<&'a ModelVariable>, stream: T, fmu: &'a FMU3<'a>) -> Recorder<'a, T> {
+    pub fn new(variables: &'a Vec<&'a ModelVariable>, stream: T, fmu: &'a FMU3) -> Recorder<'a, T> {
         let mut recorder = Recorder { 
             variables,
             stream, 

@@ -1,8 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use fmi::SHARED_LIBRARY_EXTENSION;
 use fmi::fmi3::*;
-use fmi::fmi3::{PLATFORM_TUPLE, types::*};
+use fmi::fmi3::types::*;
 use fmi::types::fmiStatus;
 use std::{env, path::PathBuf};
 
@@ -12,7 +11,7 @@ macro_rules! assert_ok {
     };
 }
 
-fn create_fmu() -> FMU3<'static> {
+fn create_fmu() -> FMU3 {
 
     let unzipdir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")

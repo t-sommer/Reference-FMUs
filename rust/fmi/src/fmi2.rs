@@ -888,6 +888,3 @@ impl FMU2 {
         }
     }
 }
-
-// Explicitly implement Sync for FMU2 since all fields are now Sync
-unsafe impl<'lib> Sync for FMU2 {}

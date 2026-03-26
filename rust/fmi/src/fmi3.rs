@@ -65,8 +65,8 @@ macro_rules! fmi_get {
             $values.len()
         );
 
-        if let Some(cb) = &$self.logFMICall {
-            cb(&status, &message);
+        if $self.logCalls {
+            $self.log_call(status, &message);
         }
 
         status
@@ -96,8 +96,8 @@ macro_rules! fmi_set {
             $values.len()
         );
 
-        if let Some(cb) = &$self.logFMICall {
-            cb(&status, &message);
+        if $self.logCalls {
+            $self.log_call(status, &message);
         }
 
         status
@@ -109,18 +109,24 @@ impl<'lib> Drop for FMU3 {
         if !self.instance.is_null() {
             unsafe { (self.fmi3FreeInstance)(self.instance) };
             self.instance = null_mut();
-            if let Some(cb) = &self.logFMICall {
-                cb(&fmi3OK, "fmi3FreeInstance()");
+            if self.logCalls {
+                self.log_call(fmi3OK, "fmi3FreeInstance()");
             }
         }
     }
 }
 
+pub struct Call {
+    pub status: fmi3Status,
+    pub message: String,
+}
+
 pub struct FMU3 {
-    // instanceName: String,
-    
-    logFMICall: Option<Arc<LogFMICallCallback>>,
-    logMessage: Option<Arc<LogMessageCallback>>,
+    logCalls: bool,
+    printCalls: bool,
+
+    logMessages: bool,
+    printMessages: bool,
     
     _lib: Box<Library>,
 
@@ -210,9 +216,9 @@ pub extern "C" fn logMessage(
     category: fmi3String,
     message: fmi3String,
 ) {
-    if instanceEnvironment.is_null() {
-        return;
-    }
+    // if instanceEnvironment.is_null() {
+    //     return;
+    // }
 
     let category_str = if !category.is_null() {
         unsafe { CStr::from_ptr(category).to_string_lossy().into_owned() }
@@ -226,11 +232,13 @@ pub extern "C" fn logMessage(
         "empty".to_string()
     };
 
-    unsafe {
-        let cb_ptr = instanceEnvironment as *mut Arc<LogMessageCallback>;
-        let cb: &Arc<LogMessageCallback> = &*cb_ptr;
-        cb(&status, &category_str, &message_str);
-    }
+    eprintln!("logMessage: {status:?} {category_str}: {message_str}");
+
+    // unsafe {
+    //     let cb_ptr = instanceEnvironment as *mut Arc<LogMessageCallback>;
+    //     let cb: &Arc<LogMessageCallback> = &*cb_ptr;
+    //     cb(&status, &category_str, &message_str);
+    // }
 }
 
 fn get_symbol<T>(
@@ -245,11 +253,19 @@ fn get_symbol<T>(
 
 impl FMU3 {
 
+    fn log_call(&self, status: fmi3Status, message: &str) {
+        if self.printCalls {
+            eprintln!("{message} -> {status:?}");
+        }
+    }
+
     fn new(
         unzipdir: &Path,
         modelIdentifier: &str,
-        logFMICall: Option<Box<LogFMICallCallback>>,
-        logMessage: Option<Box<LogMessageCallback>>,
+        logCalls: bool,
+        printCalls: bool,
+        logMessages: bool,
+        printMessages: bool,
     ) -> Result<FMU3, Box<dyn Error>> {
 
         let shared_library_path = unzipdir
@@ -393,10 +409,12 @@ impl FMU3 {
             get_symbol::<fmi3ActivateModelPartitionTYPE>(&lib, b"fmi3ActivateModelPartition")?;
 
         Ok(FMU3 {
-            // instanceName: String::from(instanceName),
-            // logMessage: Box::new(logMessage),
-            logFMICall: logFMICall.map(|cb| Arc::from(cb)),
-            logMessage: logMessage.map(|cb| Arc::from(cb)),
+            logCalls,
+            printCalls,
+            logMessages,
+            printMessages,
+            // logFMICall: logFMICall.map(|cb| Arc::from(cb)),
+            // logMessage: logMessage.map(|cb| Arc::from(cb)),
             _lib: lib,
             fmi3GetVersion,
             fmi3SetDebugLogging,
@@ -482,9 +500,9 @@ impl FMU3 {
             let version_cstr = (self.fmi3GetVersion)();
             CStr::from_ptr(version_cstr).to_string_lossy().into_owned()
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3GetVersion() -> \"{version}\"");
-            cb(&fmi3OK, message.as_str());
+            self.log_call(fmi3OK, &message);
         }
         version
     }
@@ -499,11 +517,13 @@ impl FMU3 {
         eventModeUsed: bool,
         earlyReturnAllowed: bool,
         requiredIntermediateVariables: &[c_uint],
-        logFMICall: Option<Box<LogFMICallCallback>>,
-        logMessage: Option<Box<LogMessageCallback>>,
+        logCalls: bool,
+        printCalls: bool,
+        logMessages: bool,
+        printMessages: bool,
     ) -> Result<FMU3, Box<dyn Error>> {
         
-        let mut fmu = FMU3::new(unzipdir, modelIdentifier, logFMICall, logMessage)?;
+        let mut fmu = FMU3::new(unzipdir, modelIdentifier, logCalls, printCalls, logMessages, printMessages)?;
 
         let resource_path = unzipdir.join("resources").join("");
 
@@ -546,15 +566,33 @@ impl FMU3 {
             .map(|cstr| cstr.as_ptr())
             .unwrap_or(ptr::null());
 
-        let userdata = if let Some(callback) = self.logMessage.take() {
-            Box::into_raw(Box::new(callback)) as *mut c_void
+        // let userdata = if let Some(callback) = self.logMessage.take() {
+        //     Box::into_raw(Box::new(callback)) as *mut c_void
+        // } else {
+        //     ptr::null_mut()
+        // };
+
+        // let userdata = ptr::null_mut();
+
+        // let logMessage_ptr = logMessage as *const c_void;
+
+        // let intermediateUpdate_ptr = ptr::null();
+
+        let logMessage_ptr = if self.logMessages {
+            logMessage as *const c_void
         } else {
-            ptr::null_mut()
+            ptr::null() as *const c_void
         };
 
-        let logMessage_ptr = logMessage as *const c_void;
+        let log_message = if self.logMessages {
+            logMessage as *const fmi3LogMessageCallback
+        } else {
+            ptr::null() as *const fmi3LogMessageCallback
+        };
 
-        let intermediateUpdate_ptr = ptr::null();
+        let userdata = ptr::null_mut();
+
+        let intermediate_update = ptr::null();
 
         let instance = unsafe {
             (self.fmi3InstantiateCoSimulation)(
@@ -568,8 +606,8 @@ impl FMU3 {
                 /* requiredIntermediateVariables */ requiredIntermediateVariables.as_ptr(),
                 /* nRequiredIntermediateVariables */ requiredIntermediateVariables.len(),
                 /* instanceEnvironment */ userdata,
-                /* logMessage */ logMessage_ptr,
-                /* intermediateUpdate */ intermediateUpdate_ptr,
+                /* logMessage */ log_message,
+                /* intermediateUpdate */ intermediate_update,
             )
         };
 
@@ -579,7 +617,20 @@ impl FMU3 {
             fmi3OK
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
+
+            // let userdata_ptr = if let Some(f) = userdata {
+            //     f as *const c_void
+            // } else {
+            //     ptr::null() as *const c_void
+            // };
+
+            // let log_message_ptr = if let Some(f) = log_message {
+            //     f as *const c_void
+            // } else {
+            //     ptr::null() as *const c_void
+            // };
+
             let message = format!(
                 "fmi3InstantiateCoSimulation(instanceName=\"{}\", instantiationToken=\"{}\", resourcePath={:?}, visible={}, loggingOn={}, eventModeUsed={}, earlyReturnAllowed={}, nRequiredIntermediateVariables={}, instanceEnvironment={:p}, logMessage={:p}, intermediateUpdate={:p})",
                 instanceName,
@@ -591,10 +642,10 @@ impl FMU3 {
                 earlyReturnAllowed,
                 requiredIntermediateVariables.len(),
                 userdata,
-                logMessage_ptr,
-                intermediateUpdate_ptr
+                log_message,
+                ptr::null() as *const c_void,
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         instance
@@ -602,9 +653,9 @@ impl FMU3 {
 
     pub fn terminate(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3Terminate)(self.instance) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3Termiate()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -638,12 +689,9 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
-            let message = format!(
-                "fmi3EnterInitializationMode(toleranceDefined={}, tolerance={}, startTime={}, stopTimeDefined={}, stopTime={})",
-                toleranceDefined, tolerance, startTime, stopTimeDefined, stopTime
-            );
-            cb(&status, &message);
+        if self.logCalls {
+            let message = format!("fmi3EnterInitializationMode(toleranceDefined={toleranceDefined}, tolerance={tolerance}, startTime={startTime}, stopTimeDefined={stopTimeDefined}, stopTime={stopTime})");
+            self.log_call(status, &message);
         }
 
         status
@@ -651,18 +699,18 @@ impl FMU3 {
 
     pub fn exitInitializationMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3ExitInitializationMode)(self.instance) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3ExitInitializationMode()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
 
     pub fn reset(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3Reset)(self.instance) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3Reset()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -690,7 +738,7 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3DoStep(currentCommunicationPoint={}, communicationStepSize={}, noSetFMUStatePriorToCurrentPoint={}, eventHandlingNeeded={:?}, terminateSimulation={:?}, earlyReturn={:?}, lastSuccessfulTime={:?})",
                 currentCommunicationPoint,
@@ -701,7 +749,7 @@ impl FMU3 {
                 earlyReturn,
                 lastSuccessfulTime,
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         status
@@ -818,7 +866,7 @@ impl FMU3 {
             values[i] = unsafe { CStr::from_ptr(*v).to_string_lossy().into_owned() };
         }
         
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetString(valueReferences={:?}, nValueReferences={}, values={:?}, nValues={})",
                 valueReferences,
@@ -826,7 +874,7 @@ impl FMU3 {
                 values,
                 values.len()
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         status
@@ -857,7 +905,7 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetBinary(valueReferences={:?}, nValueReferences={}, sizes={:?}, values={:?}, nValues={})",
                 valueReferences,
@@ -866,7 +914,7 @@ impl FMU3 {
                 values,
                 values.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         status
@@ -977,7 +1025,7 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3SetString(valueReferences={:?}, nValueReferences={}, values={:?}, nValues={})",
                 valueReferences,
@@ -985,7 +1033,7 @@ impl FMU3 {
                 values,
                 values.len()
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         status
@@ -1016,7 +1064,7 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3SetBinary(valueReferences={:?}, nValueReferences={}, sizes={:?}, values={:?}, nValues={})",
                 valueReferences,
@@ -1025,7 +1073,7 @@ impl FMU3 {
                 values,
                 values.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         status
@@ -1041,13 +1089,13 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3SetDebugLogging(loggingOn={}, nCategories={})",
                 loggingOn,
                 categories.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         status
@@ -1063,18 +1111,18 @@ impl FMU3 {
 
     pub fn enterEventMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3EnterEventMode)(self.instance) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3EnterEventMode()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
 
     pub fn enterStepMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3EnterStepMode)(self.instance) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3EnterStepMode()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1093,13 +1141,12 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetNumberOfVariableDependencies(valueReference={}) -> {:?}, nDependencies={}",
                 valueReference, status, nDependencies
             );
-
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         if status == fmi3OK {
@@ -1128,13 +1175,12 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetVariableDependencies(valueReference={})",
                 valueReference
             );
-
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         status
@@ -1144,10 +1190,9 @@ impl FMU3 {
         let mut fmuState: fmi3FMUState = ptr::null_mut();
         let status = unsafe { (self.fmi3GetFMUState)(self.instance, &mut fmuState) };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3GetFMUState()");
-
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         if status == fmi3OK {
@@ -1159,18 +1204,18 @@ impl FMU3 {
 
     pub fn setFMUState(&self, fmuState: fmi3FMUState) -> fmi3Status {
         let status = unsafe { (self.fmi3SetFMUState)(self.instance, fmuState) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3SetFMUState()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
 
     pub fn freeFMUState(&self, fmuState: &mut fmi3FMUState) -> fmi3Status {
         let status = unsafe { (self.fmi3FreeFMUState)(self.instance, fmuState) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3FreeFMUState()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1180,12 +1225,12 @@ impl FMU3 {
         let status =
             unsafe { (self.fmi3SerializedFMUStateSize)(self.instance, fmuState, &mut size) };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3SerializedFMUStateSize() -> {:?}, size={}",
                 status, size
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         if status == fmi3OK {
@@ -1209,9 +1254,9 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3SerializeFMUState(size={})", serializedState.len(),);
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1230,9 +1275,9 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3DeserializeFMUState(size={})", serializedState.len(),);
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         if status == fmi3OK {
@@ -1262,13 +1307,13 @@ impl FMU3 {
                 sensitivity.len(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetDirectionalDerivative(nUnknowns={}, nKnowns={})",
                 unknowns.len(),
                 knowns.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1293,31 +1338,31 @@ impl FMU3 {
                 sensitivity.len(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetAdjointDerivative(nUnknowns={}, nKnowns={})",
                 unknowns.len(),
                 knowns.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
 
     pub fn enterConfigurationMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3EnterConfigurationMode)(self.instance) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3EnterConfigurationMode()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
 
     pub fn exitConfigurationMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3ExitConfigurationMode)(self.instance) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3ExitConfigurationMode()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1337,12 +1382,12 @@ impl FMU3 {
                 qualifiers.as_mut_ptr(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetIntervalDecimal(nValueReferences={})",
                 valueReferences.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1364,12 +1409,12 @@ impl FMU3 {
                 qualifiers.as_mut_ptr(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetIntervalFraction(nValueReferences={})",
                 valueReferences.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1387,12 +1432,12 @@ impl FMU3 {
                 intervals.as_ptr(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3SetIntervalDecimal(nValueReferences={})",
                 valueReferences.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1412,21 +1457,21 @@ impl FMU3 {
                 resolutions.as_ptr(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3SetIntervalFraction(nValueReferences={})",
                 valueReferences.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
 
     pub fn enterContinuousTimeMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3EnterContinuousTimeMode)(self.instance) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3EnterContinuousTimeMode()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1446,12 +1491,12 @@ impl FMU3 {
                 &mut terminateSimulation,
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3CompletedIntegratorStep() -> {:?}, enterEventMode={}, terminateSimulation={}",
                 status, enterEventMode, terminateSimulation
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         if status == fmi3OK {
@@ -1463,9 +1508,9 @@ impl FMU3 {
 
     pub fn setTime(&self, time: fmi3Float64) -> fmi3Status {
         let status = unsafe { (self.fmi3SetTime)(self.instance, time) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3SetTime(time={})", time);
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1478,12 +1523,12 @@ impl FMU3 {
                 continuousStates.len(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3SetContinuousStates(nContinuousStates={})",
                 continuousStates.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1496,12 +1541,12 @@ impl FMU3 {
                 continuousStates.len(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetContinuousStates(nContinuousStates={})",
                 continuousStates.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1514,12 +1559,12 @@ impl FMU3 {
                 derivatives.len(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetContinuousStateDerivatives(nContinuousStates={})",
                 derivatives.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1532,12 +1577,12 @@ impl FMU3 {
                 eventIndicators.len(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetEventIndicators(nEventIndicators={})",
                 eventIndicators.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1550,12 +1595,12 @@ impl FMU3 {
                 nominals.len(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetNominalsOfContinuousStates(nNominals={})",
                 nominals.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1564,12 +1609,12 @@ impl FMU3 {
         let mut nEventIndicators: usize = 0;
         let status =
             unsafe { (self.fmi3GetNumberOfEventIndicators)(self.instance, &mut nEventIndicators) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetNumberOfEventIndicators() -> {:?}, nEventIndicators={}",
                 status, nEventIndicators
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         if status == fmi3OK {
@@ -1584,12 +1629,12 @@ impl FMU3 {
         let status = unsafe {
             (self.fmi3GetNumberOfContinuousStates)(self.instance, &mut nContinuousStates)
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetNumberOfContinuousStates() -> {:?}, nContinuousStates={}",
                 status, nContinuousStates
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         if status == fmi3OK {
@@ -1601,9 +1646,9 @@ impl FMU3 {
 
     pub fn evaluateDiscreteStates(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3EvaluateDiscreteStates)(self.instance) };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3EvaluateDiscreteStates()");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1630,9 +1675,9 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi3UpdateDiscreteStates(discreteStatesNeedUpdate={discreteStatesNeedUpdate}, terminateSimulation={terminateSimulation}, nominalsOfContinuousStatesChanged={nominalsOfContinuousStatesChanged}, valuesOfContinuousStatesChanged={valuesOfContinuousStatesChanged}, nextEventTimeDefined={nextEventTimeDefined}, nextEventTime={nextEventTime})");
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         status
@@ -1654,12 +1699,12 @@ impl FMU3 {
                 values.len(),
             )
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3GetOutputDerivatives(nValueReferences={})",
                 valueReferences.len(),
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
         status
     }
@@ -1679,12 +1724,12 @@ impl FMU3 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi3ActivateModelPartition(clockReference={}, activationTime={}, priority={})",
                 clockReference, activationTime, priority
             );
-            cb(&status, &message);
+            self.log_call(status, &message);
         }
 
         status

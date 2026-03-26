@@ -19,12 +19,6 @@ fn create_fmu() -> FMU3 {
         .join("fmi3")
         .join("Feedthrough");
 
-    let log_message = move |status: &fmiStatus, category: &str, message: &str| {
-        println!("[{status:?}] [{category}] {message}")
-    };
-
-    let log_fmi_call = move |status: &fmiStatus, message: &str| println!("[{status:?}] {message}");
-
     let fmu = FMU3::instantiateCoSimulation(
         &unzipdir,
         "Feedthrough",
@@ -35,8 +29,10 @@ fn create_fmu() -> FMU3 {
         false,
         false,
         &[],
-        Some(Box::new(log_fmi_call)),
-        Some(Box::new(log_message)),
+        true,
+        true,
+        true,
+        true,
     )
     .unwrap();
 

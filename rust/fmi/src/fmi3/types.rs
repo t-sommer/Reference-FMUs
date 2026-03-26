@@ -99,7 +99,7 @@ pub type fmi3InstantiateModelExchangeTYPE = unsafe extern "C" fn(
     resourcePath: fmi3String,
     visible: fmi3Boolean,
     loggingOn: fmi3Boolean,
-    instanceEnvironment: fmi3InstanceEnvironment,
+    instanceEnvironment: *const fmi3InstanceEnvironment,
     logMessage: fmi3LogMessageCallback,
 ) -> fmi3Instance;
 
@@ -113,9 +113,9 @@ pub type fmi3InstantiateCoSimulationTYPE = unsafe extern "C" fn(
     earlyReturnAllowed: bool,
     requiredIntermediateVariables: *const c_uint,
     nRequiredIntermediateVariables: usize,
-    instanceEnvironment: *const c_void,
-    logMessage: *const c_void,
-    intermediateUpdate: *const c_void,
+    instanceEnvironment: fmi3InstanceEnvironment,
+    logMessage: *const fmi3LogMessageCallback,
+    intermediateUpdate: *const fmi3IntermediateUpdateCallback,
 ) -> fmi3Instance;
 
 pub type fmi3InstantiateScheduledExecutionTYPE = unsafe extern "C" fn(
@@ -125,10 +125,10 @@ pub type fmi3InstantiateScheduledExecutionTYPE = unsafe extern "C" fn(
     visible: fmi3Boolean,
     loggingOn: fmi3Boolean,
     instanceEnvironment: fmi3InstanceEnvironment,
-    logMessage: fmi3LogMessageCallback,
-    clockUpdate: fmi3ClockUpdateCallback,
-    lockPreemption: fmi3LockPreemptionCallback,
-    unlockPreemption: fmi3UnlockPreemptionCallback,
+    logMessage: *const fmi3LogMessageCallback,
+    clockUpdate: *const fmi3ClockUpdateCallback,
+    lockPreemption: *const fmi3LockPreemptionCallback,
+    unlockPreemption: *const fmi3UnlockPreemptionCallback,
 ) -> fmi3Instance;
 
 pub type fmi3FreeInstanceTYPE = unsafe extern "C" fn(instance: fmi3Instance);

@@ -239,22 +239,6 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         None
     };
 
-    let log_fmi_call = if settings.log_fmi_calls {
-        Some(Box::new(|status: &fmiStatus, message: &str| {
-            eprintln!("{message} -> {status:?}");
-        }) as Box<dyn Fn(&fmiStatus, &str) + Send + Sync>)
-    } else {
-        None
-    };
-
-    let log_message = if settings.log_fmi_calls {
-        Some(Box::new(|status: &fmiStatus, category: &str, message: &str| {
-            eprintln!("[Message][{:?}][{}] {}", status, category, message);
-        }) as Box<dyn Fn(&fmiStatus, &str, &str) + Send + Sync>)
-    } else {
-        None
-    };
-
     let fmu = FMU3::instantiateCoSimulation(
         settings.unzipdir.as_ref(),
         &co_simulation.modelIdentifier,
@@ -265,17 +249,25 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         settings.event_mode_used,
         settings.early_return_allowed,
         &[],
-        log_fmi_call, 
-        log_message,
+        settings.log_fmi_calls,
+        true,
+        true,
+        true,
     )?;
 
     set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
 
-    fmu.enterInitializationMode(
+    call(fmu.enterInitializationMode(
         settings.tolerance,
         start_time, 
         if set_stop_time { Some(stop_time) } else { None }
-    );
+    ))?;
+
+    call(fmu.enterInitializationMode(
+        settings.tolerance,
+        start_time, 
+        if set_stop_time { Some(stop_time) } else { None }
+    ))?;
 
     if let Some(input) = &input {
         input.set_discrete_inputs(time, true, &fmu)?;

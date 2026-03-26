@@ -232,13 +232,13 @@ pub extern "C" fn logMessage(
         "empty".to_string()
     };
 
-    let message = match status {
-        fmi3OK => format!("{message_str}").blue(),
-        fmi3Warning => format!("WARNING: {message_str}").yellow(),
-        _ => format!("ERROR: {message_str}").red(),
+    let prefix = match status {
+        fmi3OK => "ok".green().bold(),
+        fmi3Warning => "warning".yellow().bold(),
+        _ => "error".red().bold(),
     };
 
-    eprintln!("{message}");
+    eprintln!("{prefix}: {message_str}");
 
     // unsafe {
     //     let cb_ptr = instanceEnvironment as *mut Arc<LogMessageCallback>;

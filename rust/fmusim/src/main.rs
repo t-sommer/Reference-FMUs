@@ -173,8 +173,7 @@ fn main() -> ExitCode {
     match result {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
-            let message = format!("Simulation failed. {e}").red();
-            eprintln!("{message}");
+            eprintln!("{}: {}", "error".red().bold(), e);
             ExitCode::FAILURE
         }
     }

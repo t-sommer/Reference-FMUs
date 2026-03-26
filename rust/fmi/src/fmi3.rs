@@ -2,7 +2,7 @@
 
 pub mod types;
 
-use crate::{SHARED_LIBRARY_EXTENSION, types::*};
+use crate::SHARED_LIBRARY_EXTENSION;
 use libloading::{Library, Symbol};
 use std::error::Error;
 use std::ffi::{CStr, CString};
@@ -10,7 +10,7 @@ use std::os::raw::{c_uint, c_void};
 use std::path::Path;
 use std::ptr::{self, null, null_mut};
 use types::*;
-use colored::{Color, Colorize};
+use colored::Colorize;
 
 #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
 pub const PLATFORM_TUPLE: &str = "aarch64-linux";
@@ -232,12 +232,10 @@ pub extern "C" fn logMessage(
         "empty".to_string()
     };
 
-    let message = format!("[{status:?}] [{category_str}] {message_str}");
-
     let message = match status {
-        fmi3OK => message.blue(),
-        fmi3Warning => message.yellow(),
-        _ => message.red(),
+        fmi3OK => format!("{message_str}").blue(),
+        fmi3Warning => format!("WARNING: {message_str}").yellow(),
+        _ => format!("ERROR: {message_str}").red(),
     };
 
     eprintln!("{message}");

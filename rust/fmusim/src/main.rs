@@ -3,7 +3,7 @@
 use fmi::{model_description::{Causality, MajorVersion, ModelVariable, read_model_description}, sim::{self, SimulationSettings}, util::extract_fmu};
 use std::{collections::HashMap, path::PathBuf, process::ExitCode};
 use clap::Parser;
-
+use colored::Colorize;
 
 fn parse_start_value(s: &str) -> Result<(String, String), String> {
     
@@ -173,7 +173,8 @@ fn main() -> ExitCode {
     match result {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("Simulation failed. {e}");
+            let message = format!("Simulation failed. {e}").red();
+            eprintln!("{message}");
             ExitCode::FAILURE
         }
     }

@@ -566,24 +566,6 @@ impl FMU3 {
             .map(|cstr| cstr.as_ptr())
             .unwrap_or(ptr::null());
 
-        // let userdata = if let Some(callback) = self.logMessage.take() {
-        //     Box::into_raw(Box::new(callback)) as *mut c_void
-        // } else {
-        //     ptr::null_mut()
-        // };
-
-        // let userdata = ptr::null_mut();
-
-        // let logMessage_ptr = logMessage as *const c_void;
-
-        // let intermediateUpdate_ptr = ptr::null();
-
-        let logMessage_ptr = if self.logMessages {
-            logMessage as *const c_void
-        } else {
-            ptr::null() as *const c_void
-        };
-
         let log_message = if self.logMessages {
             logMessage as *const fmi3LogMessageCallback
         } else {
@@ -611,7 +593,7 @@ impl FMU3 {
             )
         };
 
-        let status = if self.instance.is_null() {
+        let status = if instance.is_null() {
             fmi3Error
         } else {
             fmi3OK

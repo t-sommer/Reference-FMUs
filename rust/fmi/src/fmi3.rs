@@ -9,8 +9,8 @@ use std::ffi::{CStr, CString};
 use std::os::raw::{c_uint, c_void};
 use std::path::Path;
 use std::ptr::{self, null, null_mut};
-use std::sync::Arc;
 use types::*;
+use colored::{Color, Colorize};
 
 #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
 pub const PLATFORM_TUPLE: &str = "aarch64-linux";
@@ -232,7 +232,15 @@ pub extern "C" fn logMessage(
         "empty".to_string()
     };
 
-    eprintln!("logMessage: {status:?} {category_str}: {message_str}");
+    let message = format!("[{status:?}] [{category_str}] {message_str}");
+
+    let message = match status {
+        fmi3OK => message.blue(),
+        fmi3Warning => message.yellow(),
+        _ => message.red(),
+    };
+
+    eprintln!("{message}");
 
     // unsafe {
     //     let cb_ptr = instanceEnvironment as *mut Arc<LogMessageCallback>;
@@ -255,7 +263,9 @@ impl FMU3 {
 
     fn log_call(&self, status: fmi3Status, message: &str) {
         if self.printCalls {
-            eprintln!("{message} -> {status:?}");
+            let message = format!("{message} -> {status:?}");
+            let message = message.black();
+            eprintln!("{message}");
         }
     }
 

@@ -10,7 +10,6 @@ use std::ffi::{CStr, CString};
 use std::os::raw::{c_uint, c_void};
 use std::path::Path;
 use std::ptr::{self, null, null_mut};
-use std::rc::Rc;
 use types::*;
 use colored::Colorize;
 
@@ -31,18 +30,6 @@ pub const PLATFORM_TUPLE: &str = "x86-windows";
 
 #[cfg(all(target_arch = "x86_64", target_os = "windows"))]
 pub const PLATFORM_TUPLE: &str = "x86_64-windows";
-
-/// Macro to check FMI status and return early if error or fatal
-/// Usage: fmi_check_status!(status);
-#[macro_export]
-macro_rules! fmi_check_status {
-    ($status:expr) => {{
-        let __fmi_status = $status;
-        if __fmi_status > fmi3Warning {
-            return __fmi_status;
-        }
-    }};
-}
 
 macro_rules! fmi_get {
     ($self:expr, $func:ident, $value_refs:expr, $values:expr) => {{
@@ -132,16 +119,14 @@ pub struct Message {
 }
 
 pub struct FMU3 {
+
     logCalls: bool,
     printCalls: bool,
+    calls: RefCell<Vec<Call>>,
 
     logMessages: bool,
     printMessages: bool,
-
-    calls: RefCell<Vec<Call>>,
     messages: Box<RefCell<Vec<Message>>>,
-
-    // logFMICall: Option<Arc<LogFMICallback>>,
     
     _lib: Box<Library>,
 
@@ -231,10 +216,6 @@ pub extern "C" fn logMessage(
     category: fmi3String,
     message: fmi3String,
 ) {
-    // if instanceEnvironment.is_null() {
-    //     return;
-    // }
-
     let category_str = if !category.is_null() {
         unsafe { CStr::from_ptr(category).to_string_lossy().into_owned() }
     } else {
@@ -255,7 +236,6 @@ pub extern "C" fn logMessage(
         };
         eprintln!("{prefix}: {message_str}");
     } else {
-        eprintln!("instanceEnvironment: {instanceEnvironment:p}");
         let messages = unsafe { &*(instanceEnvironment as *const RefCell<Vec<Message>>) };
         let message = Message {
             status,
@@ -264,13 +244,6 @@ pub extern "C" fn logMessage(
         };
         messages.borrow_mut().push(message);
     }
-    
-
-    // unsafe {
-    //     let cb_ptr = instanceEnvironment as *mut Arc<LogMessageCallback>;
-    //     let cb: &Arc<LogMessageCallback> = &*cb_ptr;
-    //     cb(&status, &category_str, &message_str);
-    // }
 }
 
 fn get_symbol<T>(
@@ -284,28 +257,6 @@ fn get_symbol<T>(
 }
 
 impl FMU3 {
-
-    pub fn drain_calls(&self) -> Vec<Call> {
-        self.calls.borrow_mut().drain(..).collect()
-    }
-
-    pub fn drain_messages(&self) -> Vec<Message> {
-        self.messages.borrow_mut().drain(..).collect()
-    }
-
-    fn log_call(&self, status: fmi3Status, message: &str) {
-        if self.printCalls {
-            let message = format!("{message} -> {status:?}");
-            let message = message.black();
-            eprintln!("{message}");
-        } else {
-            let call = Call {
-                status,
-                message: message.to_string(),
-            };
-            self.calls.borrow_mut().push(call);
-        }
-    }
 
     fn new(
         unzipdir: &Path,
@@ -459,12 +410,10 @@ impl FMU3 {
         Ok(FMU3 {
             logCalls,
             printCalls,
+            calls: RefCell::new(Vec::new()),
             logMessages,
             printMessages,
-            calls: RefCell::new(Vec::new()),
             messages: Box::new(RefCell::new(Vec::new())),
-            // logFMICall: logFMICall.map(|cb| Arc::from(cb)),
-            // logMessage: logMessage.map(|cb| Arc::from(cb)),
             _lib: lib,
             fmi3GetVersion,
             fmi3SetDebugLogging,
@@ -543,6 +492,28 @@ impl FMU3 {
             fmi3ActivateModelPartition,
             instance: ptr::null_mut(),
         })
+    }
+
+    pub fn drain_calls(&self) -> Vec<Call> {
+        self.calls.borrow_mut().drain(..).collect()
+    }
+
+    pub fn drain_messages(&self) -> Vec<Message> {
+        self.messages.borrow_mut().drain(..).collect()
+    }
+
+    fn log_call(&self, status: fmi3Status, message: &str) {
+        if self.printCalls {
+            let message = format!("{message} -> {status:?}");
+            let message = message.black();
+            eprintln!("{message}");
+        } else {
+            let call = Call {
+                status,
+                message: message.to_string(),
+            };
+            self.calls.borrow_mut().push(call);
+        }
     }
 
     pub fn getVersion(&self) -> String {
@@ -1758,6 +1729,3 @@ impl FMU3 {
         status
     }
 }
-
-// Explicitly implement Sync for FMU3 since all fields are now Sync
-// unsafe impl<'lib> Sync for FMU3 {}

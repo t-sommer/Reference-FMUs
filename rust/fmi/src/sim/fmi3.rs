@@ -250,9 +250,9 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         settings.early_return_allowed,
         &[],
         settings.log_fmi_calls,
-        false,
         true,
-        false,
+        true,
+        true,
     )?;
 
     set_start_values(&settings.start_values, &settings.model_description, &fmu)?;

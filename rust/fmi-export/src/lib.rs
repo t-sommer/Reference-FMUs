@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use fmi::types::fmiStatus;
 use serde::{Deserialize, Serialize};
 

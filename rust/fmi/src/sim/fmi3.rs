@@ -250,7 +250,7 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         settings.early_return_allowed,
         &[],
         settings.log_fmi_calls,
-        true,
+        false,
         true,
         false,
     )?;
@@ -268,6 +268,10 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         start_time, 
         if set_stop_time { Some(stop_time) } else { None }
     );
+
+    for call in fmu.drain_calls() {
+        eprintln!("{call:?}");
+    }
 
     for message in fmu.drain_messages() {
         eprintln!("{message:?}");

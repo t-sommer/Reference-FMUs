@@ -118,10 +118,11 @@ impl<'lib> Drop for FMU3 {
     }
 }
 
-// pub struct Call {
-//     pub status: fmi3Status,
-//     pub message: String,
-// }
+#[derive(Debug)]
+pub struct Call {
+    pub status: fmi3Status,
+    pub message: String,
+}
 
 #[derive(Debug)]
 pub struct Message {
@@ -137,6 +138,7 @@ pub struct FMU3 {
     logMessages: bool,
     printMessages: bool,
 
+    calls: RefCell<Vec<Call>>,
     messages: Box<RefCell<Vec<Message>>>,
 
     // logFMICall: Option<Arc<LogFMICallback>>,
@@ -283,6 +285,10 @@ fn get_symbol<T>(
 
 impl FMU3 {
 
+    pub fn drain_calls(&self) -> Vec<Call> {
+        self.calls.borrow_mut().drain(..).collect()
+    }
+
     pub fn drain_messages(&self) -> Vec<Message> {
         self.messages.borrow_mut().drain(..).collect()
     }
@@ -292,6 +298,12 @@ impl FMU3 {
             let message = format!("{message} -> {status:?}");
             let message = message.black();
             eprintln!("{message}");
+        } else {
+            let call = Call {
+                status,
+                message: message.to_string(),
+            };
+            self.calls.borrow_mut().push(call);
         }
     }
 
@@ -449,6 +461,7 @@ impl FMU3 {
             printCalls,
             logMessages,
             printMessages,
+            calls: RefCell::new(Vec::new()),
             messages: Box::new(RefCell::new(Vec::new())),
             // logFMICall: logFMICall.map(|cb| Arc::from(cb)),
             // logMessage: logMessage.map(|cb| Arc::from(cb)),

@@ -49,6 +49,3 @@ pub type fmiValueReference = u32;
 pub type fmiFMUState = *mut c_void;
 pub type fmiInstance = *mut c_void;
 pub type fmiInstanceEnvironment = *mut c_void;
-
-pub type LogFMICallCallback = dyn Fn(&fmiStatus, &str) + Send + Sync;
-pub type LogMessageCallback = dyn Fn(&fmiStatus, &str, &str) + Send + Sync;

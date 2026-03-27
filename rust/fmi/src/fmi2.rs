@@ -3,17 +3,17 @@
 pub mod types;
 
 use libloading::{Library, Symbol};
+use std::cell::RefCell;
 use std::error::Error;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_void;
 use std::path::Path;
-use std::ptr::null;
-use std::ptr::{self, null_mut};
-use std::sync::Arc;
+use std::ptr;
 use types::*;
 use url::Url;
+use colored::Colorize;
 
-use crate::{SHARED_LIBRARY_EXTENSION, types::*};
+use crate::SHARED_LIBRARY_EXTENSION;
 
 #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
 pub const PLATFORM: &str = "aarch64-linux";
@@ -33,21 +33,13 @@ pub const PLATFORM: &str = "win32";
 #[cfg(all(target_arch = "x86_64", target_os = "windows"))]
 pub const PLATFORM: &str = "win64";
 
-/// Macro to check FMI status and return early if error or fatal
-/// Usage: fmi_check_status!(status);
-#[macro_export]
-macro_rules! fmi2_check_status {
-    ($status:expr) => {{
-        let __fmi_status = $status;
-        if __fmi_status > fmi2Warning {
-            return __fmi_status;
-        }
-    }};
-}
-
 macro_rules! fmi2_get {
     ($self:expr, $func:ident, $value_refs:expr, $values:expr) => {{
-        debug_assert_eq!($value_refs.len(), $values.len());
+        debug_assert_eq!(
+            $value_refs.len(),
+            $values.len(),
+            "The number of values must be equal to the number of value references."
+        );
 
         let status = unsafe {
             ($self.$func)(
@@ -58,7 +50,7 @@ macro_rules! fmi2_get {
             )
         };
 
-        if let Some(cb) = &$self.logFMICall {
+        if $self.logCalls {
             let message = format!(
                 "{}(valueReferences={:?}, nvr={}, values={:?}) -> {:?}",
                 stringify!($func),
@@ -67,7 +59,7 @@ macro_rules! fmi2_get {
                 $values,
                 status
             );
-            cb(&status, message.as_str());
+            $self.log_call(status, message.as_str());
         }
 
         status
@@ -79,7 +71,7 @@ macro_rules! fmi2_set {
         debug_assert_eq!(
             $value_refs.len(),
             $values.len(),
-            "The number of values must be equal to the number of values references."
+            "The number of values must be equal to the number of value references."
         );
 
         let status = unsafe {
@@ -91,7 +83,7 @@ macro_rules! fmi2_set {
             )
         };
 
-        if let Some(cb) = &$self.logFMICall {
+        if $self.logCalls {
             let message = format!(
                 "{}(valueReferences={:?}, nvr={}, values={:?})",
                 stringify!($func),
@@ -99,7 +91,7 @@ macro_rules! fmi2_set {
                 $value_refs.len(),
                 $values
             );
-            cb(&status, message.as_str());
+            $self.log_call(status, message.as_str());
         }
 
         status
@@ -140,19 +132,36 @@ impl<'lib> Drop for FMU2 {
     fn drop(&mut self) {
         if !self.component.is_null() {
             unsafe { (self.fmi2FreeInstance)(self.component) };
-            self.component = null_mut();
-            if let Some(cb) = &self.logFMICall {
-                cb(&fmi2OK, "fmi2FreeInstance()");
+            if self.logCalls {
+                self.log_call(fmi2OK, "fmi2FreeInstance()");
             }
         }
     }
 }
 
+#[derive(Debug)]
+pub struct Call {
+    pub status: fmi2Status,
+    pub message: String,
+}
+
+#[derive(Debug)]
+pub struct Message {
+    pub status: fmi2Status,
+    pub category: String,
+    pub message: String,
+}
+
 pub struct FMU2 {
     instanceName: String,
 
-    logFMICall: Option<Arc<LogFMICallCallback>>,
-    logMessage: Option<Arc<LogMessageCallback>>,
+    logCalls: bool,
+    printCalls: bool,
+    calls: RefCell<Vec<Call>>,
+
+    logMessages: bool,
+    printMessages: bool,
+    messages: Box<RefCell<Vec<Message>>>,
 
     _lib: Box<Library>,
 
@@ -188,17 +197,13 @@ pub struct FMU2 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn logMessage2(
+pub extern "C" fn logger(
     componentEnvironment: fmi2ComponentEnvironment,
     _instanceName: fmi2String,
     status: fmi2Status,
     category: fmi2String,
     message: fmi2String,
 ) {
-    if componentEnvironment.is_null() {
-        return;
-    }
-
     let category_str = if !category.is_null() {
         unsafe { CStr::from_ptr(category).to_string_lossy().into_owned() }
     } else {
@@ -211,10 +216,21 @@ pub extern "C" fn logMessage2(
         "empty".to_string()
     };
 
-    unsafe {
-        let cb_ptr = componentEnvironment as *mut Arc<LogMessageCallback>;
-        let cb: &Arc<LogMessageCallback> = &*cb_ptr;
-        cb(&status, &category_str, &message_str);
+    if componentEnvironment.is_null() {
+        let prefix = match status {
+            fmi2OK => "ok".green().bold(),
+            fmi2Warning => "warning".yellow().bold(),
+            _ => "error".red().bold(),
+        };
+        eprintln!("{prefix}: {message_str}");
+    } else {
+        let messages = unsafe { &*(componentEnvironment as *const RefCell<Vec<Message>>) };
+        let message = Message {
+            status,
+            category: category_str,
+            message: message_str,
+        };
+        messages.borrow_mut().push(message);
     }
 }
 
@@ -240,8 +256,10 @@ impl FMU2 {
         guid: &str,
         visible: bool,
         loggingOn: bool,
-        logFMICall: Option<Box<LogFMICallCallback>>,
-        logMessage: Option<Box<LogMessageCallback>>,
+        logCalls: bool,
+        printCalls: bool,
+        logMessages: bool,
+        printMessages: bool,
     ) -> Result<FMU2, Box<dyn Error>> {
 
         let shared_library_path = unzipdir
@@ -375,8 +393,12 @@ impl FMU2 {
 
         let mut fmu = FMU2 {
             instanceName: String::from(instanceName),
-            logFMICall: logFMICall.map(|cb| Arc::from(cb)),
-            logMessage: logMessage.map(|cb| Arc::from(cb)),
+            logCalls,
+            printCalls,
+            calls: RefCell::new(Vec::new()),
+            logMessages,
+            printMessages,
+            messages: Box::new(RefCell::new(Vec::new())),
             _lib: lib,
             fmi2GetVersion,
             fmi2GetTypesPlatform,
@@ -424,14 +446,35 @@ impl FMU2 {
         }
     }
 
+    pub fn drain_calls(&self) -> Vec<Call> {
+        self.calls.borrow_mut().drain(..).collect()
+    }
+
+    pub fn drain_messages(&self) -> Vec<Message> {
+        self.messages.borrow_mut().drain(..).collect()
+    }
+
+    fn log_call(&self, status: fmi2Status, message: &str) {
+        if self.printCalls {
+            let message = message.black();
+            eprintln!("{message}");
+        } else {
+            let call = Call {
+                status,
+                message: message.to_string(),
+            };
+            self.calls.borrow_mut().push(call);
+        }
+    }
+
     pub fn getVersion(&self) -> String {
         let version = unsafe {
             let version_cstr = (self.fmi2GetVersion)();
             CStr::from_ptr(version_cstr).to_string_lossy().into_owned()
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi2GetVersion() -> \"{version}\"");
-            cb(&fmi2OK, message.as_str());
+            self.log_call(fmi2OK, message.as_str());
         }
         version
     }
@@ -441,9 +484,9 @@ impl FMU2 {
             let platform_cstr = (self.fmi2GetTypesPlatform)();
             CStr::from_ptr(platform_cstr).to_string_lossy().into_owned()
         };
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!("fmi2GetTypesPlatform() -> {types_platform}");
-            cb(&fmi2OK, message.as_str());
+            self.log_call(fmi2OK, message.as_str());
         }
         types_platform
     }
@@ -465,25 +508,23 @@ impl FMU2 {
             url_cstr = CString::new(url.to_string()).unwrap();
             url_cstr.as_ptr() as fmi2String
         } else {
-            null() as fmi2String
+            ptr::null() as fmi2String
         };
 
-        // Create callback functions structure
-        let userdata = if let Some(callback) = self.logMessage.take() {
-            Box::into_raw(Box::new(callback)) as *mut c_void
+        let componentEnvironment = if self.logMessages && !self.printMessages {
+            &*self.messages as *const RefCell<Vec<Message>> as fmi2ComponentEnvironment
         } else {
-            ptr::null_mut()
+            ptr::null_mut() as fmi2ComponentEnvironment
         };
 
-        // Simple memory allocation functions for FMI 2.0
-        unsafe extern "C" fn allocate_memory(nobj: usize, size: usize) -> *mut c_void {
+        unsafe extern "C" fn allocateMemory(nobj: usize, size: usize) -> *mut c_void {
             unsafe {
                 let layout = std::alloc::Layout::from_size_align_unchecked(nobj * size, 1);
                 std::alloc::alloc(layout) as *mut c_void
             }
         }
 
-        unsafe extern "C" fn free_memory(obj: *mut c_void) {
+        unsafe extern "C" fn freeMemory(obj: *mut c_void) {
             if !obj.is_null() {
                 unsafe {
                     std::alloc::dealloc(
@@ -494,16 +535,16 @@ impl FMU2 {
             }
         }
 
-        unsafe extern "C" fn step_finished(_env: fmi2ComponentEnvironment, _status: fmi2Status) {
+        unsafe extern "C" fn stepFinished(_env: fmi2ComponentEnvironment, _status: fmi2Status) {
             // default implementation - do nothing
         }
 
         let callbacks = fmi2CallbackFunctions {
-            logger: logMessage2,
-            allocateMemory: allocate_memory,
-            freeMemory: free_memory,
-            stepFinished: step_finished,
-            componentEnvironment: userdata,
+            logger,
+            allocateMemory,
+            freeMemory,
+            stepFinished,
+            componentEnvironment,
         };
 
         let interfaceType = match self.interfaceType {
@@ -523,7 +564,7 @@ impl FMU2 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let url = if let Some(url) = resourceUrl {
                 url.to_string()
             } else {
@@ -531,14 +572,14 @@ impl FMU2 {
             };
 
             let message = format!(
-                "fmi2Instantiate(instanceName=\"{}\", fmuType={:?}, fmuGUID=\"{}\", fmuResourceLocation={:?}, visible={}, loggingOn={})",
-                instanceName, interfaceType, guid, url, visible, loggingOn
+                "fmi2Instantiate(instanceName=\"{}\", fmuType={:?}, fmuGUID=\"{}\", fmuResourceLocation={:?}, visible={}, loggingOn={}) -> {:p}",
+                instanceName, interfaceType, guid, url, visible, loggingOn, component
             );
 
             if component.is_null() {
-                cb(&fmi2Error, &message);
+                self.log_call(fmi2Error, &message);
             } else {
-                cb(&fmi2OK, &message);
+                self.log_call(fmi2OK, &message);
             }
         }
 
@@ -547,8 +588,9 @@ impl FMU2 {
 
     pub fn terminate(&self) -> fmi2Status {
         let status = unsafe { (self.fmi2Terminate)(self.component) };
-        if let Some(cb) = &self.logFMICall {
-            cb(&status, "fmi2Terminate()");
+        if self.logCalls {
+            let message = format!("fmi2Terminate() -> {:?}", status);
+            self.log_call(status, &message);
         }
         status
     }
@@ -582,12 +624,12 @@ impl FMU2 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
-                "fmi2SetupExperiment(toleranceDefined={}, tolerance={}, startTime={}, stopTimeDefined={}, stopTime={})",
-                toleranceDefined, tolerance, startTime, stopTimeDefined, stopTime
+                "fmi2SetupExperiment(toleranceDefined={}, tolerance={}, startTime={}, stopTimeDefined={}, stopTime={}) -> {:?}",
+                toleranceDefined, tolerance, startTime, stopTimeDefined, stopTime, status
             );
-            cb(&status, message.as_str());
+            self.log_call(status, message.as_str());
         }
 
         status
@@ -595,34 +637,29 @@ impl FMU2 {
 
     pub fn enterInitializationMode(&self) -> fmi2Status {
         let status = unsafe { (self.fmi2EnterInitializationMode)(self.component) };
-        if let Some(cb) = &self.logFMICall {
-            cb(&status, "fmi2EnterInitializationMode()");
+        if self.logCalls {
+            let message = format!("fmi2EnterInitializationMode() -> {:?}", status);
+            self.log_call(status, &message);
         }
         status
     }
 
     pub fn exitInitializationMode(&self) -> fmi2Status {
         let status = unsafe { (self.fmi2ExitInitializationMode)(self.component) };
-        if let Some(cb) = &self.logFMICall {
-            cb(&status, "fmi2ExitInitializationMode()");
+        if self.logCalls {
+            let message = format!("fmi2ExitInitializationMode() -> {:?}", status);
+            self.log_call(status, &message);
         }
         status
     }
 
     pub fn reset(&self) -> fmi2Status {
         let status = unsafe { (self.fmi2Reset)(self.component) };
-        if let Some(cb) = &self.logFMICall {
-            cb(&status, "fmi2Reset()");
+        if self.logCalls {
+            let message = format!("fmi2Reset() -> {:?}", status);
+            self.log_call(status, &message);
         }
         status
-    }
-
-    pub fn freeInstance(&mut self) {
-        unsafe { (self.fmi2FreeInstance)(self.component) };
-        self.component = null_mut();
-        if let Some(cb) = &self.logFMICall {
-            cb(&fmi2OK, "fmi2FreeInstance()");
-        }
     }
 
     // Variable access methods
@@ -657,7 +694,7 @@ impl FMU2 {
     ) -> fmi2Status {
         debug_assert_eq!(valueReferences.len(), values.len());
 
-        let mut buffer: Vec<fmi2String> = vec![null(); values.len()];
+        let mut buffer: Vec<fmi2String> = vec![ptr::null(); values.len()];
 
         let status = unsafe {
             (self.fmi2GetString)(
@@ -672,7 +709,7 @@ impl FMU2 {
             values[i] = unsafe { CStr::from_ptr(*v).to_string_lossy().into_owned() };
         }
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi2GetString(valueReferences={:?}, nvr={}, values={:?}) -> {:?}",
                 valueReferences,
@@ -680,7 +717,7 @@ impl FMU2 {
                 values,
                 status
             );
-            cb(&status, message.as_str());
+            self.log_call(status, message.as_str());
         }
 
         status
@@ -733,7 +770,7 @@ impl FMU2 {
             )
         };
 
-        if let Some(cb) = &self.logFMICall {
+        if self.logCalls {
             let message = format!(
                 "fmi2SetString(valueReferences={:?}, nvr={}, values={:?}) -> {:?}",
                 valueReferences,
@@ -741,7 +778,7 @@ impl FMU2 {
                 values,
                 status
             );
-            cb(&status, message.as_str());
+            self.log_call(status, message.as_str());
         }
 
         status
@@ -763,14 +800,15 @@ impl FMU2 {
                     noSetFMUStatePriorToCurrentPoint,
                 )
             };
-            if let Some(cb) = &self.logFMICall {
+            if self.logCalls {
                 let message = format!(
-                    "fmi2DoStep(currentCommunicationPoint={}, communicationStepSize={}, noSetFMUStatePriorToCurrentPoint={})",
+                    "fmi2DoStep(currentCommunicationPoint={}, communicationStepSize={}, noSetFMUStatePriorToCurrentPoint={}) -> {:?}",
                     currentCommunicationPoint,
                     communicationStepSize,
-                    noSetFMUStatePriorToCurrentPoint
+                    noSetFMUStatePriorToCurrentPoint,
+                    status
                 );
-                cb(&status, message.as_str());
+                self.log_call(status, message.as_str());
             }
             status
         } else {
@@ -781,8 +819,9 @@ impl FMU2 {
     pub fn cancelStep(&self) -> fmi2Status {
         if let InterfaceType::CoSimulation(functions) = &self.interfaceType {
             let status = unsafe { (functions.fmi2CancelStep)(self.component) };
-            if let Some(cb) = &self.logFMICall {
-                cb(&status, "fmi2CancelStep()");
+            if self.logCalls {
+                let message = format!("fmi2CancelStep() -> {:?}", status);
+                self.log_call(status, &message);
             }
             status
         } else {
@@ -793,9 +832,9 @@ impl FMU2 {
     pub fn getRealStatus(&self, s: &fmi2StatusKind, value: &mut fmi2Real) -> fmi2Status {
         if let InterfaceType::CoSimulation(functions) = &self.interfaceType {
             let status = unsafe { (functions.fmi2GetRealStatus)(self.component, *s, value) };
-            if let Some(cb) = &self.logFMICall {
-                let message = format!("fmi2GetRealStatus(s={s:?}, value={value})");
-                cb(&status, &message);
+            if self.logCalls {
+                let message = format!("fmi2GetRealStatus(s={s:?}, value={value}) -> {:?}", status);
+                self.log_call(status, &message);
             }
             status
         } else {
@@ -806,9 +845,9 @@ impl FMU2 {
     pub fn getIntegerStatus(&self, s: &fmi2StatusKind, value: &mut fmi2Integer) -> fmi2Status {
         if let InterfaceType::CoSimulation(functions) = &self.interfaceType {
             let status = unsafe { (functions.fmi2GetIntegerStatus)(self.component, *s, value) };
-            if let Some(cb) = &self.logFMICall {
-                let message = format!("fmi2GetIntegerStatus(s={s:?}, value={value})");
-                cb(&status, &message);
+            if self.logCalls {
+                let message = format!("fmi2GetIntegerStatus(s={s:?}, value={value}) -> {:?}", status);
+                self.log_call(status, &message);
             }
             status
         } else {
@@ -819,9 +858,9 @@ impl FMU2 {
     pub fn getBooleanStatus(&self, s: &fmi2StatusKind, value: &mut fmi2Boolean) -> fmi2Status {
         if let InterfaceType::CoSimulation(functions) = &self.interfaceType {
             let status = unsafe { (functions.fmi2GetBooleanStatus)(self.component, *s, value) };
-            if let Some(cb) = &self.logFMICall {
-                let message = format!("fmi2GetBooleanStatus(s={s:?}, value={value})");
-                cb(&status, &message);
+            if self.logCalls {
+                let message = format!("fmi2GetBooleanStatus(s={s:?}, value={value}) -> {:?}", status);
+                self.log_call(status, &message);
             }
             status
         } else {
@@ -840,9 +879,9 @@ impl FMU2 {
                 *value = unsafe { CStr::from_ptr(buffer).to_string_lossy().into_owned() };
             }
 
-            if let Some(cb) = &self.logFMICall {
-                let message = format!("fmi2GetStringStatus(s={s:?}, value={value})");
-                cb(&status, &message);
+            if self.logCalls {
+                let message = format!("fmi2GetStringStatus(s={s:?}, value={value}) -> {:?}", status);
+                self.log_call(status, &message);
             }
 
             status
@@ -852,22 +891,25 @@ impl FMU2 {
     }
 
     // Model Exchange specific methods
-    pub fn setTime(&self, _time: fmi2Real) -> fmi2Status {
-        fmi2Fatal
-        // let status = unsafe { (self.fmi2SetTime)(self.component, time) };
-        // if let Some(cb) = &self.logFMICall {
-        //     let message = format!("fmi2SetTime(time={}) -> {:?}", time, status);
-        //     cb(&status, message.as_str());
-        // }
-        // status
+    pub fn setTime(&self, time: fmi2Real) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe { (functions.fmi2SetTime)(self.component, time) };
+            if self.logCalls {
+                let message = format!("fmi2SetTime(time={}) -> {:?}", time, status);
+                self.log_call(status, &message);
+            }
+            status
+        } else {
+            panic!("fmi2SetTime is only available for Model Exchange FMUs.");
+        }
     }
 
     pub fn enterEventMode(&self) -> fmi2Status {
         if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
             let status = unsafe { (functions.fmi2EnterEventMode)(self.component) };
-            if let Some(cb) = &self.logFMICall {
+            if self.logCalls {
                 let message = format!("fmi2EnterEventMode() -> {:?}", status);
-                cb(&status, message.as_str());
+                self.log_call(status, &message);
             }
             status
         } else {
@@ -878,9 +920,9 @@ impl FMU2 {
     pub fn enterContinuousTimeMode(&self) -> fmi2Status {
         if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
             let status = unsafe { (functions.fmi2EnterContinuousTimeMode)(self.component) };
-            if let Some(cb) = &self.logFMICall {
+            if self.logCalls {
                 let message = format!("fmi2EnterContinuousTimeMode() -> {:?}", status);
-                cb(&status, message.as_str());
+                self.log_call(status, &message);
             }
             status
         } else {

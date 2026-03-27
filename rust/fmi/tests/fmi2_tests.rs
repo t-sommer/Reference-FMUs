@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use fmi::fmi2::*;
 use fmi::fmi2::types::*;
+use fmi::fmi2::*;
 use fmi::types::fmiStatus;
 use std::{env, path::PathBuf};
 
@@ -12,18 +12,11 @@ macro_rules! assert_ok {
 }
 
 fn create_fmu() -> FMU2 {
-
     let unzipdir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("resources")
         .join("fmi2")
         .join("Feedthrough");
-
-    let log_message = move |status: &fmiStatus, category: &str, message: &str| {
-        println!("[{status:?}] [{category}] {message}")
-    };
-
-    let log_fmi_call = move |status: &fmiStatus, message: &str| println!("[{status:?}] {message}");
 
     let fmu = FMU2::new(
         &unzipdir,
@@ -33,25 +26,12 @@ fn create_fmu() -> FMU2 {
         "{37B954F1-CC86-4D8F-B97F-C7C36F6670D2}",
         false,
         true,
-        Some(Box::new(log_fmi_call)),
-        Some(Box::new(log_message)),
+        true,
+        true,
+        true,
+        true,
     )
     .unwrap();
-
-    // let resource_url = if resource_path.is_dir() {
-    //     Some(Url::from_directory_path(&resource_path).unwrap())
-    // } else {
-    //     None
-    // };
-
-    // assert_ok!(fmu.instantiate(
-    //     "main",
-    //     fmi2Type::fmi2CoSimulation,
-    //     "{37B954F1-CC86-4D8F-B97F-C7C36F6670D2}",
-    //     resource_url.as_ref(),
-    //     false,
-    //     true,
-    // ));
 
     let version = fmu.getVersion();
     assert!(version.starts_with("2."));
@@ -65,7 +45,7 @@ fn create_fmu() -> FMU2 {
 
 #[test]
 fn test_real_continuous() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     let input_vr = [7];
     let input_values = [123.456789];
@@ -78,12 +58,11 @@ fn test_real_continuous() {
     assert_eq!(output_values, input_values);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_real_discrete() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     let input_vr = [9];
     let input_values = [42.5];
@@ -96,12 +75,11 @@ fn test_real_discrete() {
     assert_eq!(output_values, input_values);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_integer() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     let input_vr = [19];
     let input_values = [-987654321];
@@ -114,12 +92,11 @@ fn test_integer() {
     assert_eq!(output_values, input_values);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_boolean() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     let input_vr = [27];
     let input_values = [fmi2True];
@@ -140,12 +117,11 @@ fn test_boolean() {
     assert_eq!(output_values_false, input_values_false);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_string() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     let input_vr = [29];
     let input_values = ["Hello, FMI2!"];
@@ -159,12 +135,11 @@ fn test_string() {
     assert_eq!(output_values[0], input_values[0]);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_enumeration() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     let input_vr = [33];
     let input_values = [2]; // Option 2
@@ -185,12 +160,11 @@ fn test_enumeration() {
     assert_eq!(output_values_option1, input_values_option1);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_multiple_variables() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     // Test setting and getting multiple different variable types in one test
 
@@ -237,12 +211,11 @@ fn test_multiple_variables() {
     assert_eq!(string_output_values[0], string_input_values[0]);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_edge_cases() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     // Test extreme values for different types
 
@@ -296,12 +269,11 @@ fn test_edge_cases() {
     assert_eq!(output, very_large);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_parameters() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     // Test fixed parameter (should be settable during initialization)
     let fixed_param_vr = [5];
@@ -323,12 +295,11 @@ fn test_parameters() {
     assert_eq!(tunable_output_values, tunable_param_values);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_simulation_step() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     // Set some input values
     let real_input_vr = [7];
@@ -357,12 +328,11 @@ fn test_simulation_step() {
     assert_eq!(int_output_values, int_input_values);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_empty_string() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     let input_vr = [29];
     let input_values = [""];
@@ -376,12 +346,11 @@ fn test_empty_string() {
     assert_eq!(output_values[0], input_values[0]);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_long_string() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     let input_vr = [29];
     // Use a string that's within the 128 byte limit
@@ -397,12 +366,11 @@ fn test_long_string() {
     assert_eq!(output_values[0], input_values[0]);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_zero_values() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     // Test zero real value
     let real_input_vr = [7];
@@ -425,12 +393,11 @@ fn test_zero_values() {
     assert_eq!(int_output_values, int_input_values);
 
     assert_ok!(fmu.terminate());
-    fmu.freeInstance();
 }
 
 #[test]
 fn test_string_length_limit() {
-    let mut fmu = create_fmu();
+    let fmu = create_fmu();
 
     let input_vr = [29];
     // Create a string that exceeds the 128 byte limit
@@ -440,8 +407,4 @@ fn test_string_length_limit() {
     // This should return an error due to string length limit
     let result = fmu.setString(&input_vr, &input_values);
     assert_eq!(result, fmi2Error);
-
-    // Don't call terminate after an error - the FMU may be in an invalid state
-    // Just free the instance directly
-    fmu.freeInstance();
 }

@@ -2,6 +2,7 @@
 
 pub mod types;
 
+use colored::Colorize;
 use libloading::{Library, Symbol};
 use std::cell::RefCell;
 use std::error::Error;
@@ -11,7 +12,6 @@ use std::path::Path;
 use std::ptr;
 use types::*;
 use url::Url;
-use colored::Colorize;
 
 use crate::SHARED_LIBRARY_EXTENSION;
 
@@ -261,14 +261,13 @@ impl FMU2 {
         logMessages: bool,
         printMessages: bool,
     ) -> Result<FMU2, Box<dyn Error>> {
-
         let shared_library_path = unzipdir
             .join("binaries")
             .join(PLATFORM)
             .join(format!("{modelIdentifier}{SHARED_LIBRARY_EXTENSION}"));
 
         if !shared_library_path.is_file() {
-            return Err(format!("Missing shared library {shared_library_path:?}.").into())
+            return Err(format!("Missing shared library {shared_library_path:?}.").into());
         }
 
         let lib = Box::new(unsafe { Library::new(shared_library_path)? });
@@ -309,7 +308,7 @@ impl FMU2 {
         let fmi2GetDirectionalDerivative =
             get_symbol::<fmi2GetDirectionalDerivativeTYPE>(&lib, b"fmi2GetDirectionalDerivative")?;
 
-       let interfaceType = match interfaceType {
+        let interfaceType = match interfaceType {
             fmi2Type::fmi2ModelExchange => {
                 let fmi2EnterEventMode =
                     get_symbol::<fmi2EnterEventModeTYPE>(&lib, b"fmi2EnterEventMode")?;
@@ -437,8 +436,9 @@ impl FMU2 {
             None
         };
 
-        fmu.component = fmu.instantiate(instanceName, guid, resourceUrl.as_ref(), visible, loggingOn);
-        
+        fmu.component =
+            fmu.instantiate(instanceName, guid, resourceUrl.as_ref(), visible, loggingOn);
+
         if fmu.component.is_null() {
             Err("Failed to instantiate FMU.".into())
         } else {
@@ -747,17 +747,10 @@ impl FMU2 {
         fmi2_set!(self, fmi2SetBoolean, valueReferences, values)
     }
 
-    pub fn setString(
-        &self,
-        valueReferences: &[fmi2ValueReference],
-        values: &[&str],
-    ) -> fmi2Status {
+    pub fn setString(&self, valueReferences: &[fmi2ValueReference], values: &[&str]) -> fmi2Status {
         debug_assert_eq!(valueReferences.len(), values.len());
 
-        let values: Vec<CString> = values
-                .iter()
-                .map(|&v| CString::new(v).unwrap())
-                .collect();
+        let values: Vec<CString> = values.iter().map(|&v| CString::new(v).unwrap()).collect();
 
         let values2: Vec<fmi2String> = values.iter().map(|v| v.as_ptr() as fmi2String).collect();
 
@@ -846,7 +839,10 @@ impl FMU2 {
         if let InterfaceType::CoSimulation(functions) = &self.interfaceType {
             let status = unsafe { (functions.fmi2GetIntegerStatus)(self.component, *s, value) };
             if self.logCalls {
-                let message = format!("fmi2GetIntegerStatus(s={s:?}, value={value}) -> {:?}", status);
+                let message = format!(
+                    "fmi2GetIntegerStatus(s={s:?}, value={value}) -> {:?}",
+                    status
+                );
                 self.log_call(status, &message);
             }
             status
@@ -859,7 +855,10 @@ impl FMU2 {
         if let InterfaceType::CoSimulation(functions) = &self.interfaceType {
             let status = unsafe { (functions.fmi2GetBooleanStatus)(self.component, *s, value) };
             if self.logCalls {
-                let message = format!("fmi2GetBooleanStatus(s={s:?}, value={value}) -> {:?}", status);
+                let message = format!(
+                    "fmi2GetBooleanStatus(s={s:?}, value={value}) -> {:?}",
+                    status
+                );
                 self.log_call(status, &message);
             }
             status
@@ -880,7 +879,10 @@ impl FMU2 {
             }
 
             if self.logCalls {
-                let message = format!("fmi2GetStringStatus(s={s:?}, value={value}) -> {:?}", status);
+                let message = format!(
+                    "fmi2GetStringStatus(s={s:?}, value={value}) -> {:?}",
+                    status
+                );
                 self.log_call(status, &message);
             }
 

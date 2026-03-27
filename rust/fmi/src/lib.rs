@@ -1,9 +1,9 @@
-pub mod types;
 pub mod fmi2;
 pub mod fmi3;
 pub mod model_description;
-pub mod util;
 pub mod sim;
+pub mod types;
+pub mod util;
 
 #[macro_use]
 extern crate approx;

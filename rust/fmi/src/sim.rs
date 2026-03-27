@@ -6,7 +6,6 @@ use crate::model_description::{ModelDescription, ModelVariable};
 pub mod fmi2;
 pub mod fmi3;
 
-
 pub struct SimulationSettings<'a> {
     pub unzipdir: &'a Path,
     pub model_description: &'a ModelDescription,

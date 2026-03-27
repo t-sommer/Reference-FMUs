@@ -28,7 +28,6 @@ struct ModelData {
 }
 
 impl ModelData {
-
     fn default(solver: Option<Solver>) -> Self {
         ModelData {
             solver: solver,
@@ -41,7 +40,6 @@ impl ModelData {
             k: 1.0,
         }
     }
-    
 }
 
 struct ModelInstance {
@@ -130,7 +128,10 @@ impl BaseModel for ModelInstance {
             Ok(ValueReference::der_x) => *value = self.data.der_x,
             Ok(ValueReference::k) => *value = self.data.k,
             Err(_) => {
-                let message = format!("Unknown value reference for type Float64: {}", value_reference);
+                let message = format!(
+                    "Unknown value reference for type Float64: {}",
+                    value_reference
+                );
                 (self.logError)(&message);
                 return fmiStatus::fmiError;
             }
@@ -160,7 +161,13 @@ impl ModelInstance {
 // Include shared FMI3 implementation
 // This compiles common functions directly into this DLL
 #[cfg(feature = "fmi2")]
-include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fmi-export/src/fmi2.rs"));
+include!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../fmi-export/src/fmi2.rs"
+));
 
 #[cfg(not(feature = "fmi2"))]
-include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fmi-export/src/fmi3.rs"));
+include!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../fmi-export/src/fmi3.rs"
+));

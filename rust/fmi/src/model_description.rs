@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 use roxmltree::Node;
+use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 
 use crate::types::fmiValueReference;
 
@@ -31,7 +31,6 @@ pub enum VariableType {
 }
 
 impl FromStr for VariableType {
-
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -64,16 +63,16 @@ pub enum Causality {
     Input,
     Output,
     Local,
-    Independent
+    Independent,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Variability {
-    Constant, 
-    Fixed, 
-    Tunable, 
-    Discrete, 
-    Continuous
+    Constant,
+    Fixed,
+    Tunable,
+    Discrete,
+    Continuous,
 }
 
 #[derive(Debug)]
@@ -118,10 +117,9 @@ pub struct ModelDescription {
 }
 
 pub fn read_model_description(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
-
     let text = match std::fs::read_to_string(path) {
         Ok(content) => content,
-        Err(e) => return Err(format!("Failed to read XML file: {}", e).into())
+        Err(e) => return Err(format!("Failed to read XML file: {}", e).into()),
     };
 
     let opt = roxmltree::ParsingOptions {
@@ -144,9 +142,7 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, Box<dyn E
     }
 }
 
-
 fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
-
     for child in node.children() {
         if child.has_tag_name("Real") {
             return Ok(VariableType::Float64);
@@ -165,13 +161,18 @@ fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
 }
 
 fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
+    let ModelVariables = root
+        .descendants()
+        .find(|n| n.has_tag_name("ModelVariables"))
+        .unwrap();
 
-    let ModelVariables = root.descendants().find(|n| n.has_tag_name("ModelVariables")).unwrap();
-    
     let mut modelVariables = vec![];
 
-    for (_i, child) in ModelVariables.children().filter(|n| n.has_tag_name("ScalarVariable")).enumerate() {
-
+    for (_i, child) in ModelVariables
+        .children()
+        .filter(|n| n.has_tag_name("ScalarVariable"))
+        .enumerate()
+    {
         let name = child.required_attribute("name")?;
         let valueReference = child.required_attribute("valueReference")?.parse().unwrap();
 
@@ -193,13 +194,20 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             Some("tunable") => Variability::Tunable,
             Some("discrete") => Variability::Discrete,
             Some("continuous") => Variability::Continuous,
-            _ => { if matches!(variableType, VariableType::Float32 | VariableType::Float64) 
-                && !matches!(causality, Causality::Parameter | Causality::StructuralParameter | Causality::CalculatedParameter) {
+            _ => {
+                if matches!(variableType, VariableType::Float32 | VariableType::Float64)
+                    && !matches!(
+                        causality,
+                        Causality::Parameter
+                            | Causality::StructuralParameter
+                            | Causality::CalculatedParameter
+                    )
+                {
                     Variability::Continuous
                 } else {
                     Variability::Discrete
                 }
-            },
+            }
         };
 
         let dimensions = vec![];
@@ -214,26 +222,26 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         };
 
         modelVariables.push(variable);
-
     }
 
-    let defaultExperiment = root.descendants().find(|n| n.has_tag_name("DefaultExperiment")).map(|e| 
-        DefaultExperiment {
+    let defaultExperiment = root
+        .descendants()
+        .find(|n| n.has_tag_name("DefaultExperiment"))
+        .map(|e| DefaultExperiment {
             startTime: e.optional_attribute("startTime"),
             stopTime: e.optional_attribute("stopTime"),
             tolerance: e.optional_attribute("tolerance"),
             stepSize: e.optional_attribute("stepSize"),
-        }
-    );
+        });
 
-    let coSimulation = if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation")) {
-        Some(
-            CoSimulation {
-                modelIdentifier: cs.required_attribute("modelIdentifier")?,
-                fixedInternalStepSize: cs.optional_attribute("fixedInternalStepSize"),
-                canHandleVariableCommunicationStepSize: cs.bool_attribute("canHandleVariableCommunicationStepSize", false),
-            }
-        )
+    let coSimulation = if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation"))
+    {
+        Some(CoSimulation {
+            modelIdentifier: cs.required_attribute("modelIdentifier")?,
+            fixedInternalStepSize: cs.optional_attribute("fixedInternalStepSize"),
+            canHandleVariableCommunicationStepSize: cs
+                .bool_attribute("canHandleVariableCommunicationStepSize", false),
+        })
     } else {
         None
     };
@@ -257,13 +265,12 @@ trait StringAttribute {
 }
 
 impl<'a, 'input> StringAttribute for Node<'a, 'input> {
-
     fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>> {
         self.attribute(name)
             .ok_or_else(|| format!("Missing required attribute '{}'", name).into())
             .map(|s| s.to_string())
     }
-    
+
     fn optional_attribute(&self, name: &str) -> Option<String> {
         self.attribute(name).map(|v| v.to_string())
     }
@@ -278,14 +285,19 @@ impl<'a, 'input> StringAttribute for Node<'a, 'input> {
 }
 
 fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
+    let ModelVariables = root
+        .descendants()
+        .find(|n| n.has_tag_name("ModelVariables"))
+        .unwrap();
 
-    let ModelVariables = root.descendants().find(|n| n.has_tag_name("ModelVariables")).unwrap();
-    
     let mut variables_for_vr = HashMap::new();
     let mut modelVariables = vec![];
 
-    for (i, child) in ModelVariables.children().filter(|n| n.is_element()).enumerate() {
-
+    for (i, child) in ModelVariables
+        .children()
+        .filter(|n| n.is_element())
+        .enumerate()
+    {
         let name = child.attribute("name").unwrap();
         let valueReference = child.attribute("valueReference").unwrap().parse().unwrap();
 
@@ -307,14 +319,20 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             Some("tunable") => Variability::Tunable,
             Some("discrete") => Variability::Discrete,
             Some("continuous") => Variability::Continuous,
-            _ => { if matches!(variableType, VariableType::Float32 | VariableType::Float64) 
-                && !matches!(causality, Causality::Parameter | Causality::StructuralParameter | Causality::CalculatedParameter) {
+            _ => {
+                if matches!(variableType, VariableType::Float32 | VariableType::Float64)
+                    && !matches!(
+                        causality,
+                        Causality::Parameter
+                            | Causality::StructuralParameter
+                            | Causality::CalculatedParameter
+                    )
+                {
                     Variability::Continuous
                 } else {
                     Variability::Discrete
                 }
-            },
-
+            }
         };
 
         let mut dimensions = vec![];
@@ -323,7 +341,13 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             let dimension = if let Some(value) = grand_child.attribute("start") {
                 Dimension::Fixed(value.parse().unwrap())
             } else {
-                Dimension::Variable(grand_child.attribute("valueReference").unwrap().parse().unwrap())
+                Dimension::Variable(
+                    grand_child
+                        .attribute("valueReference")
+                        .unwrap()
+                        .parse()
+                        .unwrap(),
+                )
             };
             dimensions.push(dimension);
         }
@@ -334,31 +358,31 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             valueReference: valueReference,
             causality,
             variability,
-            dimensions
+            dimensions,
         };
 
         variables_for_vr.insert(valueReference, i);
         modelVariables.push(variable);
-
     }
 
-    let defaultExperiment = root.descendants().find(|n| n.has_tag_name("DefaultExperiment")).map(|e| 
-        DefaultExperiment {
+    let defaultExperiment = root
+        .descendants()
+        .find(|n| n.has_tag_name("DefaultExperiment"))
+        .map(|e| DefaultExperiment {
             startTime: e.attribute("startTime").map(|s| s.to_string()),
             stopTime: e.attribute("stopTime").map(|s| s.to_string()),
             tolerance: e.attribute("tolerance").map(|s| s.to_string()),
             stepSize: e.attribute("stepSize").map(|s| s.to_string()),
-        }
-    );
+        });
 
-    let coSimulation = if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation")) {
-        Some(
-            CoSimulation {
-                modelIdentifier: cs.attribute("modelIdentifier").unwrap().to_string(),
-                fixedInternalStepSize: cs.attribute("fixedInternalStepSize").map(|s| s.to_string()),
-                canHandleVariableCommunicationStepSize: cs.bool_attribute("canHandleVariableCommunicationStepSize", false),
-            }
-        )
+    let coSimulation = if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation"))
+    {
+        Some(CoSimulation {
+            modelIdentifier: cs.attribute("modelIdentifier").unwrap().to_string(),
+            fixedInternalStepSize: cs.attribute("fixedInternalStepSize").map(|s| s.to_string()),
+            canHandleVariableCommunicationStepSize: cs
+                .bool_attribute("canHandleVariableCommunicationStepSize", false),
+        })
     } else {
         None
     };

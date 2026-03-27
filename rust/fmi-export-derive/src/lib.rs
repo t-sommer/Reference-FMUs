@@ -18,7 +18,7 @@ pub fn derive_value_reference(input: TokenStream) -> TokenStream {
             Some((_, expr)) => quote! { #expr },
             None => panic!("All variants must have explicit discriminants"),
         };
-        
+
         quote! {
             #discriminant => Ok(#name::#variant_name)
         }

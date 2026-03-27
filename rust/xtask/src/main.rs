@@ -1,13 +1,12 @@
+use fmi::SHARED_LIBRARY_EXTENSION;
+use std::fs;
 use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
-use zip::write::FileOptions;
-use zip::CompressionMethod;
-use std::fs;
 use std::process::Command;
-use fmi::SHARED_LIBRARY_EXTENSION;
-
+use walkdir::WalkDir;
+use zip::CompressionMethod;
+use zip::write::FileOptions;
 
 fn zip_dir<P: AsRef<Path>>(src_dir: P, dst_file: P) -> Result<(), Box<dyn std::error::Error>> {
     let src_dir = src_dir.as_ref();
@@ -23,7 +22,10 @@ fn zip_dir<P: AsRef<Path>>(src_dir: P, dst_file: P) -> Result<(), Box<dyn std::e
     for entry in WalkDir::new(src_dir) {
         let entry = entry?;
         let path = entry.path();
-        let name = path.strip_prefix(src_dir)?.to_string_lossy().replace("\\", "/");
+        let name = path
+            .strip_prefix(src_dir)?
+            .to_string_lossy()
+            .replace("\\", "/");
 
         if path.is_file() {
             zip.start_file(name.as_str(), options)?;
@@ -42,9 +44,7 @@ fn zip_dir<P: AsRef<Path>>(src_dir: P, dst_file: P) -> Result<(), Box<dyn std::e
     Ok(())
 }
 
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-
     let args: Vec<String> = std::env::args().collect();
     let mut fmi_version = "3".to_string();
 
@@ -72,10 +72,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let model_names = ["BouncingBall", "Dahlquist"];
 
     for model_name in model_names {
-        
         let mut command = Command::new("cargo");
         command.args(["build", "--package", model_name]);
-        
+
         if !features.is_empty() {
             command.args(&features);
         }
@@ -86,24 +85,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Err(format!("Failed to build {}", model_name).into());
         }
 
-        let binary_dir = PathBuf::from(model_name).join(deploy_dir).join("binaries").join(platform);
-        
+        let binary_dir = PathBuf::from(model_name)
+            .join(deploy_dir)
+            .join("binaries")
+            .join(platform);
+
         fs::create_dir_all(&binary_dir)?;
-        
+
         dbg!(&binary_dir);
 
         let shared_library_name = format!("{}{}", model_name, SHARED_LIBRARY_EXTENSION);
-        
+
         let dll_src = format!("target/debug/{shared_library_name}");
         let dll_dst = binary_dir.join(shared_library_name);
-        
+
         dbg!(&dll_src);
         dbg!(&dll_dst);
-        
-        fs::copy(
-            dll_src,
-            dll_dst,
-        )?;
+
+        fs::copy(dll_src, dll_dst)?;
 
         let src_dir = PathBuf::from(model_name).join(deploy_dir);
         let dst_file = dist_dir.join(format!("{}.fmu", model_name));

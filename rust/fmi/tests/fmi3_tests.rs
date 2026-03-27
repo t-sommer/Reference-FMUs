@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use fmi::fmi3::*;
 use fmi::fmi3::types::*;
+use fmi::fmi3::*;
 use fmi::types::fmiStatus;
 use std::{env, path::PathBuf};
 
@@ -12,7 +12,6 @@ macro_rules! assert_ok {
 }
 
 fn create_fmu() -> FMU3 {
-
     let unzipdir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("resources")
@@ -58,7 +57,6 @@ fn test_float32() {
     assert_ok!(fmu.setFloat32(&input_vr, &input_values));
     assert_ok!(fmu.getFloat32(&output_vr, &mut output_values));
     assert_eq!(output_values, input_values);
-
 }
 
 #[test]
@@ -74,7 +72,6 @@ fn test_float64() {
     assert_ok!(fmu.setFloat64(&input_vr, &input_values));
     assert_ok!(fmu.getFloat64(&output_vr, &mut output_values));
     assert_eq!(output_values, input_values);
-
 }
 
 #[test]
@@ -90,7 +87,6 @@ fn test_int8() {
     assert_ok!(fmu.setInt8(&input_vr, &input_values));
     assert_ok!(fmu.getInt8(&output_vr, &mut output_values));
     assert_eq!(output_values, input_values);
-
 }
 
 #[test]
@@ -106,7 +102,6 @@ fn test_uint8() {
     assert_ok!(fmu.setUInt8(&input_vr, &input_values));
     assert_ok!(fmu.getUInt8(&output_vr, &mut output_values));
     assert_eq!(output_values, input_values);
-
 }
 
 #[test]
@@ -122,7 +117,6 @@ fn test_int16() {
     assert_ok!(fmu.setInt16(&input_vr, &input_values));
     assert_ok!(fmu.getInt16(&output_vr, &mut output_values));
     assert_eq!(output_values, input_values);
-
 }
 
 #[test]
@@ -138,7 +132,6 @@ fn test_uint16() {
     assert_ok!(fmu.setUInt16(&input_vr, &input_values));
     assert_ok!(fmu.getUInt16(&output_vr, &mut output_values));
     assert_eq!(output_values, input_values);
-
 }
 
 #[test]
@@ -154,7 +147,6 @@ fn test_int32() {
     assert_ok!(fmu.setInt32(&input_vr, &input_values));
     assert_ok!(fmu.getInt32(&output_vr, &mut output_values));
     assert_eq!(output_values, input_values);
-
 }
 
 #[test]
@@ -170,7 +162,6 @@ fn test_uint32() {
     assert_ok!(fmu.setUInt32(&input_vr, &input_values));
     assert_ok!(fmu.getUInt32(&output_vr, &mut output_values));
     assert_eq!(output_values, input_values);
-
 }
 
 #[test]
@@ -186,7 +177,6 @@ fn test_int64() {
     assert_ok!(fmu.setInt64(&input_vr, &input_values));
     assert_ok!(fmu.getInt64(&output_vr, &mut output_values));
     assert_eq!(output_values, input_values);
-
 }
 
 #[test]
@@ -202,7 +192,6 @@ fn test_uint64() {
     assert_ok!(fmu.setUInt64(&input_vr, &input_values));
     assert_ok!(fmu.getUInt64(&output_vr, &mut output_values));
     assert_eq!(output_values, input_values);
-
 }
 
 #[test]
@@ -226,7 +215,6 @@ fn test_boolean() {
     assert_ok!(fmu.setBoolean(&input_vr, &input_values_false));
     assert_ok!(fmu.getBoolean(&output_vr, &mut output_values_false));
     assert_eq!(output_values_false, input_values_false);
-
 }
 
 #[test]
@@ -243,7 +231,6 @@ fn test_string() {
     assert_ok!(fmu.getString(&output_vr, &mut output_values));
 
     assert_eq!(output_values[0], input_values[0]);
-
 }
 
 #[test]
@@ -269,7 +256,6 @@ fn test_binary() {
     // Compare the actual data
     assert_eq!(output_sizes[0], input_sizes[0]);
     assert_eq!(returned_data, input_data);
-
 }
 
 #[test]
@@ -310,7 +296,6 @@ fn test_multiple_variables() {
     assert_eq!(float64_output_values, float64_input_values);
     assert_eq!(int32_output_values, int32_input_values);
     assert_eq!(bool_output_values, bool_input_values);
-
 }
 
 #[test]
@@ -356,5 +341,4 @@ fn test_edge_cases() {
     assert_ok!(fmu.setInt32(&int32_input_vr, &min_int32));
     assert_ok!(fmu.getInt32(&int32_output_vr, &mut int32_output));
     assert_eq!(int32_output, min_int32);
-
 }

@@ -1,6 +1,6 @@
 use std::fs::File;
-use zip::ZipArchive;
 use tempfile::TempDir;
+use zip::ZipArchive;
 
 use crate::types::*;
 
@@ -23,7 +23,6 @@ pub enum VariableValue {
 }
 
 pub fn extract_fmu(fmu_path: &str) -> Result<TempDir, Box<dyn std::error::Error>> {
-
     // Create temporary directory
     let temp_dir = TempDir::new()?;
 

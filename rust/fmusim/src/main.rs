@@ -1,16 +1,21 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use fmi::{model_description::{Causality, MajorVersion, ModelVariable, read_model_description}, sim::{self, SimulationSettings}, util::extract_fmu};
-use std::{collections::HashMap, path::PathBuf, process::ExitCode};
 use clap::Parser;
 use colored::Colorize;
+use fmi::{
+    model_description::{Causality, MajorVersion, ModelVariable, read_model_description},
+    sim::{self, SimulationSettings},
+    util::extract_fmu,
+};
+use std::{collections::HashMap, path::PathBuf, process::ExitCode};
 
 fn parse_start_value(s: &str) -> Result<(String, String), String> {
-    
     let parts: Vec<&str> = s.splitn(2, '=').collect();
-    
+
     if parts.len() != 2 {
-        return Err(format!("Invalid format {s:?}. Expected \"variable_name=value\"."));
+        return Err(format!(
+            "Invalid format {s:?}. Expected \"variable_name=value\"."
+        ));
     }
 
     Ok((parts[0].to_string(), parts[1].to_string()))
@@ -21,7 +26,7 @@ fn parse_start_value(s: &str) -> Result<(String, String), String> {
 struct Args {
     /// Path to the FMU file
     filename: String,
-    
+
     /// Enable logging of FMI function calls
     #[arg(long)]
     log_fmi_calls: bool,
@@ -37,7 +42,7 @@ struct Args {
     /// Stop time for the simulation
     #[arg(long)]
     stop_time: Option<f64>,
-    
+
     /// Set stop time explicitly
     #[arg(long)]
     set_stop_time: bool,
@@ -65,18 +70,17 @@ struct Args {
     /// Allow early return
     #[arg(long)]
     early_return_allowed: bool,
-    
+
     /// Use event mode
     #[arg(long)]
     event_mode_used: bool,
-    
+
     /// Enable FMU looging
     #[arg(long)]
     logging_on: bool,
 }
 
 fn main() -> ExitCode {
-
     // Parse command line arguments
     let args = Args::parse();
 
@@ -100,20 +104,42 @@ fn main() -> ExitCode {
         }
     };
 
-    let (start_time, stop_time, tolerance) = if let Some(default_experiment) = &model_description.defaultExperiment {
-        let start_time: f64 = if let Some(v) = &default_experiment.startTime { v.parse().unwrap() } else { 0.0 };
-        let stop_time: f64 = if let Some(v) = &default_experiment.stopTime { v.parse().unwrap() } else { start_time + 1.0 };
-        let tolerance: Option<f64> = default_experiment.tolerance.as_ref().map(|v| v.parse().unwrap());
-        (start_time, stop_time, tolerance)
-    } else {
-        (0.0, 1.0, None)
-    };
+    let (start_time, stop_time, tolerance) =
+        if let Some(default_experiment) = &model_description.defaultExperiment {
+            let start_time: f64 = if let Some(v) = &default_experiment.startTime {
+                v.parse().unwrap()
+            } else {
+                0.0
+            };
+            let stop_time: f64 = if let Some(v) = &default_experiment.stopTime {
+                v.parse().unwrap()
+            } else {
+                start_time + 1.0
+            };
+            let tolerance: Option<f64> = default_experiment
+                .tolerance
+                .as_ref()
+                .map(|v| v.parse().unwrap());
+            (start_time, stop_time, tolerance)
+        } else {
+            (0.0, 1.0, None)
+        };
 
-    let internal_step_size: Option<f64> = model_description.coSimulation.as_ref().unwrap().fixedInternalStepSize.as_ref().map(|v| v.parse().unwrap());
- 
+    let internal_step_size: Option<f64> = model_description
+        .coSimulation
+        .as_ref()
+        .unwrap()
+        .fixedInternalStepSize
+        .as_ref()
+        .map(|v| v.parse().unwrap());
+
     let start_time = args.start_time.unwrap_or(start_time);
     let stop_time = args.stop_time.unwrap_or(stop_time);
-    let tolerance = if let Some(v) = args.tolerance { Some(v) } else { tolerance };
+    let tolerance = if let Some(v) = args.tolerance {
+        Some(v)
+    } else {
+        tolerance
+    };
 
     let output_interval = if let Some(v) = args.output_interval {
         v
@@ -126,9 +152,14 @@ fn main() -> ExitCode {
     };
 
     let output_variables: Vec<&ModelVariable> = if args.output_variable.is_empty() {
-        model_description.modelVariables.iter().filter(|v| v.causality == Causality::Output).collect()
+        model_description
+            .modelVariables
+            .iter()
+            .filter(|v| v.causality == Causality::Output)
+            .collect()
     } else {
-        let variable_map: HashMap<&str, &ModelVariable> = model_description.modelVariables
+        let variable_map: HashMap<&str, &ModelVariable> = model_description
+            .modelVariables
             .iter()
             .map(|var| (var.name.as_str(), var))
             .collect();
@@ -143,7 +174,7 @@ fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             }
         }
-        
+
         output_variables
     };
 

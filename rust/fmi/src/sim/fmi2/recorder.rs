@@ -1,5 +1,8 @@
+use crate::{
+    fmi2::FMU2,
+    model_description::{ModelVariable, VariableType},
+};
 use std::io::Write;
-use crate::{fmi2::FMU2, model_description::{ModelVariable, VariableType}};
 
 macro_rules! write_values {
     ($values:expr, $stream:expr) => {{
@@ -8,8 +11,8 @@ macro_rules! write_values {
                 write!($stream, " ")?;
             }
             write!($stream, "{value}")?;
-        }}  
-    };
+        }
+    }};
 }
 pub struct Recorder<'a, T: Write> {
     pub variables: &'a Vec<&'a ModelVariable>,
@@ -18,12 +21,11 @@ pub struct Recorder<'a, T: Write> {
 }
 
 impl<'a, T: Write> Recorder<'a, T> {
-
     pub fn new(variables: &'a Vec<&'a ModelVariable>, stream: T, fmu: &'a FMU2) -> Recorder<'a, T> {
-        let mut recorder = Recorder { 
+        let mut recorder = Recorder {
             variables,
-            stream, 
-            fmu, 
+            stream,
+            fmu,
         };
         recorder.write_header().unwrap();
         recorder
@@ -39,7 +41,6 @@ impl<'a, T: Write> Recorder<'a, T> {
     }
 
     pub fn sample(&mut self, time: f64) -> std::io::Result<()> {
-
         write!(self.stream, "{time}")?;
 
         for variable in self.variables {
@@ -50,29 +51,28 @@ impl<'a, T: Write> Recorder<'a, T> {
                     let mut values = vec![0.0];
                     self.fmu.getReal(&value_references, &mut values);
                     write_values!(values, self.stream);
-                },
+                }
                 VariableType::Int32 | VariableType::Enumeration => {
                     let mut values = vec![0];
                     self.fmu.getInteger(&value_references, &mut values);
                     write_values!(values, self.stream);
-                },
+                }
                 VariableType::Boolean => {
                     let mut values = vec![0];
                     self.fmu.getBoolean(&value_references, &mut values);
                     write_values!(values, self.stream);
-                },
+                }
                 VariableType::String => {
                     let mut values = vec![String::new()];
                     self.fmu.getString(&value_references, &mut values);
                     write_values!(values, self.stream);
-                },
+                }
                 _ => panic!("Unexpected variable type: {:?}", variable.variableType),
             }
         }
 
         writeln!(self.stream)?;
-        
+
         Ok(())
     }
-
 }

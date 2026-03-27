@@ -4,11 +4,11 @@
 use fmi::fmi2::types::*;
 // #[cfg(not(feature = "fmi2"))]
 use fmi::{fmi3::types::*, types::fmiStatus};
+use fmi_export::{BaseModel, ModelMode, Solver, ValueReference};
+use serde::{Deserialize, Serialize};
 use std::any::type_name_of_val;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
-use fmi_export::{BaseModel, ModelMode, Solver, ValueReference};
-use serde::{Deserialize, Serialize};
 
 const FIXED_STEP_SIZE: f64 = 1e-3;
 
@@ -36,10 +36,10 @@ impl ModelData {
             eventModeUsed: false,
             n_steps: 0,
             time: 0.0,
-            h: 1.0,  // initial height
-            v: 0.0,  // initial velocity
-            e: 0.8,  // coefficient of restitution
-            g: -9.81, // gravity
+            h: 1.0,      // initial height
+            v: 0.0,      // initial velocity
+            e: 0.8,      // coefficient of restitution
+            g: -9.81,    // gravity
             v_min: 0.01, // minimum velocity threshold
         }
     }
@@ -72,9 +72,7 @@ impl ModelInstance {
     }
 }
 
-
 impl BaseModel for ModelInstance {
-
     fn log_error(&self, message: &str) {
         (self.logError)(message);
     }
@@ -181,7 +179,10 @@ impl BaseModel for ModelInstance {
             Ok(ValueReference::e) => *value = self.data.e,
             Ok(ValueReference::v_min) => *value = self.data.v_min,
             _ => {
-                let message = format!("Unknown value reference for type Float64: {}", value_reference);
+                let message = format!(
+                    "Unknown value reference for type Float64: {}",
+                    value_reference
+                );
                 self.log_error(&message);
                 return fmiStatus::fmiError;
             }
@@ -193,7 +194,13 @@ impl BaseModel for ModelInstance {
 // Include shared FMI3 implementation
 // This compiles common functions directly into this DLL
 #[cfg(feature = "fmi2")]
-include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fmi-export/src/fmi2.rs"));
+include!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../fmi-export/src/fmi2.rs"
+));
 
 #[cfg(not(feature = "fmi2"))]
-include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../fmi-export/src/fmi3.rs"));
+include!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../fmi-export/src/fmi3.rs"
+));

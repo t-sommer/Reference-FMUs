@@ -3,6 +3,7 @@
 pub mod types;
 
 use crate::SHARED_LIBRARY_EXTENSION;
+use colored::Colorize;
 use libloading::{Library, Symbol};
 use std::cell::RefCell;
 use std::error::Error;
@@ -11,7 +12,6 @@ use std::os::raw::{c_uint, c_void};
 use std::path::Path;
 use std::ptr::{self, null, null_mut};
 use types::*;
-use colored::Colorize;
 
 #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
 pub const PLATFORM_TUPLE: &str = "aarch64-linux";
@@ -119,7 +119,6 @@ pub struct Message {
 }
 
 pub struct FMU3 {
-
     logCalls: bool,
     printCalls: bool,
     calls: RefCell<Vec<Call>>,
@@ -127,7 +126,7 @@ pub struct FMU3 {
     logMessages: bool,
     printMessages: bool,
     messages: Box<RefCell<Vec<Message>>>,
-    
+
     _lib: Box<Library>,
 
     fmi3GetVersion: Symbol<'static, fmi3GetVersionTYPE>,
@@ -257,7 +256,6 @@ fn get_symbol<T>(
 }
 
 impl FMU3 {
-
     fn new(
         unzipdir: &Path,
         modelIdentifier: &str,
@@ -266,14 +264,13 @@ impl FMU3 {
         logMessages: bool,
         printMessages: bool,
     ) -> Result<FMU3, Box<dyn Error>> {
-
         let shared_library_path = unzipdir
             .join("binaries")
             .join(PLATFORM_TUPLE)
             .join(format!("{modelIdentifier}{SHARED_LIBRARY_EXTENSION}"));
 
         if !shared_library_path.is_file() {
-            return Err(format!("Missing shared library {shared_library_path:?}.").into())
+            return Err(format!("Missing shared library {shared_library_path:?}.").into());
         }
 
         let lib = Box::new(unsafe { Library::new(shared_library_path)? });
@@ -543,8 +540,14 @@ impl FMU3 {
         logMessages: bool,
         printMessages: bool,
     ) -> Result<FMU3, Box<dyn Error>> {
-        
-        let mut fmu = FMU3::new(unzipdir, modelIdentifier, logCalls, printCalls, logMessages, printMessages)?;
+        let mut fmu = FMU3::new(
+            unzipdir,
+            modelIdentifier,
+            logCalls,
+            printCalls,
+            logMessages,
+            printMessages,
+        )?;
 
         let resource_path = unzipdir.join("resources").join("");
 
@@ -554,7 +557,16 @@ impl FMU3 {
             None
         };
 
-        fmu.instance = fmu._instantiateCoSimulation(instanceName, instantiationToken, resourcePath, visible, loggingOn, eventModeUsed, earlyReturnAllowed, requiredIntermediateVariables);
+        fmu.instance = fmu._instantiateCoSimulation(
+            instanceName,
+            instantiationToken,
+            resourcePath,
+            visible,
+            loggingOn,
+            eventModeUsed,
+            earlyReturnAllowed,
+            requiredIntermediateVariables,
+        );
 
         if fmu.instance.is_null() {
             Err("Failed to instantiate FMU.".into())
@@ -684,7 +696,9 @@ impl FMU3 {
         };
 
         if self.logCalls {
-            let message = format!("fmi3EnterInitializationMode(toleranceDefined={toleranceDefined}, tolerance={tolerance}, startTime={startTime}, stopTimeDefined={stopTimeDefined}, stopTime={stopTime})");
+            let message = format!(
+                "fmi3EnterInitializationMode(toleranceDefined={toleranceDefined}, tolerance={tolerance}, startTime={startTime}, stopTimeDefined={stopTimeDefined}, stopTime={stopTime})"
+            );
             self.log_call(status, &message);
         }
 
@@ -845,7 +859,7 @@ impl FMU3 {
         debug_assert!(valueReferences.len() <= values.len());
 
         let mut buffer: Vec<fmi3String> = vec![null(); values.len()];
-        
+
         let status = unsafe {
             (self.fmi3GetString)(
                 self.instance,
@@ -855,11 +869,11 @@ impl FMU3 {
                 buffer.len(),
             )
         };
-        
+
         for (i, v) in buffer.iter().enumerate() {
             values[i] = unsafe { CStr::from_ptr(*v).to_string_lossy().into_owned() };
         }
-        
+
         if self.logCalls {
             let message = format!(
                 "fmi3GetString(valueReferences={:?}, nValueReferences={}, values={:?}, nValues={})",
@@ -1656,7 +1670,6 @@ impl FMU3 {
         nextEventTimeDefined: &mut fmi3Boolean,
         nextEventTime: &mut fmi3Float64,
     ) -> fmi3Status {
-
         let status = unsafe {
             (self.fmi3UpdateDiscreteStates)(
                 self.instance,
@@ -1670,7 +1683,9 @@ impl FMU3 {
         };
 
         if self.logCalls {
-            let message = format!("fmi3UpdateDiscreteStates(discreteStatesNeedUpdate={discreteStatesNeedUpdate}, terminateSimulation={terminateSimulation}, nominalsOfContinuousStatesChanged={nominalsOfContinuousStatesChanged}, valuesOfContinuousStatesChanged={valuesOfContinuousStatesChanged}, nextEventTimeDefined={nextEventTimeDefined}, nextEventTime={nextEventTime})");
+            let message = format!(
+                "fmi3UpdateDiscreteStates(discreteStatesNeedUpdate={discreteStatesNeedUpdate}, terminateSimulation={terminateSimulation}, nominalsOfContinuousStatesChanged={nominalsOfContinuousStatesChanged}, valuesOfContinuousStatesChanged={valuesOfContinuousStatesChanged}, nextEventTimeDefined={nextEventTimeDefined}, nextEventTime={nextEventTime})"
+            );
             self.log_call(status, &message);
         }
 

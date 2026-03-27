@@ -25,7 +25,6 @@ pub struct Solver {
 }
 
 impl Solver {
-    
     pub fn new() -> Self {
         Solver {
             x: Vec::new(),
@@ -43,23 +42,22 @@ impl Solver {
     }
 
     pub fn step(&mut self, model: &mut dyn BaseModel, h: f64) -> (bool, fmiStatus) {
-        
         let status = model.get_continuous_states(&mut self.x);
-        
+
         if status != fmiStatus::fmiOK {
             return (false, status);
         }
-        
+
         let status = model.get_continuous_state_derivatives(&mut self.der_x);
-        
+
         if status != fmiStatus::fmiOK {
             return (false, status);
         }
-        
+
         for i in 0..self.x.len() {
             self.x[i] += self.der_x[i] * h;
         }
-        
+
         model.set_continuous_states(&self.x);
 
         let status = model.get_event_indicators(&mut self.z);
@@ -81,17 +79,15 @@ impl Solver {
 
         (zero_crossing_occurred, fmiStatus::fmiOK)
     }
-
 }
 
 pub trait BaseModel {
-
     fn log_error(&self, message: &str);
 
     fn time(&self) -> f64;
 
     // fn solver(&self) -> Option<&Solver>;
-    
+
     // fn solver_mut(&mut self) -> &mut Option<Solver>;
 
     fn solver(&mut self) -> Option<Solver>;
@@ -99,11 +95,13 @@ pub trait BaseModel {
     fn set_solver(&mut self, solver: Solver);
 
     // fn interface_type(&self) -> &InterfaceType;
-    
+
     // fn interface_type_mut(&mut self) -> &mut InterfaceType;
 
-    fn do_fixed_step(&mut self, current_time: f64, step_size: f64) -> fmiStatus where Self: Sized {
-
+    fn do_fixed_step(&mut self, current_time: f64, step_size: f64) -> fmiStatus
+    where
+        Self: Sized,
+    {
         let solver = self.solver();
 
         if let Some(mut solver) = solver {
@@ -155,7 +153,6 @@ pub trait BaseModel {
     }
 
     fn exit_initialization_mode(&mut self) -> fmiStatus {
-
         let nx = self.get_number_of_continuous_states();
         let nz = self.get_number_of_event_indicators();
 
@@ -237,15 +234,17 @@ pub trait BaseModel {
     }
 
     fn get_Float64(&self, value_reference: u32, _value: &mut f64) -> fmiStatus {
-        let message = format!("Unknown value reference for type Float64: {:?}", value_reference);
+        let message = format!(
+            "Unknown value reference for type Float64: {:?}",
+            value_reference
+        );
         self.log_error(&message);
         fmiStatus::fmiError
     }
 }
 
-
 /// Macro to automatically implement TryFrom<u32> for value reference enums
-/// 
+///
 /// Usage:
 /// ```
 /// fmi_export::impl_value_reference! {

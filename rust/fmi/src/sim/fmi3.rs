@@ -252,7 +252,7 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         settings.log_fmi_calls,
         true,
         true,
-        true,
+        false,
     )?;
 
     set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
@@ -263,11 +263,17 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         if set_stop_time { Some(stop_time) } else { None }
     ))?;
 
-    call(fmu.enterInitializationMode(
+    let status = fmu.enterInitializationMode(
         settings.tolerance,
         start_time, 
         if set_stop_time { Some(stop_time) } else { None }
-    ))?;
+    );
+
+    for message in fmu.drain_messages() {
+        eprintln!("{message:?}");
+    }
+
+    call(status)?;
 
     if let Some(input) = &input {
         input.set_discrete_inputs(time, true, &fmu)?;

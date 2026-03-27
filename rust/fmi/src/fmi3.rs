@@ -4,11 +4,13 @@ pub mod types;
 
 use crate::SHARED_LIBRARY_EXTENSION;
 use libloading::{Library, Symbol};
+use std::cell::RefCell;
 use std::error::Error;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_uint, c_void};
 use std::path::Path;
 use std::ptr::{self, null, null_mut};
+use std::rc::Rc;
 use types::*;
 use colored::Colorize;
 
@@ -116,8 +118,15 @@ impl<'lib> Drop for FMU3 {
     }
 }
 
-pub struct Call {
+// pub struct Call {
+//     pub status: fmi3Status,
+//     pub message: String,
+// }
+
+#[derive(Debug)]
+pub struct Message {
     pub status: fmi3Status,
+    pub category: String,
     pub message: String,
 }
 
@@ -127,6 +136,10 @@ pub struct FMU3 {
 
     logMessages: bool,
     printMessages: bool,
+
+    messages: Rc<RefCell<Vec<Message>>>,
+
+    // logFMICall: Option<Arc<LogFMICallback>>,
     
     _lib: Box<Library>,
 
@@ -232,13 +245,24 @@ pub extern "C" fn logMessage(
         "empty".to_string()
     };
 
-    let prefix = match status {
-        fmi3OK => "ok".green().bold(),
-        fmi3Warning => "warning".yellow().bold(),
-        _ => "error".red().bold(),
-    };
-
-    eprintln!("{prefix}: {message_str}");
+    if instanceEnvironment.is_null() {
+        let prefix = match status {
+            fmi3OK => "ok".green().bold(),
+            fmi3Warning => "warning".yellow().bold(),
+            _ => "error".red().bold(),
+        };
+        eprintln!("{prefix}: {message_str}");
+    } else {
+        eprintln!("instanceEnvironment: {instanceEnvironment:p}");
+        let messages = unsafe { &*(instanceEnvironment as *const RefCell<Vec<Message>>) };
+        let message = Message {
+            status,
+            category: category_str,
+            message: message_str,
+        };
+        messages.borrow_mut().push(message);
+    }
+    
 
     // unsafe {
     //     let cb_ptr = instanceEnvironment as *mut Arc<LogMessageCallback>;
@@ -258,6 +282,10 @@ fn get_symbol<T>(
 }
 
 impl FMU3 {
+
+    pub fn drain_messages(&self) -> Vec<Message> {
+        self.messages.borrow_mut().drain(..).collect()
+    }
 
     fn log_call(&self, status: fmi3Status, message: &str) {
         if self.printCalls {
@@ -421,6 +449,7 @@ impl FMU3 {
             printCalls,
             logMessages,
             printMessages,
+            messages: Rc::new(RefCell::new(Vec::new())),
             // logFMICall: logFMICall.map(|cb| Arc::from(cb)),
             // logMessage: logMessage.map(|cb| Arc::from(cb)),
             _lib: lib,
@@ -580,7 +609,12 @@ impl FMU3 {
             ptr::null() as *const fmi3LogMessageCallback
         };
 
-        let userdata = ptr::null_mut();
+        let instanceEnvironment = if self.logMessages && !self.printMessages {
+            // Cast the Rc pointer directly - RefCell provides interior mutability
+            Rc::as_ptr(&self.messages) as fmi3InstanceEnvironment
+        } else {
+            ptr::null_mut() as fmi3InstanceEnvironment
+        };
 
         let intermediate_update = ptr::null();
 
@@ -595,7 +629,7 @@ impl FMU3 {
                 /* earlyReturnAllowed */ earlyReturnAllowed,
                 /* requiredIntermediateVariables */ requiredIntermediateVariables.as_ptr(),
                 /* nRequiredIntermediateVariables */ requiredIntermediateVariables.len(),
-                /* instanceEnvironment */ userdata,
+                /* instanceEnvironment */ instanceEnvironment,
                 /* logMessage */ log_message,
                 /* intermediateUpdate */ intermediate_update,
             )
@@ -608,19 +642,6 @@ impl FMU3 {
         };
 
         if self.logCalls {
-
-            // let userdata_ptr = if let Some(f) = userdata {
-            //     f as *const c_void
-            // } else {
-            //     ptr::null() as *const c_void
-            // };
-
-            // let log_message_ptr = if let Some(f) = log_message {
-            //     f as *const c_void
-            // } else {
-            //     ptr::null() as *const c_void
-            // };
-
             let message = format!(
                 "fmi3InstantiateCoSimulation(instanceName=\"{}\", instantiationToken=\"{}\", resourcePath={:?}, visible={}, loggingOn={}, eventModeUsed={}, earlyReturnAllowed={}, nRequiredIntermediateVariables={}, instanceEnvironment={:p}, logMessage={:p}, intermediateUpdate={:p})",
                 instanceName,
@@ -631,7 +652,7 @@ impl FMU3 {
                 eventModeUsed,
                 earlyReturnAllowed,
                 requiredIntermediateVariables.len(),
-                userdata,
+                instanceEnvironment,
                 log_message,
                 ptr::null() as *const c_void,
             );

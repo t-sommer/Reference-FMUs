@@ -137,7 +137,7 @@ pub struct FMU3 {
     logMessages: bool,
     printMessages: bool,
 
-    messages: Rc<RefCell<Vec<Message>>>,
+    messages: Box<RefCell<Vec<Message>>>,
 
     // logFMICall: Option<Arc<LogFMICallback>>,
     
@@ -449,7 +449,7 @@ impl FMU3 {
             printCalls,
             logMessages,
             printMessages,
-            messages: Rc::new(RefCell::new(Vec::new())),
+            messages: Box::new(RefCell::new(Vec::new())),
             // logFMICall: logFMICall.map(|cb| Arc::from(cb)),
             // logMessage: logMessage.map(|cb| Arc::from(cb)),
             _lib: lib,
@@ -610,8 +610,7 @@ impl FMU3 {
         };
 
         let instanceEnvironment = if self.logMessages && !self.printMessages {
-            // Cast the Rc pointer directly - RefCell provides interior mutability
-            Rc::as_ptr(&self.messages) as fmi3InstanceEnvironment
+            &*self.messages as *const RefCell<Vec<Message>> as fmi3InstanceEnvironment
         } else {
             ptr::null_mut() as fmi3InstanceEnvironment
         };

@@ -4,7 +4,7 @@ fn main() {
     println!("cargo:rustc-link-lib=static=libxml2s");
     
     // Windows system libraries
-    println!("cargo:rustc-link-lib=dylib=winmm");
-    println!("cargo:rustc-link-lib=dylib=ws2_32");
+    // println!("cargo:rustc-link-lib=dylib=winmm");
+    // println!("cargo:rustc-link-lib=dylib=ws2_32");
     println!("cargo:rustc-link-lib=dylib=bcrypt");
 }

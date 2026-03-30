@@ -1,3 +1,3 @@
 [workspace]
-members = ["BouncingBall", "Dahlquist", "fmi", "fmi-export", "fmi-export-derive", "fmusim", "xtask"]
+members = ["BouncingBall", "Dahlquist", "fmi", "fmi-export", "fmi-export-derive", "fmi-md", "fmusim", "xtask"]
 resolver = "3"

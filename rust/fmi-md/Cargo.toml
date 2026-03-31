@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 
 [build-dependencies]
+static_vcruntime = "3.0"

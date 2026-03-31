@@ -8,20 +8,20 @@
 #include <libxml/xmlschemas.h>
 
 
-static size_t n_messages = 0;
-static char** messages = NULL;
+static size_t s_n_messages = 0;
+static char** s_messages = NULL;
 
 static void log_error(void* ctx, const char* msg, ...) {
     
     (void)ctx; // unused
 
     // Reallocate messages array for new message
-    char** temp = (char**)realloc(messages, (n_messages + 1) * sizeof(char*));
+    char** temp = (char**)realloc(s_messages, (s_n_messages + 1) * sizeof(char*));
 
     if (!temp) return;
 
-    messages = temp;
-    messages[n_messages] = NULL;
+    s_messages = temp;
+    s_messages[s_n_messages] = NULL;
 
     va_list args;
 
@@ -37,21 +37,21 @@ static void log_error(void* ctx, const char* msg, ...) {
     vsnprintf(message, len + 1, msg, args);
     va_end(args);
 
-    messages[n_messages] = message;
+    s_messages[s_n_messages] = message;
 
-    n_messages++;
+    s_n_messages++;
 }
 
 static void clear_messages() {
 
-    for (size_t i = 0; i < n_messages; i++) {
-        free(messages[i]);
+    for (size_t i = 0; i < s_n_messages; i++) {
+        free(s_messages[i]);
     }
 
-    free(messages);
+    free(s_messages);
 
-    n_messages = 0;
-    messages = NULL;
+    s_n_messages = 0;
+    s_messages = NULL;
 }
 
 
@@ -62,7 +62,7 @@ int validate_model_description(const char* model_description_path, int fmi_major
     xmlDocPtr doc = xmlParseFile(model_description_path);
 
     if (!doc) {
-        log_error(NULL, "Invalid XML.");
+        log_error(NULL, "Failed to parse document.");
         goto TERMINATE;
     }
 
@@ -82,7 +82,7 @@ int validate_model_description(const char* model_description_path, int fmi_major
         pctxt = xmlSchemaNewMemParserCtxt((char*)fmi3Merged_xsd, fmi3Merged_xsd_len);
     }
     else {
-        log_error(NULL, "Unsupported FMI version.");
+        log_error(NULL, "Unsupported FMI major version: %d.", fmi_major_version);
         goto TERMINATE;
     }
 
@@ -108,5 +108,7 @@ int validate_model_description(const char* model_description_path, int fmi_major
     
 TERMINATE:
     
-    return n_messages;
+    *messages = s_messages;
+
+    return s_n_messages;
 }

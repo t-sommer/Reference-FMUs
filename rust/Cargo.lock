@@ -464,6 +464,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "fmi-xsd"
+version = "0.1.0"
+
+[[package]]
 name = "fmusim"
 version = "0.1.0"
 dependencies = [

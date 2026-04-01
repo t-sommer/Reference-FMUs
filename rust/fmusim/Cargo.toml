@@ -7,7 +7,7 @@ edition = "2024"
 libloading = "0.8.8"
 clap = { version = "4.5.54", features = ["derive"] }
 fmi = { path = "../fmi" }
-fmi-xsd = { path = "../fmi-xsd" }
+fmi-schema = { path = "../fmi-schema" }
 zip = "2.1"
 tempfile = "3.8"
 csv = "1.4.0"

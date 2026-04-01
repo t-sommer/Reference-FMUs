@@ -12,6 +12,7 @@ unsafe extern "C" {
 
 }
 
+/// Validates the modelDescription.xml against the XSD schema for the given FMI version.
 pub fn validate_model_description_against_xsd(model_description_path: &Path, fmi_major_version: i32) -> Result<(), Vec<String>> {
 
     use std::ffi::CString;

@@ -464,7 +464,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fmi-xsd"
+name = "fmi-schema"
 version = "0.1.0"
 
 [[package]]
@@ -475,7 +475,7 @@ dependencies = [
  "colored",
  "csv",
  "fmi",
- "fmi-xsd",
+ "fmi-schema",
  "libloading",
  "rstest",
  "tempfile",

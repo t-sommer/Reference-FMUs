@@ -7,7 +7,7 @@ use fmi::{
     sim::{self, SimulationSettings},
     util::extract_fmu,
 };
-use fmi_xsd::validate_model_description_against_xsd;
+use fmi_schema::validate_model_description_against_xsd;
 use std::{collections::HashMap, path::PathBuf, process::ExitCode};
 
 fn parse_start_value(s: &str) -> Result<(String, String), String> {

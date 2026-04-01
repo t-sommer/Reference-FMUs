@@ -475,6 +475,7 @@ dependencies = [
  "colored",
  "csv",
  "fmi",
+ "fmi-xsd",
  "libloading",
  "rstest",
  "tempfile",

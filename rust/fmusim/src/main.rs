@@ -94,40 +94,7 @@ fn main() -> ExitCode {
         }
     };
 
-    // Read the modelDescription.xml
     let xml_path = unzipdir.path().join("modelDescription.xml");
-
-    // Validate modelDescription.xml against XSD schema
-    // First, check if the file exists
-    if !xml_path.exists() {
-        eprintln!("Error: modelDescription.xml not found at {:?}", xml_path);
-        return ExitCode::FAILURE;
-    }
-
-    let fmi_major_version = if let Ok(content) = std::fs::read_to_string(&xml_path) {
-        if content.contains("fmiVersion=\"2.") {
-            2
-        } else if content.contains("fmiVersion=\"3.") {
-            3
-        } else {
-            eprintln!("Warning: Could not determine FMI version, attempting validation with FMI 3");
-            3
-        }
-    } else {
-        eprintln!("Warning: Could not read modelDescription.xml for version detection");
-        3
-    };
-
-    if let Err(validation_errors) = validate_model_description_against_xsd(&xml_path, fmi_major_version) {
-        for error in validation_errors {
-            eprintln!("Validation error: {}", error);
-        }
-        eprintln!("\nmodelDescription.xml failed XSD schema validation");
-        return ExitCode::FAILURE;
-    } else {
-        let version_str = if fmi_major_version == 2 { "2.0" } else { "3.0" };
-        println!("{}", format!("✓ modelDescription.xml validated successfully against FMI {} schema", version_str).green());
-    }
 
     let model_description = match read_model_description(xml_path.as_path()) {
         Ok(desc) => desc,
@@ -136,6 +103,16 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+
+    let fmi_major_version = model_description.majorVersion.clone() as i32;
+
+    if let Err(validation_errors) = validate_model_description_against_xsd(&xml_path, fmi_major_version) {
+        for error in validation_errors {
+            eprintln!("Validation error: {}", error);
+        }
+        eprintln!("modelDescription.xml failed XSD schema validation");
+        return ExitCode::FAILURE;
+    }
 
     let (start_time, stop_time, tolerance) =
         if let Some(default_experiment) = &model_description.defaultExperiment {

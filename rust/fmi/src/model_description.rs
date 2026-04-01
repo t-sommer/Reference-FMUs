@@ -5,10 +5,10 @@ use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 
 use crate::types::fmiValueReference;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum MajorVersion {
-    V2,
-    V3,
+    V2 = 2,
+    V3 = 3,
 }
 
 #[derive(Debug)]

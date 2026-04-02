@@ -777,6 +777,193 @@ impl FMU2 {
         status
     }
 
+    // Model Exchange specific methods
+
+    pub fn enterEventMode(&self) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe { (functions.fmi2EnterEventMode)(self.component) };
+            if self.logCalls {
+                let message = format!("fmi2EnterEventMode() -> {:?}", status);
+                self.log_call(status, &message);
+            }
+            status
+        } else {
+            panic!("fmi2EnterEventMode is only available for Model Exchange FMUs.");
+        }
+    }
+
+    pub fn newDiscreteStates(&self, eventInfo: &mut fmi2EventInfo) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe { (functions.fmi2NewDiscreteStates)(self.component, eventInfo) };
+            if self.logCalls {
+                let message = format!("fmi2NewDiscreteStates(eventInfo={:?}) -> {:?}", eventInfo, status);
+                self.log_call(status, &message);
+            }
+            status
+        } else {
+            panic!("fmi2NewDiscreteStates is only available for Model Exchange FMUs.");
+        }
+    }
+
+    pub fn enterContinuousTimeMode(&self) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe { (functions.fmi2EnterContinuousTimeMode)(self.component) };
+            if self.logCalls {
+                let message = format!("fmi2EnterContinuousTimeMode() -> {:?}", status);
+                self.log_call(status, &message);
+            }
+            status
+        } else {
+            panic!("fmi2EnterContinuousTimeMode is only available for Model Exchange FMUs.");
+        }
+    }
+
+    pub fn completedIntegratorStep(&self) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe { (functions.fmi2CompletedIntegratorStep)(self.component) };
+            if self.logCalls {
+                let message = format!("fmi2CompletedIntegratorStep() -> {:?}", status);
+                self.log_call(status, &message);
+            }
+            status
+        } else {
+            panic!("fmi2CompletedIntegratorStep is only available for Model Exchange FMUs.");
+        }
+    }
+
+    pub fn setTime(&self, time: fmi2Real) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe { (functions.fmi2SetTime)(self.component, time) };
+            if self.logCalls {
+                let message = format!("fmi2SetTime(time={}) -> {:?}", time, status);
+                self.log_call(status, &message);
+            }
+            status
+        } else {
+            panic!("fmi2SetTime is only available for Model Exchange FMUs.");
+        }
+    }
+
+    pub fn setContinuousStates(&self, x: &[fmi2Real]) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe {
+                (functions.fmi2SetContinuousStates)(
+                    self.component,
+                    x.as_ptr(),
+                    x.len(),
+                )
+            };
+            if self.logCalls {
+                let message = format!(
+                    "fmi2SetContinuousStates(x={:?}, nx={}) -> {:?}",
+                    x,
+                    x.len(),
+                    status
+                );
+                self.log_call(status, message.as_str());
+            }
+            status
+        } else {
+            panic!("fmi2SetContinuousStates is only available for Model Exchange FMUs.");
+        }
+    }
+
+    pub fn getDerivatives(&self, derivatives: &mut [fmi2Real]) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe {
+                (functions.fmi2GetDerivatives)(
+                    self.component,
+                    derivatives.as_mut_ptr(),
+                    derivatives.len(),
+                )
+            };
+            if self.logCalls {
+                let message = format!(
+                    "fmi2GetDerivatives(derivatives={:?}, nx={}) -> {:?}",
+                    derivatives,
+                    derivatives.len(),
+                    status
+                );
+                self.log_call(status, message.as_str());
+            }
+            status
+        } else {
+            panic!("fmi2GetDerivatives is only available for Model Exchange FMUs.");
+        }
+    }
+
+    pub fn getEventIndicators(&self, eventIndicators: &mut [fmi2Real]) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe {
+                (functions.fmi2GetEventIndicators)(
+                    self.component,
+                    eventIndicators.as_mut_ptr(),
+                    eventIndicators.len(),
+                )
+            };
+            if self.logCalls {
+                let message = format!(
+                    "fmi2GetEventIndicators(eventIndicators={:?}, ni={}) -> {:?}",
+                    eventIndicators,
+                    eventIndicators.len(),
+                    status
+                );
+                self.log_call(status, message.as_str());
+            }
+            status
+        } else {
+            panic!("fmi2GetEventIndicators is only available for Model Exchange FMUs.");
+        }
+    }
+
+    pub fn getContinuousStates(&self, x: &mut [fmi2Real]) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe {
+                (functions.fmi2GetContinuousStates)(
+                    self.component,
+                    x.as_mut_ptr(),
+                    x.len(),
+                )
+            };
+            if self.logCalls {
+                let message = format!(
+                    "fmi2GetContinuousStates(x={:?}, nx={}) -> {:?}",
+                    x,
+                    x.len(),
+                    status
+                );
+                self.log_call(status, message.as_str());
+            }
+            status
+        } else {
+            panic!("fmi2GetContinuousStates is only available for Model Exchange FMUs.");
+        }
+    }
+
+    pub fn getNominalsOfContinuousStates(&self, nominals: &mut [fmi2Real]) -> fmi2Status {
+        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
+            let status = unsafe {
+                (functions.fmi2GetNominalsOfContinuousStates)(
+                    self.component,
+                    nominals.as_mut_ptr(),
+                    nominals.len(),
+                )
+            };
+            if self.logCalls {
+                let message = format!(
+                    "fmi2GetNominalsOfContinuousStates(nominals={:?}, nx={}) -> {:?}",
+                    nominals,
+                    nominals.len(),
+                    status
+                );
+                self.log_call(status, message.as_str());
+            }
+            status
+        } else {
+            panic!("fmi2GetNominalsOfContinuousStates is only available for Model Exchange FMUs.");
+        }
+    }
+
     // Co-Simulation specific methods
     pub fn doStep(
         &self,
@@ -889,46 +1076,6 @@ impl FMU2 {
             status
         } else {
             panic!("fmi2GetStringStatus is only available for Co-Simulation FMUs.");
-        }
-    }
-
-    // Model Exchange specific methods
-    pub fn setTime(&self, time: fmi2Real) -> fmi2Status {
-        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
-            let status = unsafe { (functions.fmi2SetTime)(self.component, time) };
-            if self.logCalls {
-                let message = format!("fmi2SetTime(time={}) -> {:?}", time, status);
-                self.log_call(status, &message);
-            }
-            status
-        } else {
-            panic!("fmi2SetTime is only available for Model Exchange FMUs.");
-        }
-    }
-
-    pub fn enterEventMode(&self) -> fmi2Status {
-        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
-            let status = unsafe { (functions.fmi2EnterEventMode)(self.component) };
-            if self.logCalls {
-                let message = format!("fmi2EnterEventMode() -> {:?}", status);
-                self.log_call(status, &message);
-            }
-            status
-        } else {
-            panic!("fmi2EnterEventMode is only available for Model Exchange FMUs.");
-        }
-    }
-
-    pub fn enterContinuousTimeMode(&self) -> fmi2Status {
-        if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
-            let status = unsafe { (functions.fmi2EnterContinuousTimeMode)(self.component) };
-            if self.logCalls {
-                let message = format!("fmi2EnterContinuousTimeMode() -> {:?}", status);
-                self.log_call(status, &message);
-            }
-            status
-        } else {
-            panic!("fmi2EnterContinuousTimeMode is only available for Model Exchange FMUs.");
         }
     }
 }

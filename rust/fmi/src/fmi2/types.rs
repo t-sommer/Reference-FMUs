@@ -78,6 +78,17 @@ pub struct fmi2CallbackFunctions {
     pub componentEnvironment: fmi2ComponentEnvironment,
 }
 
+#[repr(C)]
+#[derive(Debug)]
+pub struct fmi2EventInfo {
+    pub newDiscreteStatesNeeded: fmi2Boolean,
+    pub terminateSimulation: fmi2Boolean,
+    pub nominalsOfContinuousStatesChanged: fmi2Boolean,
+    pub valuesOfContinuousStatesChanged: fmi2Boolean,
+    pub nextEventTimeDefined: fmi2Boolean,
+    pub nextEventTime: fmi2Real,
+}
+
 // FMI 2.0 Common API function types
 pub type fmi2GetVersionTYPE = unsafe extern "C" fn() -> fmi2String;
 

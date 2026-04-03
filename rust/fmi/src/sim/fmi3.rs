@@ -88,31 +88,30 @@ pub fn parse_variable_value(
             Ok(VariableValue::String(values))
         }
         VariableType::Binary => {
-            let values: Result<Vec<Vec<fmiByte>>, Box<dyn Error>> =
-                literal
-                    .split_whitespace()
-                    .map(|hex_str| {
-                        if hex_str.len() % 2 != 0 {
-                            return Err(format!("Invalid hex string length: {}", hex_str).into());
-                        }
+            let values: Result<Vec<Vec<fmiByte>>, Box<dyn Error>> = literal
+                .split_whitespace()
+                .map(|hex_str| {
+                    if hex_str.len() % 2 != 0 {
+                        return Err(format!("Invalid hex string length: {}", hex_str).into());
+                    }
 
-                        let mut bytes = Vec::new();
+                    let mut bytes = Vec::new();
 
-                        for i in (0..hex_str.len()).step_by(2) {
-                            let byte_str = &hex_str[i..i + 2];
-                            match u8::from_str_radix(byte_str, 16) {
-                                Ok(byte) => bytes.push(byte),
-                                Err(e) => {
-                                    return Err(
-                                        format!("Invalid hex byte '{}': {}", byte_str, e).into()
-                                    );
-                                }
+                    for i in (0..hex_str.len()).step_by(2) {
+                        let byte_str = &hex_str[i..i + 2];
+                        match u8::from_str_radix(byte_str, 16) {
+                            Ok(byte) => bytes.push(byte),
+                            Err(e) => {
+                                return Err(
+                                    format!("Invalid hex byte '{}': {}", byte_str, e).into()
+                                );
                             }
                         }
+                    }
 
-                        Ok(bytes)
-                    })
-                    .collect();
+                    Ok(bytes)
+                })
+                .collect();
             Ok(VariableValue::Binary(values?))
         }
     }

@@ -8,7 +8,7 @@ fn main() {
     println!("cargo:rustc-link-search=native={}", libxml2_lib.display());
 
     println!("cargo:rustc-link-lib=static=model_description_validator");
-    
+
     // Use /WHOLEARCHIVE to force all symbols from libxml2 to be included
     println!("cargo:rustc-link-arg=/WHOLEARCHIVE:libxml2s.lib");
 

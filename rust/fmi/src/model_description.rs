@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use roxmltree::Node;
 use core::num;
+use roxmltree::Node;
 use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 
 use crate::types::fmiValueReference;
@@ -182,7 +182,6 @@ fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
 }
 
 fn get_fmi2_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Error>> {
-    
     let modelStructure = root
         .descendants()
         .find(|n| n.has_tag_name("ModelStructure"))
@@ -295,15 +294,16 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         None
     };
 
-    let modelExchange = if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
-        Some(ModelExchange {
-            modelIdentifier: me.required_attribute("modelIdentifier")?,
-            needsCompletedIntegratorStep: !me
-                .bool_attribute("completedIntegratorStepNotNeeded", false),
-        })
-    } else {
-        None
-    };
+    let modelExchange =
+        if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
+            Some(ModelExchange {
+                modelIdentifier: me.required_attribute("modelIdentifier")?,
+                needsCompletedIntegratorStep: !me
+                    .bool_attribute("completedIntegratorStepNotNeeded", false),
+            })
+        } else {
+            None
+        };
 
     let numberOfEventIndicators = if let Some(n) = root.attribute("numberOfEventIndicators") {
         n.parse().unwrap_or(0)
@@ -314,7 +314,7 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     let outputs = get_fmi2_unkonwns(root, "Outputs")?;
     let derivatives = get_fmi2_unkonwns(root, "Derivatives")?;
     let initialUnknowns = get_fmi2_unkonwns(root, "InitialUnknowns")?;
-    
+
     let model_description = ModelDescription {
         majorVersion: MajorVersion::V2,
         modelName: root.required_attribute("modelName")?,
@@ -463,11 +463,12 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         None
     };
 
-    let modelExchange = if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
+    let modelExchange = if let Some(me) =
+        root.descendants().find(|n| n.has_tag_name("ModelExchange"))
+    {
         Some(ModelExchange {
             modelIdentifier: me.attribute("modelIdentifier").unwrap().to_string(),
-            needsCompletedIntegratorStep: me
-                .bool_attribute("needsCompletedIntegratorStep", false),
+            needsCompletedIntegratorStep: me.bool_attribute("needsCompletedIntegratorStep", false),
         })
     } else {
         None

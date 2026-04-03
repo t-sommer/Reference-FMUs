@@ -89,7 +89,7 @@ struct Args {
     /// Enable FMU looging
     #[arg(long)]
     logging_on: bool,
-    
+
     /// Show statisics
     #[arg(long)]
     show_stats: bool,
@@ -124,7 +124,9 @@ fn main() -> ExitCode {
 
     let fmi_major_version = model_description.majorVersion.clone() as i32;
 
-    if let Err(validation_errors) = validate_model_description_against_xsd(&xml_path, fmi_major_version) {
+    if let Err(validation_errors) =
+        validate_model_description_against_xsd(&xml_path, fmi_major_version)
+    {
         for error in validation_errors {
             eprintln!("Validation error: {}", error);
         }
@@ -229,7 +231,7 @@ fn main() -> ExitCode {
         None => {
             if let Some(_) = &model_description.coSimulation {
                 InterfaceType::CoSimulation
-            } else {    
+            } else {
                 InterfaceType::ModelExchange
             }
         }

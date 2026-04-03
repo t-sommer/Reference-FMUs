@@ -17,20 +17,16 @@ unsafe extern "C" {
 fn main() {
     use std::ffi::CString;
 
-    let model_description_path = r"E:\WS\Reference-FMUs\rust\BouncingBall\fmi3\modelDescription.xml";
+    let model_description_path =
+        r"E:\WS\Reference-FMUs\rust\BouncingBall\fmi3\modelDescription.xml";
     let fmi_major_version = 3;
 
     // Convert to CString (null-terminated C string)
-    let path_cstring = CString::new(model_description_path)
-        .expect("Path contains null bytes");
+    let path_cstring = CString::new(model_description_path).expect("Path contains null bytes");
 
     let mut messages: *mut *const i8 = std::ptr::null_mut();
-    let n_messages = unsafe { 
-        validate_model_description(
-            path_cstring.as_ptr(),
-            fmi_major_version,
-            &mut messages
-        ) 
+    let n_messages = unsafe {
+        validate_model_description(path_cstring.as_ptr(), fmi_major_version, &mut messages)
     };
 
     println!("Number of validation messages: {n_messages}");
@@ -62,7 +58,7 @@ fn main() {
     //         .parent()
     //         .map(|p| p.join("fmi-md/resources/xmllint.exe")),
     // ];
-    
+
     // let mut xmllint_exe = None;
     // for path_opt in xmllint_paths {
     //     if let Some(path) = path_opt {
@@ -72,13 +68,13 @@ fn main() {
     //         }
     //     }
     // }
-    
+
     // let xmllint_exe = xmllint_exe.expect(
     //     "Could not find xmllint.exe. Make sure it's in: \
     //      1) Same directory as the executable, or \
     //      2) In resources/ subdirectory"
     // );
-    
+
     // let schema_path = r"C:\Users\tsr2\Downloads\fmi-standard-3.0.2\schema\fmi3ModelDescriptionFlat.xsd";
     // let xml_path = r"E:\WS\Reference-FMUs\rust\BouncingBall\fmi3\modelDescription.xml";
 

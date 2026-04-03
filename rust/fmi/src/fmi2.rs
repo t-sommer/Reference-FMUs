@@ -796,7 +796,10 @@ impl FMU2 {
         if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
             let status = unsafe { (functions.fmi2NewDiscreteStates)(self.component, eventInfo) };
             if self.logCalls {
-                let message = format!("fmi2NewDiscreteStates(eventInfo={:?}) -> {:?}", eventInfo, status);
+                let message = format!(
+                    "fmi2NewDiscreteStates(eventInfo={:?}) -> {:?}",
+                    eventInfo, status
+                );
                 self.log_call(status, &message);
             }
             status
@@ -818,11 +821,26 @@ impl FMU2 {
         }
     }
 
-    pub fn completedIntegratorStep(&self, noSetFMUStatePriorToCurrentPoint: fmi2Boolean, enterEventMode: &mut fmi2Boolean, terminateSimulation: &mut fmi2Boolean) -> fmi2Status {
+    pub fn completedIntegratorStep(
+        &self,
+        noSetFMUStatePriorToCurrentPoint: fmi2Boolean,
+        enterEventMode: &mut fmi2Boolean,
+        terminateSimulation: &mut fmi2Boolean,
+    ) -> fmi2Status {
         if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
-            let status = unsafe { (functions.fmi2CompletedIntegratorStep)(self.component, noSetFMUStatePriorToCurrentPoint, enterEventMode, terminateSimulation) };
+            let status = unsafe {
+                (functions.fmi2CompletedIntegratorStep)(
+                    self.component,
+                    noSetFMUStatePriorToCurrentPoint,
+                    enterEventMode,
+                    terminateSimulation,
+                )
+            };
             if self.logCalls {
-                let message = format!("fmi2CompletedIntegratorStep(noSetFMUStatePriorToCurrentPoint={}, enterEventMode={:?}, terminateSimulation={:?}) -> {:?}", noSetFMUStatePriorToCurrentPoint, enterEventMode, terminateSimulation, status);
+                let message = format!(
+                    "fmi2CompletedIntegratorStep(noSetFMUStatePriorToCurrentPoint={}, enterEventMode={:?}, terminateSimulation={:?}) -> {:?}",
+                    noSetFMUStatePriorToCurrentPoint, enterEventMode, terminateSimulation, status
+                );
                 self.log_call(status, &message);
             }
             status
@@ -846,13 +864,8 @@ impl FMU2 {
 
     pub fn setContinuousStates(&self, x: &[fmi2Real]) -> fmi2Status {
         if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
-            let status = unsafe {
-                (functions.fmi2SetContinuousStates)(
-                    self.component,
-                    x.as_ptr(),
-                    x.len(),
-                )
-            };
+            let status =
+                unsafe { (functions.fmi2SetContinuousStates)(self.component, x.as_ptr(), x.len()) };
             if self.logCalls {
                 let message = format!(
                     "fmi2SetContinuousStates(x={:?}, nx={}) -> {:?}",
@@ -919,11 +932,7 @@ impl FMU2 {
     pub fn getContinuousStates(&self, x: &mut [fmi2Real]) -> fmi2Status {
         if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
             let status = unsafe {
-                (functions.fmi2GetContinuousStates)(
-                    self.component,
-                    x.as_mut_ptr(),
-                    x.len(),
-                )
+                (functions.fmi2GetContinuousStates)(self.component, x.as_mut_ptr(), x.len())
             };
             if self.logCalls {
                 let message = format!(

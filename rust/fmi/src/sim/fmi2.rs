@@ -4,7 +4,10 @@ pub mod input;
 pub mod recorder;
 
 use crate::{
-    fmi2::{self, FMU2, types::{fmi2Boolean, fmi2EventInfo, fmi2False}},
+    fmi2::{
+        self, FMU2,
+        types::{fmi2Boolean, fmi2EventInfo, fmi2False},
+    },
     model_description::{self, Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
         SimulationSettings,
@@ -112,7 +115,6 @@ fn set_start_values(
     Ok(fmiOK)
 }
 
-
 struct Solver {
     time: f64,
     x: Vec<f64>,
@@ -122,9 +124,14 @@ struct Solver {
 }
 
 impl Solver {
-
     pub fn new(time: f64, nx: usize, nz: usize) -> Self {
-        Self { time, x: vec![0.0; nx], der_x: vec![0.0; nx], z: vec![0.0; nz], pre_z: vec![0.0; nz] }
+        Self {
+            time,
+            x: vec![0.0; nx],
+            der_x: vec![0.0; nx],
+            z: vec![0.0; nz],
+            pre_z: vec![0.0; nz],
+        }
     }
 
     pub fn reset(&mut self, time: f64, fmu: &FMU2) -> Result<(), Box<dyn Error>> {
@@ -137,17 +144,16 @@ impl Solver {
     }
 
     pub fn step(&mut self, next_time: f64, fmu: &FMU2) -> Result<(f64, bool), Box<dyn Error>> {
-        
         if self.x.len() > 0 {
             fmu.getContinuousStates(self.x.as_mut_slice());
             fmu.getDerivatives(self.der_x.as_mut_slice());
-            
+
             let h = next_time - self.time;
-            
+
             for i in 0..self.x.len() {
                 self.x[i] += self.der_x[i] * h;
             }
-            
+
             fmu.setContinuousStates(self.x.as_slice());
         }
 
@@ -158,9 +164,9 @@ impl Solver {
 
             for i in 0..self.z.len() {
                 if self.pre_z[i] <= 0.0 && self.z[i] > 0.0 {
-                    state_event = true;  // -\+
+                    state_event = true; // -\+
                 } else if self.pre_z[i] > 0.0 && self.z[i] <= 0.0 {
-                    state_event = true;  // +/-
+                    state_event = true; // +/-
                 }
 
                 self.pre_z[i] = self.z[i];
@@ -172,7 +178,6 @@ impl Solver {
         Ok((self.time, state_event))
     }
 }
-
 
 pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
@@ -332,7 +337,6 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
 }
 
 pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
-
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;
@@ -397,7 +401,7 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
     call(fmu.exitInitializationMode())?;
 
     let mut event_info = fmi2EventInfo::default();
-    
+
     loop {
         call(fmu.newDiscreteStates(&mut event_info))?;
 
@@ -429,12 +433,15 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         )
     };
 
-    let mut solver = Solver::new(time, settings.model_description.derivatives.len(), settings.model_description.numberOfEventIndicators);
+    let mut solver = Solver::new(
+        time,
+        settings.model_description.derivatives.len(),
+        settings.model_description.numberOfEventIndicators,
+    );
 
     let mut n_steps = 0;
 
     loop {
-
         recorder.sample(time)?;
 
         if time > stop_time || relative_eq!(time, stop_time) {
@@ -459,22 +466,28 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
             }
         }
 
-        if event_info.nextEventTimeDefined != fmi2False && next_communication_point > event_info.nextEventTime && !relative_eq!(next_communication_point, event_info.nextEventTime) {
+        if event_info.nextEventTimeDefined != fmi2False
+            && next_communication_point > event_info.nextEventTime
+            && !relative_eq!(next_communication_point, event_info.nextEventTime)
+        {
             next_communication_point = event_info.nextEventTime;
         }
 
-        if next_communication_point > stop_time && !relative_eq!(next_communication_point, stop_time) {
+        if next_communication_point > stop_time
+            && !relative_eq!(next_communication_point, stop_time)
+        {
             next_communication_point = stop_time;
         }
-    
+
         let is_input_event = if let Some(input_event_time) = next_input_event_time {
             relative_eq!(input_event_time, next_communication_point)
         } else {
             false
         };
 
-        let is_time_event = event_info.nextEventTimeDefined != fmi2False && relative_eq!(event_info.nextEventTime, next_communication_point);
-        
+        let is_time_event = event_info.nextEventTimeDefined != fmi2False
+            && relative_eq!(event_info.nextEventTime, next_communication_point);
+
         let (time_reached, is_state_event) = solver.step(next_communication_point, &fmu)?;
 
         time = time_reached;
@@ -490,13 +503,16 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         if relative_eq!(time, next_regular_point) {
             n_steps += 1;
         }
-        
+
         let is_step_event = if needs_completed_integrator_step {
-            
             let mut is_step_event = fmi2False;
             let mut terminate_simulation = fmi2False;
 
-            call(fmu.completedIntegratorStep(fmi2False, &mut is_step_event, &mut terminate_simulation))?;
+            call(fmu.completedIntegratorStep(
+                fmi2False,
+                &mut is_step_event,
+                &mut terminate_simulation,
+            ))?;
 
             if terminate_simulation != fmi2False {
                 call(fmu.terminate())?;
@@ -509,7 +525,6 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         };
 
         if is_input_event || is_time_event || is_state_event || is_step_event {
-
             recorder.sample(time)?;
 
             call(fmu.enterEventMode())?;
@@ -531,7 +546,8 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
                     return Ok(());
                 }
 
-                reset_solver |= event_info.nominalsOfContinuousStatesChanged != fmi2False || event_info.valuesOfContinuousStatesChanged != fmi2False;
+                reset_solver |= event_info.nominalsOfContinuousStatesChanged != fmi2False
+                    || event_info.valuesOfContinuousStatesChanged != fmi2False;
 
                 if event_info.newDiscreteStatesNeeded == fmi2False {
                     break;
@@ -544,7 +560,6 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
                 solver.reset(time, &fmu)?;
             }
         }
-
     }
 
     call(fmu.terminate())?;

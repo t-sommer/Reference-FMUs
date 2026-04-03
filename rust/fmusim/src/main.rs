@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use fmi::{
     model_description::{Causality, MajorVersion, ModelVariable, read_model_description},
@@ -9,6 +9,16 @@ use fmi::{
 };
 use fmi_schema::validate_model_description_against_xsd;
 use std::{collections::HashMap, path::PathBuf, process::ExitCode};
+
+#[derive(ValueEnum, Clone, Debug)]
+enum InterfaceType {
+    /// Model Exchange
+    #[value(name = "me")]
+    ModelExchange,
+    /// Co-Simulation
+    #[value(name = "cs")]
+    CoSimulation,
+}
 
 fn parse_start_value(s: &str) -> Result<(String, String), String> {
     let parts: Vec<&str> = s.splitn(2, '=').collect();
@@ -79,6 +89,14 @@ struct Args {
     /// Enable FMU looging
     #[arg(long)]
     logging_on: bool,
+    
+    /// Show statisics
+    #[arg(long)]
+    show_stats: bool,
+
+    /// The interface type to use
+    #[arg(long, value_enum)]
+    interface_type: Option<InterfaceType>,
 }
 
 fn main() -> ExitCode {
@@ -206,10 +224,34 @@ fn main() -> ExitCode {
         logging_on: args.logging_on,
     };
 
-    let result = match model_description.majorVersion {
-        MajorVersion::V2 => sim::fmi2::simulate_cs(&settings),
-        MajorVersion::V3 => sim::fmi3::simulate_cs(&settings),
+    let interface_type = match args.interface_type {
+        Some(t) => t,
+        None => {
+            if let Some(_) = &model_description.coSimulation {
+                InterfaceType::CoSimulation
+            } else {    
+                InterfaceType::ModelExchange
+            }
+        }
     };
+
+    let start_time = std::time::Instant::now();
+
+    let result = match (&model_description.majorVersion, interface_type) {
+        (MajorVersion::V2, InterfaceType::ModelExchange) => sim::fmi2::simulate_me(&settings),
+        (MajorVersion::V2, InterfaceType::CoSimulation) => sim::fmi2::simulate_cs(&settings),
+        (MajorVersion::V3, InterfaceType::CoSimulation) => sim::fmi3::simulate_cs(&settings),
+        _ => {
+            eprintln!("Unsupported combination of FMI version and interface type.");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let elapsed_time = start_time.elapsed();
+
+    if args.show_stats {
+        eprintln!("Simulation took {:.2?}.", elapsed_time);
+    }
 
     match result {
         Ok(_) => ExitCode::SUCCESS,

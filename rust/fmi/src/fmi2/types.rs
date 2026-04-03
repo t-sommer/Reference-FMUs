@@ -53,6 +53,15 @@ pub enum fmi2VariableType {
     String,
 }
 
+#[repr(i32)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum fmi2StatusKind {
+    fmi2DoStepStatus = 0,
+    fmi2PendingStatus = 1,
+    fmi2LastSuccessfulTime = 2,
+    fmi2Terminated = 3,
+}
+
 // FMI 2.0 Callback Functions
 pub type fmi2CallbackLogger = unsafe extern "C" fn(
     componentEnvironment: fmi2ComponentEnvironment,
@@ -70,6 +79,7 @@ pub type fmi2StepFinished =
     unsafe extern "C" fn(componentEnvironment: fmi2ComponentEnvironment, status: fmi2Status);
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct fmi2CallbackFunctions {
     pub logger: fmi2CallbackLogger,
     pub allocateMemory: fmi2CallbackAllocateMemory,
@@ -79,7 +89,7 @@ pub struct fmi2CallbackFunctions {
 }
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct fmi2EventInfo {
     pub newDiscreteStatesNeeded: fmi2Boolean,
     pub terminateSimulation: fmi2Boolean,
@@ -305,22 +315,3 @@ pub type fmi2GetBooleanStatusTYPE = unsafe extern "C" fn(
 
 pub type fmi2GetStringStatusTYPE =
     unsafe extern "C" fn(c: fmi2Component, s: fmi2StatusKind, value: *mut fmi2String) -> fmi2Status;
-
-#[repr(i32)]
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum fmi2StatusKind {
-    fmi2DoStepStatus = 0,
-    fmi2PendingStatus = 1,
-    fmi2LastSuccessfulTime = 2,
-    fmi2Terminated = 3,
-}
-
-#[repr(C)]
-pub struct fmi2EventInfo {
-    pub newDiscreteStatesNeeded: fmi2Boolean,
-    pub terminateSimulation: fmi2Boolean,
-    pub nominalsOfContinuousStatesChanged: fmi2Boolean,
-    pub valuesOfContinuousStatesChanged: fmi2Boolean,
-    pub nextEventTimeDefined: fmi2Boolean,
-    pub nextEventTime: fmi2Real,
-}

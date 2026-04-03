@@ -572,8 +572,8 @@ impl FMU2 {
             };
 
             let message = format!(
-                "fmi2Instantiate(instanceName=\"{}\", fmuType={:?}, fmuGUID=\"{}\", fmuResourceLocation={:?}, visible={}, loggingOn={}) -> {:p}",
-                instanceName, interfaceType, guid, url, visible, loggingOn, component
+                "fmi2Instantiate(instanceName=\"{}\", fmuType={:?}, fmuGUID=\"{}\", fmuResourceLocation={:?}, callbacks={:?}, visible={}, loggingOn={}) -> {:p}",
+                instanceName, interfaceType, guid, url, callbacks, visible, loggingOn, component
             );
 
             if component.is_null() {
@@ -818,11 +818,11 @@ impl FMU2 {
         }
     }
 
-    pub fn completedIntegratorStep(&self) -> fmi2Status {
+    pub fn completedIntegratorStep(&self, noSetFMUStatePriorToCurrentPoint: fmi2Boolean, enterEventMode: &mut fmi2Boolean, terminateSimulation: &mut fmi2Boolean) -> fmi2Status {
         if let InterfaceType::ModelExchange(functions) = &self.interfaceType {
-            let status = unsafe { (functions.fmi2CompletedIntegratorStep)(self.component) };
+            let status = unsafe { (functions.fmi2CompletedIntegratorStep)(self.component, noSetFMUStatePriorToCurrentPoint, enterEventMode, terminateSimulation) };
             if self.logCalls {
-                let message = format!("fmi2CompletedIntegratorStep() -> {:?}", status);
+                let message = format!("fmi2CompletedIntegratorStep(noSetFMUStatePriorToCurrentPoint={}, enterEventMode={:?}, terminateSimulation={:?}) -> {:?}", noSetFMUStatePriorToCurrentPoint, enterEventMode, terminateSimulation, status);
                 self.log_call(status, &message);
             }
             status

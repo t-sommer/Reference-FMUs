@@ -4,8 +4,8 @@ pub mod input;
 pub mod recorder;
 
 use crate::{
-    fmi2::{self, FMU2, types::fmi2Boolean},
-    model_description::{Causality, ModelDescription, ModelVariable, VariableType},
+    fmi2::{self, FMU2, types::{fmi2Boolean, fmi2EventInfo, fmi2False}},
+    model_description::{self, Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
         SimulationSettings,
         fmi2::{input::CSVInput, recorder::Recorder},
@@ -111,6 +111,68 @@ fn set_start_values(
 
     Ok(fmiOK)
 }
+
+
+struct Solver {
+    time: f64,
+    x: Vec<f64>,
+    der_x: Vec<f64>,
+    z: Vec<f64>,
+    pre_z: Vec<f64>,
+}
+
+impl Solver {
+
+    pub fn new(time: f64, nx: usize, nz: usize) -> Self {
+        Self { time, x: vec![0.0; nx], der_x: vec![0.0; nx], z: vec![0.0; nz], pre_z: vec![0.0; nz] }
+    }
+
+    pub fn reset(&mut self, time: f64, fmu: &FMU2) -> Result<(), Box<dyn Error>> {
+        self.time = time;
+        self.x.fill(0.0);
+        self.der_x.fill(0.0);
+        self.z.fill(0.0);
+        fmu.getEventIndicators(self.pre_z.as_mut_slice());
+        Ok(())
+    }
+
+    pub fn step(&mut self, next_time: f64, fmu: &FMU2) -> Result<(f64, bool), Box<dyn Error>> {
+        
+        if self.x.len() > 0 {
+            fmu.getContinuousStates(self.x.as_mut_slice());
+            fmu.getDerivatives(self.der_x.as_mut_slice());
+            
+            let h = next_time - self.time;
+            
+            for i in 0..self.x.len() {
+                self.x[i] += self.der_x[i] * h;
+            }
+            
+            fmu.setContinuousStates(self.x.as_slice());
+        }
+
+        let mut state_event = false;
+
+        if self.z.len() > 0 {
+            fmu.getEventIndicators(self.z.as_mut_slice());
+
+            for i in 0..self.z.len() {
+                if self.pre_z[i] <= 0.0 && self.z[i] > 0.0 {
+                    state_event = true;  // -\+
+                } else if self.pre_z[i] > 0.0 && self.z[i] <= 0.0 {
+                    state_event = true;  // +/-
+                }
+
+                self.pre_z[i] = self.z[i];
+            }
+        }
+
+        self.time = next_time;
+
+        Ok((self.time, state_event))
+    }
+}
+
 
 pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
@@ -262,6 +324,227 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         if terminate_simulation != 0 {
             break;
         }
+    }
+
+    call(fmu.terminate())?;
+
+    Ok(())
+}
+
+pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
+
+    let start_time = settings.start_time;
+    let stop_time = settings.stop_time;
+    let set_stop_time = settings.set_stop_time;
+    let output_interval = settings.output_interval;
+
+    let mut time = start_time;
+
+    let model_exchange = match &settings.model_description.modelExchange {
+        Some(me) => me,
+        None => {
+            return Err("The FMU does not support Model Exchange.".into());
+        }
+    };
+
+    let needs_completed_integrator_step = model_exchange.needsCompletedIntegratorStep;
+
+    let input = if let Some(path) = &settings.input_file {
+        match File::open(&path) {
+            Ok(file) => match CSVInput::new(&file, &settings.model_description) {
+                Ok(input) => Some(input),
+                Err(e) => {
+                    return Err(format!("Failed to load input from {path:?}. {e}").into());
+                }
+            },
+            Err(e) => {
+                return Err(format!("Failed to open input file {path:?}. {e}").into());
+            }
+        }
+    } else {
+        None
+    };
+
+    let fmu = FMU2::new(
+        settings.unzipdir.as_ref(),
+        &model_exchange.modelIdentifier,
+        &settings.model_description.modelName,
+        fmi2::types::fmi2Type::fmi2ModelExchange,
+        &settings.model_description.instantiationToken,
+        false,
+        settings.logging_on,
+        settings.log_fmi_calls,
+        true,
+        true,
+        true,
+    )?;
+
+    set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
+
+    call(fmu.setupExperiment(
+        settings.tolerance,
+        time,
+        if set_stop_time { Some(stop_time) } else { None },
+    ))?;
+
+    call(fmu.enterInitializationMode())?;
+
+    if let Some(input) = &input {
+        input.set_discrete_inputs(time, true, &fmu)?;
+        input.set_continuous_inputs(time, true, &fmu)?;
+    }
+
+    call(fmu.exitInitializationMode())?;
+
+    let mut event_info = fmi2EventInfo::default();
+    
+    loop {
+        call(fmu.newDiscreteStates(&mut event_info))?;
+
+        if event_info.terminateSimulation != fmi2False {
+            call(fmu.terminate())?;
+            return Ok(());
+        }
+
+        if event_info.newDiscreteStatesNeeded == fmi2False {
+            break;
+        }
+    }
+
+    call(fmu.enterContinuousTimeMode())?;
+
+    let mut recorder = if let Some(path) = &settings.output_file {
+        let file = File::create(path).expect("Failed to create output file");
+        Recorder::new(
+            &settings.output_variables,
+            Box::new(file) as Box<dyn Write>,
+            &fmu,
+        )
+    } else {
+        let stdout_handle = stdout();
+        Recorder::new(
+            &settings.output_variables,
+            Box::new(stdout_handle) as Box<dyn Write>,
+            &fmu,
+        )
+    };
+
+    let mut solver = Solver::new(time, settings.model_description.derivatives.len(), settings.model_description.numberOfEventIndicators);
+
+    let mut n_steps = 0;
+
+    loop {
+
+        recorder.sample(time)?;
+
+        if time > stop_time || relative_eq!(time, stop_time) {
+            break;
+        }
+
+        let next_regular_point = start_time + (n_steps + 1) as f64 * output_interval;
+
+        let mut next_communication_point = next_regular_point;
+
+        let next_input_event_time = if let Some(input) = &input {
+            input.next_event_time(time)
+        } else {
+            None
+        };
+
+        if let Some(next_input_event_time) = next_input_event_time {
+            if next_regular_point > next_input_event_time
+                && !relative_eq!(next_regular_point, next_input_event_time)
+            {
+                next_communication_point = next_input_event_time;
+            }
+        }
+
+        if event_info.nextEventTimeDefined != fmi2False && next_communication_point > event_info.nextEventTime && !relative_eq!(next_communication_point, event_info.nextEventTime) {
+            next_communication_point = event_info.nextEventTime;
+        }
+
+        if next_communication_point > stop_time && !relative_eq!(next_communication_point, stop_time) {
+            next_communication_point = stop_time;
+        }
+    
+        let is_input_event = if let Some(input_event_time) = next_input_event_time {
+            relative_eq!(input_event_time, next_communication_point)
+        } else {
+            false
+        };
+
+        let is_time_event = event_info.nextEventTimeDefined != fmi2False && relative_eq!(event_info.nextEventTime, next_communication_point);
+        
+        let (time_reached, is_state_event) = solver.step(next_communication_point, &fmu)?;
+
+        time = time_reached;
+
+        call(fmu.setTime(time))?;
+
+        if is_input_event {
+            if let Some(input) = &input {
+                input.set_continuous_inputs(time, false, &fmu)?;
+            }
+        }
+
+        if relative_eq!(time, next_regular_point) {
+            n_steps += 1;
+        }
+        
+        let is_step_event = if needs_completed_integrator_step {
+            
+            let mut is_step_event = fmi2False;
+            let mut terminate_simulation = fmi2False;
+
+            call(fmu.completedIntegratorStep(fmi2False, &mut is_step_event, &mut terminate_simulation))?;
+
+            if terminate_simulation != fmi2False {
+                call(fmu.terminate())?;
+                return Ok(());
+            }
+
+            is_step_event != fmi2False
+        } else {
+            false
+        };
+
+        if is_input_event || is_time_event || is_state_event || is_step_event {
+
+            recorder.sample(time)?;
+
+            call(fmu.enterEventMode())?;
+
+            if is_input_event {
+                if let Some(input) = &input {
+                    input.set_discrete_inputs(time, true, &fmu)?;
+                    input.set_continuous_inputs(time, true, &fmu)?;
+                }
+            }
+
+            let mut reset_solver = false;
+
+            loop {
+                call(fmu.newDiscreteStates(&mut event_info))?;
+
+                if event_info.terminateSimulation != fmi2False {
+                    call(fmu.terminate())?;
+                    return Ok(());
+                }
+
+                reset_solver |= event_info.nominalsOfContinuousStatesChanged != fmi2False || event_info.valuesOfContinuousStatesChanged != fmi2False;
+
+                if event_info.newDiscreteStatesNeeded == fmi2False {
+                    break;
+                }
+            }
+
+            call(fmu.enterContinuousTimeMode())?;
+
+            if reset_solver {
+                solver.reset(time, &fmu)?;
+            }
+        }
+
     }
 
     call(fmu.terminate())?;

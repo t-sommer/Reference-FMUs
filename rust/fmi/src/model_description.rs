@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
 use roxmltree::Node;
+use core::num;
 use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 
 use crate::types::fmiValueReference;
@@ -91,6 +92,12 @@ pub struct CoSimulation {
 }
 
 #[derive(Debug)]
+pub struct ModelExchange {
+    pub modelIdentifier: String,
+    pub needsCompletedIntegratorStep: bool,
+}
+
+#[derive(Debug)]
 pub enum Dimension {
     Fixed(usize),
     Variable(fmiValueReference),
@@ -107,13 +114,27 @@ pub struct ModelVariable {
 }
 
 #[derive(Debug)]
+pub struct Unknown {
+    pub valueReference: fmiValueReference,
+    pub dependencies: Option<Vec<fmiValueReference>>,
+    pub dependenciesKind: Option<Vec<fmiValueReference>>,
+}
+
+#[derive(Debug)]
 pub struct ModelDescription {
     pub majorVersion: MajorVersion,
     pub modelName: String,
     pub instantiationToken: String,
     pub defaultExperiment: Option<DefaultExperiment>,
+    pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,
     pub modelVariables: Vec<ModelVariable>,
+    pub numberOfEventIndicators: usize,
+    pub outputs: Vec<Unknown>,
+    pub derivatives: Vec<Unknown>,
+    pub clockedStates: Vec<Unknown>,
+    pub eventIndicators: Vec<Unknown>,
+    pub initialUnknowns: Vec<Unknown>,
 }
 
 pub fn read_model_description(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
@@ -158,6 +179,34 @@ fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
     }
 
     Err("Missing variable type element".into())
+}
+
+fn get_fmi2_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Error>> {
+    
+    let modelStructure = root
+        .descendants()
+        .find(|n| n.has_tag_name("ModelStructure"))
+        .ok_or("Missing ModelStructure element.")?;
+
+    let container = modelStructure
+        .descendants()
+        .find(|n| n.has_tag_name(name))
+        .ok_or("Missing container element.")?;
+
+    let mut unkonwns = vec![];
+
+    for output in container
+        .descendants()
+        .filter(|n| n.has_tag_name("Unknown"))
+    {
+        unkonwns.push(Unknown {
+            valueReference: 0,
+            dependencies: None,
+            dependenciesKind: None,
+        });
+    }
+
+    Ok(unkonwns)
 }
 
 fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
@@ -246,13 +295,40 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         None
     };
 
+    let modelExchange = if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
+        Some(ModelExchange {
+            modelIdentifier: me.required_attribute("modelIdentifier")?,
+            needsCompletedIntegratorStep: !me
+                .bool_attribute("completedIntegratorStepNotNeeded", false),
+        })
+    } else {
+        None
+    };
+
+    let numberOfEventIndicators = if let Some(n) = root.attribute("numberOfEventIndicators") {
+        n.parse().unwrap_or(0)
+    } else {
+        0
+    };
+
+    let outputs = get_fmi2_unkonwns(root, "Outputs")?;
+    let derivatives = get_fmi2_unkonwns(root, "Derivatives")?;
+    let initialUnknowns = get_fmi2_unkonwns(root, "InitialUnknowns")?;
+    
     let model_description = ModelDescription {
         majorVersion: MajorVersion::V2,
         modelName: root.required_attribute("modelName")?,
         instantiationToken: root.required_attribute("guid")?,
         defaultExperiment,
         coSimulation,
+        modelExchange,
         modelVariables,
+        numberOfEventIndicators,
+        outputs,
+        derivatives,
+        clockedStates: vec![],
+        eventIndicators: vec![],
+        initialUnknowns,
     };
 
     Ok(model_description)
@@ -387,13 +463,30 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         None
     };
 
+    let modelExchange = if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
+        Some(ModelExchange {
+            modelIdentifier: me.attribute("modelIdentifier").unwrap().to_string(),
+            needsCompletedIntegratorStep: me
+                .bool_attribute("needsCompletedIntegratorStep", false),
+        })
+    } else {
+        None
+    };
+
     let model_description = ModelDescription {
         majorVersion: MajorVersion::V3,
         modelName: root.attribute("modelName").unwrap().to_string(),
         instantiationToken: root.attribute("instantiationToken").unwrap().to_string(),
         defaultExperiment,
+        modelExchange,
         coSimulation,
         modelVariables,
+        numberOfEventIndicators: todo!(),
+        outputs: vec![],
+        derivatives: vec![],
+        clockedStates: vec![],
+        eventIndicators: vec![],
+        initialUnknowns: vec![],
     };
 
     Ok(model_description)

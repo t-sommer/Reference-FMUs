@@ -5,10 +5,9 @@ pub mod recorder;
 
 use crate::{
     fmi2::{
-        self, FMU2,
-        types::{fmi2Boolean, fmi2EventInfo, fmi2False},
+        self, CoSimulationFunctions, FMU2, InterfaceType, ModelExchangeFunctions, types::{fmi2Boolean, fmi2EventInfo, fmi2False}
     },
-    model_description::{self, Causality, ModelDescription, ModelVariable, VariableType},
+    model_description::{Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
         SimulationSettings,
         fmi2::{input::CSVInput, recorder::Recorder},
@@ -59,8 +58,8 @@ pub fn parse_variable_value(
     }
 }
 
-fn set_variable_value(
-    fmu: &FMU2,
+fn set_variable_value<T: InterfaceType>(
+    fmu: &FMU2<T>,
     value_reference: fmiValueReference,
     value: &VariableValue,
 ) -> Result<fmiStatus, Box<dyn Error>> {
@@ -79,10 +78,10 @@ fn set_variable_value(
     }
 }
 
-fn set_start_values(
+fn set_start_values<T: InterfaceType>(
     start_values: &Vec<(String, String)>,
     model_description: &ModelDescription,
-    fmu: &FMU2,
+    fmu: &FMU2<T>,
 ) -> Result<fmiStatus, Box<dyn Error>> {
     // Create a map for quick lookup of variables by name
     let variable_map: HashMap<&str, &ModelVariable> = model_description
@@ -134,7 +133,7 @@ impl Solver {
         }
     }
 
-    pub fn reset(&mut self, time: f64, fmu: &FMU2) -> Result<(), Box<dyn Error>> {
+    pub fn reset(&mut self, time: f64, fmu: &FMU2<ModelExchangeFunctions>) -> Result<(), Box<dyn Error>> {
         self.time = time;
         self.x.fill(0.0);
         self.der_x.fill(0.0);
@@ -143,7 +142,7 @@ impl Solver {
         Ok(())
     }
 
-    pub fn step(&mut self, next_time: f64, fmu: &FMU2) -> Result<(f64, bool), Box<dyn Error>> {
+    pub fn step(&mut self, next_time: f64, fmu: &FMU2<ModelExchangeFunctions>) -> Result<(f64, bool), Box<dyn Error>> {
         if self.x.len() > 0 {
             fmu.getContinuousStates(self.x.as_mut_slice());
             fmu.getDerivatives(self.der_x.as_mut_slice());
@@ -213,11 +212,11 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         None
     };
 
-    let fmu = FMU2::new(
+    let fmu = FMU2::<CoSimulationFunctions>::new(
         settings.unzipdir.as_ref(),
         &co_simulation.modelIdentifier,
         &settings.model_description.modelName,
-        fmi2::types::fmi2Type::fmi2CoSimulation,
+        // fmi2::types::fmi2Type::fmi2CoSimulation,
         &settings.model_description.instantiationToken,
         false,
         settings.logging_on,
@@ -369,11 +368,11 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         None
     };
 
-    let fmu = FMU2::new(
+    let fmu = FMU2::<ModelExchangeFunctions>::new(
         settings.unzipdir.as_ref(),
         &model_exchange.modelIdentifier,
         &settings.model_description.modelName,
-        fmi2::types::fmi2Type::fmi2ModelExchange,
+        // fmi2::types::fmi2Type::fmi2ModelExchange,
         &settings.model_description.instantiationToken,
         false,
         settings.logging_on,

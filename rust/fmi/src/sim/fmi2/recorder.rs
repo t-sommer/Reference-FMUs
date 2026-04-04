@@ -1,5 +1,5 @@
 use crate::{
-    fmi2::FMU2,
+    fmi2::{FMU2, InterfaceType},
     model_description::{ModelVariable, VariableType},
 };
 use std::io::Write;
@@ -14,14 +14,14 @@ macro_rules! write_values {
         }
     }};
 }
-pub struct Recorder<'a, T: Write> {
+pub struct Recorder<'a, T: Write, I: InterfaceType> {
     pub variables: &'a Vec<&'a ModelVariable>,
     pub stream: T,
-    pub fmu: &'a FMU2,
+    pub fmu: &'a FMU2<I>,
 }
 
-impl<'a, T: Write> Recorder<'a, T> {
-    pub fn new(variables: &'a Vec<&'a ModelVariable>, stream: T, fmu: &'a FMU2) -> Recorder<'a, T> {
+impl<'a, T: Write, I: InterfaceType> Recorder<'a, T, I> {
+    pub fn new(variables: &'a Vec<&'a ModelVariable>, stream: T, fmu: &'a FMU2<I>) -> Recorder<'a, T, I> {
         let mut recorder = Recorder {
             variables,
             stream,

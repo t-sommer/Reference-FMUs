@@ -98,8 +98,6 @@ macro_rules! fmi2_set {
     }};
 }
 
-pub trait InterfaceType {}
-
 pub struct ModelExchangeFunctions {
     fmi2EnterEventMode: Symbol<'static, fmi2EnterEventModeTYPE>,
     fmi2NewDiscreteStates: Symbol<'static, fmi2NewDiscreteStatesTYPE>,
@@ -125,10 +123,7 @@ pub struct CoSimulationFunctions {
     fmi2GetStringStatus: Symbol<'static, fmi2GetStringStatusTYPE>,
 }
 
-impl InterfaceType for ModelExchangeFunctions {}
-impl InterfaceType for CoSimulationFunctions {}
-
-impl<T: InterfaceType> Drop for FMU2<T> {
+impl<T> Drop for FMU2<T> {
     fn drop(&mut self) {
         if !self.component.is_null() {
             unsafe { (self.fmi2FreeInstance)(self.component) };
@@ -152,7 +147,7 @@ pub struct Message {
     pub message: String,
 }
 
-pub struct FMU2<T: InterfaceType> {
+pub struct FMU2<T> {
     instanceName: String,
 
     logCalls: bool,
@@ -247,7 +242,7 @@ fn get_symbol<T>(lib: &Library, symbol_name: &[u8]) -> Result<Symbol<'static, T>
     }
 }
 
-impl<T: InterfaceType> FMU2<T> {
+impl<T> FMU2<T> {
     fn new_T(
         lib: Box<Library>,
         unzipdir: &Path,
@@ -263,18 +258,7 @@ impl<T: InterfaceType> FMU2<T> {
         printMessages: bool,
         interfaceType: T,
     ) -> Result<FMU2<T>, Box<dyn Error>> {
-        // let shared_library_path = unzipdir
-        //     .join("binaries")
-        //     .join(PLATFORM)
-        //     .join(format!("{modelIdentifier}{SHARED_LIBRARY_EXTENSION}"));
 
-        // if !shared_library_path.is_file() {
-        //     return Err(format!("Missing shared library {shared_library_path:?}.").into());
-        // }
-
-        // let lib = Box::new(unsafe { Library::new(shared_library_path)? });
-
-        // Load all symbols using the generic get_symbol function
         let fmi2GetVersion = get_symbol::<fmi2GetVersionTYPE>(&lib, b"fmi2GetVersion")?;
         let fmi2GetTypesPlatform =
             get_symbol::<fmi2GetTypesPlatformTYPE>(&lib, b"fmi2GetTypesPlatform")?;
@@ -309,88 +293,6 @@ impl<T: InterfaceType> FMU2<T> {
             get_symbol::<fmi2DeSerializeFMUstateTYPE>(&lib, b"fmi2DeSerializeFMUstate")?;
         let fmi2GetDirectionalDerivative =
             get_symbol::<fmi2GetDirectionalDerivativeTYPE>(&lib, b"fmi2GetDirectionalDerivative")?;
-
-        // let interfaceType = match interfaceType {
-        //     fmi2Type::fmi2ModelExchange => {
-        //         let fmi2EnterEventMode =
-        //             get_symbol::<fmi2EnterEventModeTYPE>(&lib, b"fmi2EnterEventMode")?;
-        //         let fmi2NewDiscreteStates =
-        //             get_symbol::<fmi2NewDiscreteStatesTYPE>(&lib, b"fmi2NewDiscreteStates")?;
-        //         let fmi2EnterContinuousTimeMode = get_symbol::<fmi2EnterContinuousTimeModeTYPE>(
-        //             &lib,
-        //             b"fmi2EnterContinuousTimeMode",
-        //         )?;
-        //         let fmi2CompletedIntegratorStep = get_symbol::<fmi2CompletedIntegratorStepTYPE>(
-        //             &lib,
-        //             b"fmi2CompletedIntegratorStep",
-        //         )?;
-        //         let fmi2SetTime = get_symbol::<fmi2SetTimeTYPE>(&lib, b"fmi2SetTime")?;
-        //         let fmi2SetContinuousStates =
-        //             get_symbol::<fmi2SetContinuousStatesTYPE>(&lib, b"fmi2SetContinuousStates")?;
-        //         let fmi2GetDerivatives =
-        //             get_symbol::<fmi2GetDerivativesTYPE>(&lib, b"fmi2GetDerivatives")?;
-        //         let fmi2GetEventIndicators =
-        //             get_symbol::<fmi2GetEventIndicatorsTYPE>(&lib, b"fmi2GetEventIndicators")?;
-        //         let fmi2GetContinuousStates =
-        //             get_symbol::<fmi2GetContinuousStatesTYPE>(&lib, b"fmi2GetContinuousStates")?;
-        //         let fmi2GetNominalsOfContinuousStates =
-        //             get_symbol::<fmi2GetNominalsOfContinuousStatesTYPE>(
-        //                 &lib,
-        //                 b"fmi2GetNominalsOfContinuousStates",
-        //             )?;
-
-        //         let modelExchangeFunctions = ModelExchangeFunctions {
-        //             fmi2EnterEventMode,
-        //             fmi2NewDiscreteStates,
-        //             fmi2EnterContinuousTimeMode,
-        //             fmi2CompletedIntegratorStep,
-        //             fmi2SetTime,
-        //             fmi2SetContinuousStates,
-        //             fmi2GetDerivatives,
-        //             fmi2GetEventIndicators,
-        //             fmi2GetContinuousStates,
-        //             fmi2GetNominalsOfContinuousStates,
-        //         };
-
-        //         InterfaceType::ModelExchange(modelExchangeFunctions)
-        //     }
-
-        //     fmi2Type::fmi2CoSimulation => {
-        //         let fmi2SetRealInputDerivatives = get_symbol::<fmi2SetRealInputDerivativesTYPE>(
-        //             &lib,
-        //             b"fmi2SetRealInputDerivatives",
-        //         )?;
-        //         let fmi2GetRealOutputDerivatives = get_symbol::<fmi2GetRealOutputDerivativesTYPE>(
-        //             &lib,
-        //             b"fmi2GetRealOutputDerivatives",
-        //         )?;
-        //         let fmi2DoStep = get_symbol::<fmi2DoStepTYPE>(&lib, b"fmi2DoStep")?;
-        //         let fmi2CancelStep = get_symbol::<fmi2CancelStepTYPE>(&lib, b"fmi2CancelStep")?;
-        //         let fmi2GetStatus = get_symbol::<fmi2GetStatusTYPE>(&lib, b"fmi2GetStatus")?;
-        //         let fmi2GetRealStatus =
-        //             get_symbol::<fmi2GetRealStatusTYPE>(&lib, b"fmi2GetRealStatus")?;
-        //         let fmi2GetIntegerStatus =
-        //             get_symbol::<fmi2GetIntegerStatusTYPE>(&lib, b"fmi2GetIntegerStatus")?;
-        //         let fmi2GetBooleanStatus =
-        //             get_symbol::<fmi2GetBooleanStatusTYPE>(&lib, b"fmi2GetBooleanStatus")?;
-        //         let fmi2GetStringStatus =
-        //             get_symbol::<fmi2GetStringStatusTYPE>(&lib, b"fmi2GetStringStatus")?;
-
-        //         let coSimulationFunctions = CoSimulationFunctions {
-        //             fmi2SetRealInputDerivatives,
-        //             fmi2GetRealOutputDerivatives,
-        //             fmi2DoStep,
-        //             fmi2CancelStep,
-        //             fmi2GetStatus,
-        //             fmi2GetRealStatus,
-        //             fmi2GetIntegerStatus,
-        //             fmi2GetBooleanStatus,
-        //             fmi2GetStringStatus,
-        //         };
-
-        //         InterfaceType::CoSimulation(coSimulationFunctions)
-        //     }
-        // };
 
         let mut fmu = FMU2 {
             instanceName: String::from(instanceName),
@@ -538,7 +440,7 @@ impl<T: InterfaceType> FMU2<T> {
         }
 
         unsafe extern "C" fn stepFinished(_env: fmi2ComponentEnvironment, _status: fmi2Status) {
-            // default implementation - do nothing
+            // do nothing
         }
 
         let callbacks = fmi2CallbackFunctions {
@@ -548,13 +450,6 @@ impl<T: InterfaceType> FMU2<T> {
             stepFinished,
             componentEnvironment,
         };
-
-        // let interfaceType = match self.interfaceType {
-        //     InterfaceType::ModelExchange(_) => fmi2Type::fmi2ModelExchange,
-        //     InterfaceType::CoSimulation(_) => fmi2Type::fmi2CoSimulation,
-        // };
-
-        // let interfaceType = fmi2Type::fmi2CoSimulation;
 
         let component = unsafe {
             (self.fmi2Instantiate)(
@@ -666,7 +561,6 @@ impl<T: InterfaceType> FMU2<T> {
         status
     }
 
-    // Variable access methods
     pub fn getReal(
         &self,
         valueReferences: &[fmi2ValueReference],

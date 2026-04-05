@@ -1,7 +1,7 @@
 use std::{collections::HashMap, error::Error, fs::File};
 
 use crate::{
-    fmi2::{FMU2, InterfaceType},
+    fmi2::FMU2,
     model_description::{ModelDescription, ModelVariable, Variability},
     sim::fmi2::{parse_variable_value, set_variable_value},
     types::*,
@@ -153,7 +153,7 @@ impl<'a> CSVInput<'a> {
         None
     }
 
-    pub fn set_discrete_inputs<I: InterfaceType>(
+    pub fn set_discrete_inputs<I>(
         &self,
         time: f64,
         after_event: bool,
@@ -180,7 +180,7 @@ impl<'a> CSVInput<'a> {
         Ok(())
     }
 
-    pub fn set_continuous_inputs<I: InterfaceType>(
+    pub fn set_continuous_inputs<I>(
         &self,
         time: f64,
         after_event: bool,

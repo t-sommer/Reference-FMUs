@@ -5,7 +5,7 @@ pub mod recorder;
 
 use crate::{
     fmi2::{
-        self, CoSimulationFunctions, FMU2, InterfaceType, ModelExchangeFunctions, types::{fmi2Boolean, fmi2EventInfo, fmi2False}
+        self, CoSimulationFunctions, FMU2, ModelExchangeFunctions, types::{fmi2Boolean, fmi2EventInfo, fmi2False}
     },
     model_description::{Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
@@ -58,7 +58,7 @@ pub fn parse_variable_value(
     }
 }
 
-fn set_variable_value<T: InterfaceType>(
+fn set_variable_value<T>(
     fmu: &FMU2<T>,
     value_reference: fmiValueReference,
     value: &VariableValue,
@@ -78,7 +78,7 @@ fn set_variable_value<T: InterfaceType>(
     }
 }
 
-fn set_start_values<T: InterfaceType>(
+fn set_start_values<T>(
     start_values: &Vec<(String, String)>,
     model_description: &ModelDescription,
     fmu: &FMU2<T>,

@@ -190,7 +190,7 @@ fn get_fmi2_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Er
     let container = modelStructure
         .descendants()
         .find(|n| n.has_tag_name(name))
-        .ok_or("Missing container element.")?;
+        .ok_or(format!("Missing container element '{name}'."))?;
 
     let mut unkonwns = vec![];
 
@@ -312,7 +312,7 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     };
 
     let outputs = get_fmi2_unkonwns(root, "Outputs")?;
-    let derivatives = get_fmi2_unkonwns(root, "Derivatives")?;
+    let derivatives = get_fmi2_unkonwns(root, "Derivatives").unwrap_or_default();
     let initialUnknowns = get_fmi2_unkonwns(root, "InitialUnknowns")?;
 
     let model_description = ModelDescription {
@@ -359,6 +359,39 @@ impl<'a, 'input> StringAttribute for Node<'a, 'input> {
         }
     }
 }
+
+fn get_fmi3_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Error>> {
+    let modelStructure = root
+        .descendants()
+        .find(|n| n.has_tag_name("ModelStructure"))
+        .ok_or("Missing ModelStructure element.")?;
+
+    for child in modelStructure.children().filter(|n| n.has_tag_name(name)) {
+        println!("{}: {}", child.tag_name().name(), child.attribute("name").unwrap_or(""));
+    }
+
+    // let container = modelStructure
+    //     .descendants()
+    //     .find(|n| n.has_tag_name(name))
+    //     .ok_or(format!("Missing container element '{name}'."))?;
+
+
+    let mut unkonwns = vec![];
+
+    // for output in container
+    //     .descendants()
+    //     .filter(|n| n.has_tag_name("Unknown"))
+    // {
+    //     unkonwns.push(Unknown {
+    //         valueReference: 0,
+    //         dependencies: None,
+    //         dependenciesKind: None,
+    //     });
+    // }
+
+    Ok(unkonwns)
+}
+
 
 fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
     let ModelVariables = root
@@ -474,6 +507,12 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         None
     };
 
+    let outputs = get_fmi3_unkonwns(root, "Output")?;
+    let derivatives = get_fmi3_unkonwns(root, "Derivative")?;
+    let clockedStates = get_fmi3_unkonwns(root, "ClockedState")?;
+    let initialUnknowns = get_fmi3_unkonwns(root, "InitialUnknown")?;
+    let eventIndicators = get_fmi3_unkonwns(root, "EventIndicator")?;
+
     let model_description = ModelDescription {
         majorVersion: MajorVersion::V3,
         modelName: root.attribute("modelName").unwrap().to_string(),
@@ -482,12 +521,12 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         modelExchange,
         coSimulation,
         modelVariables,
-        numberOfEventIndicators: todo!(),
-        outputs: vec![],
-        derivatives: vec![],
-        clockedStates: vec![],
-        eventIndicators: vec![],
-        initialUnknowns: vec![],
+        numberOfEventIndicators: 0,
+        outputs,
+        derivatives,
+        clockedStates,
+        eventIndicators,
+        initialUnknowns,
     };
 
     Ok(model_description)

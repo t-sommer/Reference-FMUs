@@ -103,12 +103,6 @@ fn test_input_interpolation_fmi3(workspace_root: PathBuf) {
         .output()
         .expect("Failed to run fmusim");
 
-    // let out = String::from_utf8_lossy(&simulation_output.stdout);
-    // print!("{out}");
-
-    // let err = String::from_utf8_lossy(&simulation_output.stderr);
-    // print!("{err}");
-
     if !simulation_output.status.success() {
         panic!(
             "Simulation failed: {}\nStderr: {}",

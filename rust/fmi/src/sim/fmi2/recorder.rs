@@ -21,7 +21,11 @@ pub struct Recorder<'a, T: Write, I> {
 }
 
 impl<'a, T: Write, I> Recorder<'a, T, I> {
-    pub fn new(variables: &'a Vec<&'a ModelVariable>, stream: T, fmu: &'a FMU2<I>) -> Recorder<'a, T, I> {
+    pub fn new(
+        variables: &'a Vec<&'a ModelVariable>,
+        stream: T,
+        fmu: &'a FMU2<I>,
+    ) -> Recorder<'a, T, I> {
         let mut recorder = Recorder {
             variables,
             stream,

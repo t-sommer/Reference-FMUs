@@ -98,7 +98,7 @@ macro_rules! fmi2_set {
     }};
 }
 
-pub struct ModelExchangeFunctions {
+pub struct ME {
     fmi2EnterEventMode: Symbol<'static, fmi2EnterEventModeTYPE>,
     fmi2NewDiscreteStates: Symbol<'static, fmi2NewDiscreteStatesTYPE>,
     fmi2EnterContinuousTimeMode: Symbol<'static, fmi2EnterContinuousTimeModeTYPE>,
@@ -111,7 +111,7 @@ pub struct ModelExchangeFunctions {
     fmi2GetNominalsOfContinuousStates: Symbol<'static, fmi2GetNominalsOfContinuousStatesTYPE>,
 }
 
-pub struct CoSimulationFunctions {
+pub struct CS {
     fmi2SetRealInputDerivatives: Symbol<'static, fmi2SetRealInputDerivativesTYPE>,
     fmi2GetRealOutputDerivatives: Symbol<'static, fmi2GetRealOutputDerivativesTYPE>,
     fmi2DoStep: Symbol<'static, fmi2DoStepTYPE>,
@@ -257,41 +257,31 @@ impl<T> FMU2<T> {
         printMessages: bool,
         interfaceType: T,
     ) -> Result<FMU2<T>, Box<dyn Error>> {
-
-        let fmi2GetVersion = get_symbol::<fmi2GetVersionTYPE>(&lib, b"fmi2GetVersion")?;
-        let fmi2GetTypesPlatform =
-            get_symbol::<fmi2GetTypesPlatformTYPE>(&lib, b"fmi2GetTypesPlatform")?;
-        let fmi2SetDebugLogging =
-            get_symbol::<fmi2SetDebugLoggingTYPE>(&lib, b"fmi2SetDebugLogging")?;
-        let fmi2Instantiate = get_symbol::<fmi2InstantiateTYPE>(&lib, b"fmi2Instantiate")?;
-        let fmi2FreeInstance = get_symbol::<fmi2FreeInstanceTYPE>(&lib, b"fmi2FreeInstance")?;
-        let fmi2SetupExperiment =
-            get_symbol::<fmi2SetupExperimentTYPE>(&lib, b"fmi2SetupExperiment")?;
-        let fmi2EnterInitializationMode =
-            get_symbol::<fmi2EnterInitializationModeTYPE>(&lib, b"fmi2EnterInitializationMode")?;
-        let fmi2ExitInitializationMode =
-            get_symbol::<fmi2ExitInitializationModeTYPE>(&lib, b"fmi2ExitInitializationMode")?;
-        let fmi2Terminate = get_symbol::<fmi2TerminateTYPE>(&lib, b"fmi2Terminate")?;
-        let fmi2Reset = get_symbol::<fmi2ResetTYPE>(&lib, b"fmi2Reset")?;
-        let fmi2GetReal = get_symbol::<fmi2GetRealTYPE>(&lib, b"fmi2GetReal")?;
-        let fmi2GetInteger = get_symbol::<fmi2GetIntegerTYPE>(&lib, b"fmi2GetInteger")?;
-        let fmi2GetBoolean = get_symbol::<fmi2GetBooleanTYPE>(&lib, b"fmi2GetBoolean")?;
-        let fmi2GetString = get_symbol::<fmi2GetStringTYPE>(&lib, b"fmi2GetString")?;
-        let fmi2SetReal = get_symbol::<fmi2SetRealTYPE>(&lib, b"fmi2SetReal")?;
-        let fmi2SetInteger = get_symbol::<fmi2SetIntegerTYPE>(&lib, b"fmi2SetInteger")?;
-        let fmi2SetBoolean = get_symbol::<fmi2SetBooleanTYPE>(&lib, b"fmi2SetBoolean")?;
-        let fmi2SetString = get_symbol::<fmi2SetStringTYPE>(&lib, b"fmi2SetString")?;
-        let fmi2GetFMUstate = get_symbol::<fmi2GetFMUstateTYPE>(&lib, b"fmi2GetFMUstate")?;
-        let fmi2SetFMUstate = get_symbol::<fmi2SetFMUstateTYPE>(&lib, b"fmi2SetFMUstate")?;
-        let fmi2FreeFMUstate = get_symbol::<fmi2FreeFMUstateTYPE>(&lib, b"fmi2FreeFMUstate")?;
-        let fmi2SerializedFMUstateSize =
-            get_symbol::<fmi2SerializedFMUstateSizeTYPE>(&lib, b"fmi2SerializedFMUstateSize")?;
-        let fmi2SerializeFMUstate =
-            get_symbol::<fmi2SerializeFMUstateTYPE>(&lib, b"fmi2SerializeFMUstate")?;
-        let fmi2DeSerializeFMUstate =
-            get_symbol::<fmi2DeSerializeFMUstateTYPE>(&lib, b"fmi2DeSerializeFMUstate")?;
-        let fmi2GetDirectionalDerivative =
-            get_symbol::<fmi2GetDirectionalDerivativeTYPE>(&lib, b"fmi2GetDirectionalDerivative")?;
+        let fmi2GetVersion = get_symbol(&lib, b"fmi2GetVersion")?;
+        let fmi2GetTypesPlatform = get_symbol(&lib, b"fmi2GetTypesPlatform")?;
+        let fmi2SetDebugLogging = get_symbol(&lib, b"fmi2SetDebugLogging")?;
+        let fmi2Instantiate = get_symbol(&lib, b"fmi2Instantiate")?;
+        let fmi2FreeInstance = get_symbol(&lib, b"fmi2FreeInstance")?;
+        let fmi2SetupExperiment = get_symbol(&lib, b"fmi2SetupExperiment")?;
+        let fmi2EnterInitializationMode = get_symbol(&lib, b"fmi2EnterInitializationMode")?;
+        let fmi2ExitInitializationMode = get_symbol(&lib, b"fmi2ExitInitializationMode")?;
+        let fmi2Terminate = get_symbol(&lib, b"fmi2Terminate")?;
+        let fmi2Reset = get_symbol(&lib, b"fmi2Reset")?;
+        let fmi2GetReal = get_symbol(&lib, b"fmi2GetReal")?;
+        let fmi2GetInteger = get_symbol(&lib, b"fmi2GetInteger")?;
+        let fmi2GetBoolean = get_symbol(&lib, b"fmi2GetBoolean")?;
+        let fmi2GetString = get_symbol(&lib, b"fmi2GetString")?;
+        let fmi2SetReal = get_symbol(&lib, b"fmi2SetReal")?;
+        let fmi2SetInteger = get_symbol(&lib, b"fmi2SetInteger")?;
+        let fmi2SetBoolean = get_symbol(&lib, b"fmi2SetBoolean")?;
+        let fmi2SetString = get_symbol(&lib, b"fmi2SetString")?;
+        let fmi2GetFMUstate = get_symbol(&lib, b"fmi2GetFMUstate")?;
+        let fmi2SetFMUstate = get_symbol(&lib, b"fmi2SetFMUstate")?;
+        let fmi2FreeFMUstate = get_symbol(&lib, b"fmi2FreeFMUstate")?;
+        let fmi2SerializedFMUstateSize = get_symbol(&lib, b"fmi2SerializedFMUstateSize")?;
+        let fmi2SerializeFMUstate = get_symbol(&lib, b"fmi2SerializeFMUstate")?;
+        let fmi2DeSerializeFMUstate = get_symbol(&lib, b"fmi2DeSerializeFMUstate")?;
+        let fmi2GetDirectionalDerivative = get_symbol(&lib, b"fmi2GetDirectionalDerivative")?;
 
         let mut fmu = FMU2 {
             instanceName: String::from(instanceName),
@@ -339,7 +329,14 @@ impl<T> FMU2<T> {
             None
         };
 
-        fmu.component = fmu.instantiate(instanceName, fmuType, guid, resourceUrl.as_ref(), visible, loggingOn);
+        fmu.component = fmu.instantiate(
+            instanceName,
+            fmuType,
+            guid,
+            resourceUrl.as_ref(),
+            visible,
+            loggingOn,
+        );
 
         if fmu.component.is_null() {
             Err("Failed to instantiate FMU.".into())
@@ -675,8 +672,7 @@ impl<T> FMU2<T> {
     }
 }
 
-impl FMU2<ModelExchangeFunctions> {
-
+impl FMU2<ME> {
     pub fn new(
         unzipdir: &Path,
         modelIdentifier: &str,
@@ -688,8 +684,7 @@ impl FMU2<ModelExchangeFunctions> {
         printCalls: bool,
         logMessages: bool,
         printMessages: bool,
-    ) -> Result<FMU2<ModelExchangeFunctions>, Box<dyn Error>> {
-
+    ) -> Result<FMU2<ME>, Box<dyn Error>> {
         let shared_library_path = unzipdir
             .join("binaries")
             .join(PLATFORM)
@@ -701,34 +696,19 @@ impl FMU2<ModelExchangeFunctions> {
 
         let lib = Box::new(unsafe { Library::new(shared_library_path)? });
 
-        let fmi2EnterEventMode =
-            get_symbol::<fmi2EnterEventModeTYPE>(&lib, b"fmi2EnterEventMode")?;
-        let fmi2NewDiscreteStates =
-            get_symbol::<fmi2NewDiscreteStatesTYPE>(&lib, b"fmi2NewDiscreteStates")?;
-        let fmi2EnterContinuousTimeMode = get_symbol::<fmi2EnterContinuousTimeModeTYPE>(
-            &lib,
-            b"fmi2EnterContinuousTimeMode",
-        )?;
-        let fmi2CompletedIntegratorStep = get_symbol::<fmi2CompletedIntegratorStepTYPE>(
-            &lib,
-            b"fmi2CompletedIntegratorStep",
-        )?;
-        let fmi2SetTime = get_symbol::<fmi2SetTimeTYPE>(&lib, b"fmi2SetTime")?;
-        let fmi2SetContinuousStates =
-            get_symbol::<fmi2SetContinuousStatesTYPE>(&lib, b"fmi2SetContinuousStates")?;
-        let fmi2GetDerivatives =
-            get_symbol::<fmi2GetDerivativesTYPE>(&lib, b"fmi2GetDerivatives")?;
-        let fmi2GetEventIndicators =
-            get_symbol::<fmi2GetEventIndicatorsTYPE>(&lib, b"fmi2GetEventIndicators")?;
-        let fmi2GetContinuousStates =
-            get_symbol::<fmi2GetContinuousStatesTYPE>(&lib, b"fmi2GetContinuousStates")?;
+        let fmi2EnterEventMode = get_symbol(&lib, b"fmi2EnterEventMode")?;
+        let fmi2NewDiscreteStates = get_symbol(&lib, b"fmi2NewDiscreteStates")?;
+        let fmi2EnterContinuousTimeMode = get_symbol(&lib, b"fmi2EnterContinuousTimeMode")?;
+        let fmi2CompletedIntegratorStep = get_symbol(&lib, b"fmi2CompletedIntegratorStep")?;
+        let fmi2SetTime = get_symbol(&lib, b"fmi2SetTime")?;
+        let fmi2SetContinuousStates = get_symbol(&lib, b"fmi2SetContinuousStates")?;
+        let fmi2GetDerivatives = get_symbol(&lib, b"fmi2GetDerivatives")?;
+        let fmi2GetEventIndicators = get_symbol(&lib, b"fmi2GetEventIndicators")?;
+        let fmi2GetContinuousStates = get_symbol(&lib, b"fmi2GetContinuousStates")?;
         let fmi2GetNominalsOfContinuousStates =
-            get_symbol::<fmi2GetNominalsOfContinuousStatesTYPE>(
-                &lib,
-                b"fmi2GetNominalsOfContinuousStates",
-            )?;
+            get_symbol(&lib, b"fmi2GetNominalsOfContinuousStates")?;
 
-        let modelExchangeFunctions = ModelExchangeFunctions {
+        let modelExchangeFunctions = ME {
             fmi2EnterEventMode,
             fmi2NewDiscreteStates,
             fmi2EnterContinuousTimeMode,
@@ -740,7 +720,7 @@ impl FMU2<ModelExchangeFunctions> {
             fmi2GetContinuousStates,
             fmi2GetNominalsOfContinuousStates,
         };
-        
+
         let fmu = FMU2::new_internal(
             lib,
             unzipdir,
@@ -916,8 +896,7 @@ impl FMU2<ModelExchangeFunctions> {
     }
 }
 
-impl FMU2<CoSimulationFunctions> {
-
+impl FMU2<CS> {
     pub fn new(
         unzipdir: &Path,
         modelIdentifier: &str,
@@ -929,8 +908,7 @@ impl FMU2<CoSimulationFunctions> {
         printCalls: bool,
         logMessages: bool,
         printMessages: bool,
-    ) -> Result<FMU2<CoSimulationFunctions>, Box<dyn Error>> {
-
+    ) -> Result<FMU2<CS>, Box<dyn Error>> {
         let shared_library_path = unzipdir
             .join("binaries")
             .join(PLATFORM)
@@ -942,27 +920,17 @@ impl FMU2<CoSimulationFunctions> {
 
         let lib = Box::new(unsafe { Library::new(shared_library_path)? });
 
-        let fmi2SetRealInputDerivatives = get_symbol::<fmi2SetRealInputDerivativesTYPE>(
-            &lib,
-            b"fmi2SetRealInputDerivatives",
-        )?;
-        let fmi2GetRealOutputDerivatives = get_symbol::<fmi2GetRealOutputDerivativesTYPE>(
-            &lib,
-            b"fmi2GetRealOutputDerivatives",
-        )?;
-        let fmi2DoStep = get_symbol::<fmi2DoStepTYPE>(&lib, b"fmi2DoStep")?;
-        let fmi2CancelStep = get_symbol::<fmi2CancelStepTYPE>(&lib, b"fmi2CancelStep")?;
-        let fmi2GetStatus = get_symbol::<fmi2GetStatusTYPE>(&lib, b"fmi2GetStatus")?;
-        let fmi2GetRealStatus =
-            get_symbol::<fmi2GetRealStatusTYPE>(&lib, b"fmi2GetRealStatus")?;
-        let fmi2GetIntegerStatus =
-            get_symbol::<fmi2GetIntegerStatusTYPE>(&lib, b"fmi2GetIntegerStatus")?;
-        let fmi2GetBooleanStatus =
-            get_symbol::<fmi2GetBooleanStatusTYPE>(&lib, b"fmi2GetBooleanStatus")?;
-        let fmi2GetStringStatus =
-            get_symbol::<fmi2GetStringStatusTYPE>(&lib, b"fmi2GetStringStatus")?;
+        let fmi2SetRealInputDerivatives = get_symbol(&lib, b"fmi2SetRealInputDerivatives")?;
+        let fmi2GetRealOutputDerivatives = get_symbol(&lib, b"fmi2GetRealOutputDerivatives")?;
+        let fmi2DoStep = get_symbol(&lib, b"fmi2DoStep")?;
+        let fmi2CancelStep = get_symbol(&lib, b"fmi2CancelStep")?;
+        let fmi2GetStatus = get_symbol(&lib, b"fmi2GetStatus")?;
+        let fmi2GetRealStatus = get_symbol(&lib, b"fmi2GetRealStatus")?;
+        let fmi2GetIntegerStatus = get_symbol(&lib, b"fmi2GetIntegerStatus")?;
+        let fmi2GetBooleanStatus = get_symbol(&lib, b"fmi2GetBooleanStatus")?;
+        let fmi2GetStringStatus = get_symbol(&lib, b"fmi2GetStringStatus")?;
 
-        let coSimulationFunctions = CoSimulationFunctions {
+        let coSimulationFunctions = CS {
             fmi2SetRealInputDerivatives,
             fmi2GetRealOutputDerivatives,
             fmi2DoStep,

@@ -11,14 +11,14 @@ macro_rules! assert_ok {
     };
 }
 
-fn create_fmu() -> FMU2<CoSimulationFunctions> {
+fn create_fmu() -> FMU2<CS> {
     let unzipdir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("resources")
         .join("fmi2")
         .join("Feedthrough");
 
-    let fmu = FMU2::<CoSimulationFunctions>::new(
+    let fmu = FMU2::<CS>::new(
         &unzipdir,
         "Feedthrough",
         "instance1",

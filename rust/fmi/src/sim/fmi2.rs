@@ -5,7 +5,8 @@ pub mod recorder;
 
 use crate::{
     fmi2::{
-        self, CoSimulationFunctions, FMU2, ModelExchangeFunctions, types::{fmi2Boolean, fmi2EventInfo, fmi2False}
+        self, CS, FMU2, ME,
+        types::{fmi2Boolean, fmi2EventInfo, fmi2False},
     },
     model_description::{Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
@@ -133,7 +134,7 @@ impl Solver {
         }
     }
 
-    pub fn reset(&mut self, time: f64, fmu: &FMU2<ModelExchangeFunctions>) -> Result<(), Box<dyn Error>> {
+    pub fn reset(&mut self, time: f64, fmu: &FMU2<ME>) -> Result<(), Box<dyn Error>> {
         self.time = time;
         self.x.fill(0.0);
         self.der_x.fill(0.0);
@@ -142,7 +143,7 @@ impl Solver {
         Ok(())
     }
 
-    pub fn step(&mut self, next_time: f64, fmu: &FMU2<ModelExchangeFunctions>) -> Result<(f64, bool), Box<dyn Error>> {
+    pub fn step(&mut self, next_time: f64, fmu: &FMU2<ME>) -> Result<(f64, bool), Box<dyn Error>> {
         if self.x.len() > 0 {
             fmu.getContinuousStates(self.x.as_mut_slice());
             fmu.getDerivatives(self.der_x.as_mut_slice());
@@ -212,7 +213,7 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         None
     };
 
-    let fmu = FMU2::<CoSimulationFunctions>::new(
+    let fmu = FMU2::<CS>::new(
         settings.unzipdir.as_ref(),
         &co_simulation.modelIdentifier,
         &settings.model_description.modelName,
@@ -368,7 +369,7 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         None
     };
 
-    let fmu = FMU2::<ModelExchangeFunctions>::new(
+    let fmu = FMU2::<ME>::new(
         settings.unzipdir.as_ref(),
         &model_exchange.modelIdentifier,
         &settings.model_description.modelName,

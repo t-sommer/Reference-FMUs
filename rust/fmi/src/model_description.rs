@@ -367,14 +367,17 @@ fn get_fmi3_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Er
         .ok_or("Missing ModelStructure element.")?;
 
     for child in modelStructure.children().filter(|n| n.has_tag_name(name)) {
-        println!("{}: {}", child.tag_name().name(), child.attribute("name").unwrap_or(""));
+        println!(
+            "{}: {}",
+            child.tag_name().name(),
+            child.attribute("name").unwrap_or("")
+        );
     }
 
     // let container = modelStructure
     //     .descendants()
     //     .find(|n| n.has_tag_name(name))
     //     .ok_or(format!("Missing container element '{name}'."))?;
-
 
     let mut unkonwns = vec![];
 
@@ -391,7 +394,6 @@ fn get_fmi3_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Er
 
     Ok(unkonwns)
 }
-
 
 fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
     let ModelVariables = root

@@ -243,10 +243,9 @@ fn get_symbol<T>(lib: &Library, symbol_name: &[u8]) -> Result<Symbol<'static, T>
 }
 
 impl<T> FMU2<T> {
-    fn new_T(
+    fn new_internal(
         lib: Box<Library>,
         unzipdir: &Path,
-        modelIdentifier: &str,
         instanceName: &str,
         fmuType: fmi2Type,
         guid: &str,
@@ -742,10 +741,9 @@ impl FMU2<ModelExchangeFunctions> {
             fmi2GetNominalsOfContinuousStates,
         };
         
-        let fmu = FMU2::new_T(
+        let fmu = FMU2::new_internal(
             lib,
             unzipdir,
-            modelIdentifier,
             instanceName,
             fmi2Type::fmi2ModelExchange,
             guid,
@@ -976,10 +974,9 @@ impl FMU2<CoSimulationFunctions> {
             fmi2GetStringStatus,
         };
 
-        let fmu = FMU2::new_T(
+        let fmu = FMU2::new_internal(
             lib,
             unzipdir,
-            modelIdentifier,
             instanceName,
             fmi2Type::fmi2CoSimulation,
             guid,

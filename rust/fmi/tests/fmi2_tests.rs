@@ -2,7 +2,6 @@
 
 use fmi::fmi2::types::*;
 use fmi::fmi2::*;
-use fmi::types::fmiStatus;
 use std::{env, path::PathBuf};
 
 macro_rules! assert_ok {

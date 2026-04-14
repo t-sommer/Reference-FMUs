@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::model_description::{ModelDescription, ModelVariable};
 pub mod fmi2;
 pub mod fmi3;
+pub mod solver;
 
 pub struct SimulationSettings<'a> {
     pub unzipdir: &'a Path,

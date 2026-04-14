@@ -4,7 +4,7 @@ use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use fmi::{
     model_description::{Causality, MajorVersion, ModelVariable, read_model_description},
-    sim::{self, SimulationSettings},
+    sim::{self, SimulationSettings, solver::DefaultSolverFactory},
     util::extract_fmu,
 };
 use fmi_schema::validate_model_description_against_xsd;
@@ -239,9 +239,11 @@ fn main() -> ExitCode {
 
     let start_time = std::time::Instant::now();
 
+    let factory = DefaultSolverFactory;
+
     let result = match (&model_description.majorVersion, interface_type) {
         (MajorVersion::V2, InterfaceType::ModelExchange) => sim::fmi2::simulate_me(&settings),
-        (MajorVersion::V3, InterfaceType::ModelExchange) => sim::fmi3::simulate_me(&settings),
+        (MajorVersion::V3, InterfaceType::ModelExchange) => sim::fmi3::simulate_me(&settings, &factory),
         (MajorVersion::V2, InterfaceType::CoSimulation) => sim::fmi2::simulate_cs(&settings),
         (MajorVersion::V3, InterfaceType::CoSimulation) => sim::fmi3::simulate_cs(&settings),
     };

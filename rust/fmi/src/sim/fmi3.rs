@@ -14,6 +14,7 @@ use crate::{
     sim::{
         SimulationSettings,
         fmi3::{input::CSVInput, recorder::Recorder},
+        solver::SolverFactory,
     },
     types::*,
     util::VariableValue,
@@ -22,92 +23,6 @@ use crate::{
     model_description::{Causality, ModelDescription},
     types::fmiStatus::{self, fmiOK, fmiWarning},
 };
-
-trait SolvertTrait {
-    fn reset(&mut self, time: f64) -> Result<(), Box<dyn Error>>;
-    fn step(&mut self, next_time: f64) -> Result<(f64, bool), Box<dyn Error>>;
-}
-
-struct Solver<'a> {
-    time: f64,
-    x: Vec<f64>,
-    der_x: Vec<f64>,
-    z: Vec<f64>,
-    pre_z: Vec<f64>,
-    get_event_indicators: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a>,
-    get_continuous_states: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a>,
-    get_continuous_state_derivatives: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a>,
-    set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Box<dyn Error>> + 'a>,
-}
-
-fn new_solver<'a>(
-    time: f64,
-    nx: usize,
-    nz: usize,
-    get_event_indicators: impl Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a,
-    get_continuous_states: impl Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a,
-    get_continuous_state_derivatives: impl Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a,
-    set_continuous_states: impl Fn(&[f64]) -> Result<(), Box<dyn Error>> + 'a,
-) -> Solver<'a> {
-    Solver {
-        time,
-        x: vec![0.0; nx],
-        der_x: vec![0.0; nx],
-        z: vec![0.0; nz],
-        pre_z: vec![0.0; nz],
-        get_event_indicators: Box::new(get_event_indicators),
-        get_continuous_states: Box::new(get_continuous_states),
-        get_continuous_state_derivatives: Box::new(get_continuous_state_derivatives),
-        set_continuous_states: Box::new(set_continuous_states),
-    }
-}
-
-impl<'a> SolvertTrait for Solver<'a> {
-
-    fn reset(&mut self, time: f64) -> Result<(), Box<dyn Error>> {
-        self.time = time;
-        self.x.fill(0.0);
-        self.der_x.fill(0.0);
-        self.z.fill(0.0);
-        (self.get_event_indicators)(self.pre_z.as_mut_slice())?;
-        Ok(())
-    }
-
-    fn step(&mut self, next_time: f64) -> Result<(f64, bool), Box<dyn Error>> {
-        if self.x.len() > 0 {
-            (self.get_continuous_states)(self.x.as_mut_slice())?;
-            (self.get_continuous_state_derivatives)(self.der_x.as_mut_slice())?;
-
-            let h = next_time - self.time;
-
-            for i in 0..self.x.len() {
-                self.x[i] += self.der_x[i] * h;
-            }
-
-            (self.set_continuous_states)(self.x.as_slice())?;
-        }
-
-        let mut state_event = false;
-
-        if self.z.len() > 0 {
-            (self.get_event_indicators)(self.z.as_mut_slice())?;
-
-            for i in 0..self.z.len() {
-                if self.pre_z[i] <= 0.0 && self.z[i] > 0.0 {
-                    state_event = true; // -\+
-                } else if self.pre_z[i] > 0.0 && self.z[i] <= 0.0 {
-                    state_event = true; // +/-
-                }
-
-                self.pre_z[i] = self.z[i];
-            }
-        }
-
-        self.time = next_time;
-
-        Ok((self.time, state_event))
-    }
-}
 
 pub fn parse_variable_value(
     variable_type: &VariableType,
@@ -566,7 +481,10 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
     Ok(())
 }
 
-pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
+pub fn simulate_me<F: SolverFactory>(
+    settings: &SimulationSettings,
+    factory: &F,
+) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;
@@ -673,27 +591,27 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         )
     };
 
-    let mut solver = new_solver(
+    let mut solver = factory.create(
         time,
         settings.model_description.derivatives.len(),
         settings.model_description.eventIndicators.len(),
-        |event_indicators| {
+        Box::new(|event_indicators| {
             fmu.getEventIndicators(event_indicators);
             Ok(())
-        },
-        |continuous_states| {
+        }),
+        Box::new(|continuous_states| {
             fmu.getContinuousStates(continuous_states);
             Ok(())
-        },
-        |state_derivatives| {
+        }),
+        Box::new(|state_derivatives| {
             fmu.getContinuousStateDerivatives(state_derivatives);
             Ok(())
-        },
-        |continuous_states| {
+        }),
+        Box::new(|continuous_states| {
             fmu.setContinuousStates(continuous_states);
             Ok(())
-        },
-    );
+        }),
+    )?;
 
     let mut n_steps = 0;
 

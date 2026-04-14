@@ -1641,7 +1641,8 @@ impl FMU3 {
         };
         if self.logCalls {
             let message = format!(
-                "fmi3SetContinuousStates(nContinuousStates={})",
+                "fmi3SetContinuousStates(continuousStates={:?}, nContinuousStates={})",
+                continuousStates,
                 continuousStates.len(),
             );
             self.log_call(status, &message);
@@ -1659,7 +1660,8 @@ impl FMU3 {
         };
         if self.logCalls {
             let message = format!(
-                "fmi3GetContinuousStates(nContinuousStates={})",
+                "fmi3GetContinuousStates(continuousStates={:?}, nContinuousStates={})",
+                continuousStates,
                 continuousStates.len(),
             );
             self.log_call(status, &message);
@@ -1677,7 +1679,8 @@ impl FMU3 {
         };
         if self.logCalls {
             let message = format!(
-                "fmi3GetContinuousStateDerivatives(nContinuousStates={})",
+                "fmi3GetContinuousStateDerivatives(derivatives={:?}, nDerivatives={})",
+                derivatives,
                 derivatives.len(),
             );
             self.log_call(status, &message);
@@ -1695,7 +1698,8 @@ impl FMU3 {
         };
         if self.logCalls {
             let message = format!(
-                "fmi3GetEventIndicators(nEventIndicators={})",
+                "fmi3GetEventIndicators(eventIndicators={:?}, nEventIndicators={})",
+                eventIndicators,
                 eventIndicators.len(),
             );
             self.log_call(status, &message);
@@ -1713,7 +1717,8 @@ impl FMU3 {
         };
         if self.logCalls {
             let message = format!(
-                "fmi3GetNominalsOfContinuousStates(nNominals={})",
+                "fmi3GetNominalsOfContinuousStates(nominals={:?}, nNominals={})",
+                nominals,
                 nominals.len(),
             );
             self.log_call(status, &message);
@@ -1727,8 +1732,8 @@ impl FMU3 {
             unsafe { (self.fmi3GetNumberOfEventIndicators)(self.instance, &mut nEventIndicators) };
         if self.logCalls {
             let message = format!(
-                "fmi3GetNumberOfEventIndicators() -> {:?}, nEventIndicators={}",
-                status, nEventIndicators
+                "fmi3GetNumberOfEventIndicators(nEventIndicators={}) -> {:?}",
+                nEventIndicators, status
             );
             self.log_call(status, &message);
         }
@@ -1747,8 +1752,8 @@ impl FMU3 {
         };
         if self.logCalls {
             let message = format!(
-                "fmi3GetNumberOfContinuousStates() -> {:?}, nContinuousStates={}",
-                status, nContinuousStates
+                "fmi3GetNumberOfContinuousStates(nContinuousStates={}) -> {:?}, ",
+                nContinuousStates, status
             );
             self.log_call(status, &message);
         }

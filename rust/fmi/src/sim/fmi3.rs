@@ -654,7 +654,7 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
     let mut solver = Solver::new(
         time,
         settings.model_description.derivatives.len(),
-        settings.model_description.numberOfEventIndicators,
+        settings.model_description.eventIndicators.len(),
     );
 
     let mut n_steps = 0;
@@ -684,12 +684,15 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
             }
         }
 
-        if nextEventTimeDefined && next_communication_point > nextEventTime && !relative_eq!(next_communication_point, nextEventTime)
+        if nextEventTimeDefined
+            && next_communication_point > nextEventTime
+            && !relative_eq!(next_communication_point, nextEventTime)
         {
             next_communication_point = nextEventTime;
         }
 
-        if next_communication_point > stop_time && !relative_eq!(next_communication_point, stop_time)
+        if next_communication_point > stop_time
+            && !relative_eq!(next_communication_point, stop_time)
         {
             next_communication_point = stop_time;
         }
@@ -700,7 +703,8 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
             false
         };
 
-        let is_time_event = nextEventTimeDefined && relative_eq!(nextEventTime, next_communication_point);
+        let is_time_event =
+            nextEventTimeDefined && relative_eq!(nextEventTime, next_communication_point);
 
         let (time_reached, is_state_event) = solver.step(next_communication_point, &fmu)?;
 
@@ -719,7 +723,7 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         }
 
         let mut is_step_event = false;
-        
+
         if needs_completed_integrator_step {
             let mut terminate_simulation = false;
 
@@ -771,7 +775,8 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
                     return Ok(());
                 }
 
-                reset_solver |= nominalsOfContinuousStatesChanged || valuesOfContinuousStatesChanged;
+                reset_solver |=
+                    nominalsOfContinuousStatesChanged || valuesOfContinuousStatesChanged;
 
                 if !discreteStatesNeedUpdate {
                     break;

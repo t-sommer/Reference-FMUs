@@ -1,8 +1,12 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use core::num;
 use roxmltree::Node;
-use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
+use std::{
+    collections::HashMap,
+    error::Error,
+    path::Path,
+    str::FromStr,
+};
 
 use crate::types::fmiValueReference;
 
@@ -366,31 +370,21 @@ fn get_fmi3_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Er
         .find(|n| n.has_tag_name("ModelStructure"))
         .ok_or("Missing ModelStructure element.")?;
 
-    for child in modelStructure.children().filter(|n| n.has_tag_name(name)) {
-        println!(
-            "{}: {}",
-            child.tag_name().name(),
-            child.attribute("name").unwrap_or("")
-        );
-    }
-
-    // let container = modelStructure
-    //     .descendants()
-    //     .find(|n| n.has_tag_name(name))
-    //     .ok_or(format!("Missing container element '{name}'."))?;
-
     let mut unkonwns = vec![];
 
-    // for output in container
-    //     .descendants()
-    //     .filter(|n| n.has_tag_name("Unknown"))
-    // {
-    //     unkonwns.push(Unknown {
-    //         valueReference: 0,
-    //         dependencies: None,
-    //         dependenciesKind: None,
-    //     });
-    // }
+    for child in modelStructure.children().filter(|n| n.has_tag_name(name)) {
+        let valueReference = child
+            .attribute("valueReference")
+            .ok_or(format!("Missing valueReference attribute in {}", name))?
+            .parse()
+            .unwrap();
+
+        unkonwns.push(Unknown {
+            valueReference,
+            dependencies: None,
+            dependenciesKind: None,
+        });
+    }
 
     Ok(unkonwns)
 }
@@ -510,7 +504,7 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     };
 
     let outputs = get_fmi3_unkonwns(root, "Output")?;
-    let derivatives = get_fmi3_unkonwns(root, "Derivative")?;
+    let derivatives = get_fmi3_unkonwns(root, "ContinuousStateDerivative")?;
     let clockedStates = get_fmi3_unkonwns(root, "ClockedState")?;
     let initialUnknowns = get_fmi3_unkonwns(root, "InitialUnknown")?;
     let eventIndicators = get_fmi3_unkonwns(root, "EventIndicator")?;

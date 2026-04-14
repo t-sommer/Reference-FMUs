@@ -99,8 +99,8 @@ pub type fmi3InstantiateModelExchangeTYPE = unsafe extern "C" fn(
     resourcePath: fmi3String,
     visible: fmi3Boolean,
     loggingOn: fmi3Boolean,
-    instanceEnvironment: *const fmi3InstanceEnvironment,
-    logMessage: fmi3LogMessageCallback,
+    instanceEnvironment: fmi3InstanceEnvironment,
+    logMessage: *const fmi3LogMessageCallback,
 ) -> fmi3Instance;
 
 pub type fmi3InstantiateCoSimulationTYPE = unsafe extern "C" fn(

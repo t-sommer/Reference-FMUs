@@ -241,12 +241,9 @@ fn main() -> ExitCode {
 
     let result = match (&model_description.majorVersion, interface_type) {
         (MajorVersion::V2, InterfaceType::ModelExchange) => sim::fmi2::simulate_me(&settings),
+        (MajorVersion::V3, InterfaceType::ModelExchange) => sim::fmi3::simulate_me(&settings),
         (MajorVersion::V2, InterfaceType::CoSimulation) => sim::fmi2::simulate_cs(&settings),
         (MajorVersion::V3, InterfaceType::CoSimulation) => sim::fmi3::simulate_cs(&settings),
-        _ => {
-            eprintln!("Unsupported combination of FMI version and interface type.");
-            return ExitCode::FAILURE;
-        }
     };
 
     let elapsed_time = start_time.elapsed();

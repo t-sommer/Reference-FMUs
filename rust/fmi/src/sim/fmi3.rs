@@ -23,6 +23,70 @@ use crate::{
     types::fmiStatus::{self, fmiOK, fmiWarning},
 };
 
+struct Solver {
+    time: f64,
+    x: Vec<f64>,
+    der_x: Vec<f64>,
+    z: Vec<f64>,
+    pre_z: Vec<f64>,
+}
+
+impl Solver {
+    pub fn new(time: f64, nx: usize, nz: usize) -> Self {
+        Self {
+            time,
+            x: vec![0.0; nx],
+            der_x: vec![0.0; nx],
+            z: vec![0.0; nz],
+            pre_z: vec![0.0; nz],
+        }
+    }
+
+    pub fn reset(&mut self, time: f64, fmu: &FMU3) -> Result<(), Box<dyn Error>> {
+        self.time = time;
+        self.x.fill(0.0);
+        self.der_x.fill(0.0);
+        self.z.fill(0.0);
+        fmu.getEventIndicators(self.pre_z.as_mut_slice());
+        Ok(())
+    }
+
+    pub fn step(&mut self, next_time: f64, fmu: &FMU3) -> Result<(f64, bool), Box<dyn Error>> {
+        if self.x.len() > 0 {
+            fmu.getContinuousStates(self.x.as_mut_slice());
+            fmu.getContinuousStateDerivatives(self.der_x.as_mut_slice());
+
+            let h = next_time - self.time;
+
+            for i in 0..self.x.len() {
+                self.x[i] += self.der_x[i] * h;
+            }
+
+            fmu.setContinuousStates(self.x.as_slice());
+        }
+
+        let mut state_event = false;
+
+        if self.z.len() > 0 {
+            fmu.getEventIndicators(self.z.as_mut_slice());
+
+            for i in 0..self.z.len() {
+                if self.pre_z[i] <= 0.0 && self.z[i] > 0.0 {
+                    state_event = true; // -\+
+                } else if self.pre_z[i] > 0.0 && self.z[i] <= 0.0 {
+                    state_event = true; // +/-
+                }
+
+                self.pre_z[i] = self.z[i];
+            }
+        }
+
+        self.time = next_time;
+
+        Ok((self.time, state_event))
+    }
+}
+
 pub fn parse_variable_value(
     variable_type: &VariableType,
     literal: &str,
@@ -513,200 +577,216 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         None
     };
 
-    // let fmu = FMU3::instantiateCoSimulation(
-    //     settings.unzipdir.as_ref(),
-    //     &model_exchange.modelIdentifier,
-    //     &settings.model_description.modelName,
-    //     fmi2::types::fmi2Type::fmi2ModelExchange,
-    //     &settings.model_description.instantiationToken,
-    //     false,
-    //     settings.logging_on,
-    //     settings.log_fmi_calls,
-    //     true,
-    //     true,
-    //     true,
-    // )?;
+    let fmu = FMU3::instantiateModelExchange(
+        settings.unzipdir.as_ref(),
+        &model_exchange.modelIdentifier,
+        &settings.model_description.modelName,
+        &settings.model_description.instantiationToken,
+        false,
+        settings.logging_on,
+        settings.log_fmi_calls,
+        true,
+        true,
+        true,
+    )?;
 
-    // set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
+    set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
 
-    // call(fmu.setupExperiment(
-    //     settings.tolerance,
-    //     time,
-    //     if set_stop_time { Some(stop_time) } else { None },
-    // ))?;
+    call(fmu.enterInitializationMode(
+        settings.tolerance,
+        time,
+        if set_stop_time { Some(stop_time) } else { None },
+    ))?;
 
-    // call(fmu.enterInitializationMode())?;
+    if let Some(input) = &input {
+        input.set_discrete_inputs(time, false, &fmu)?;
+        input.set_continuous_inputs(time, false, &fmu)?;
+    }
 
-    // if let Some(input) = &input {
-    //     input.set_discrete_inputs(time, true, &fmu)?;
-    //     input.set_continuous_inputs(time, true, &fmu)?;
-    // }
+    call(fmu.exitInitializationMode())?;
 
-    // call(fmu.exitInitializationMode())?;
+    let mut discreteStatesNeedUpdate = false;
+    let mut terminateSimulation = false;
+    let mut nominalsOfContinuousStatesChanged = false;
+    let mut valuesOfContinuousStatesChanged = false;
+    let mut nextEventTimeDefined = false;
+    let mut nextEventTime = 0.0;
 
-    // let mut event_info = fmi2EventInfo::default();
+    // initial event iteration
+    loop {
+        call(fmu.updateDiscreteStates(
+            &mut discreteStatesNeedUpdate,
+            &mut terminateSimulation,
+            &mut nominalsOfContinuousStatesChanged,
+            &mut valuesOfContinuousStatesChanged,
+            &mut nextEventTimeDefined,
+            &mut nextEventTime,
+        ))?;
 
-    // loop {
-    //     call(fmu.newDiscreteStates(&mut event_info))?;
+        if terminateSimulation {
+            call(fmu.terminate())?;
+            return Ok(());
+        }
 
-    //     if event_info.terminateSimulation != fmi2False {
-    //         call(fmu.terminate())?;
-    //         return Ok(());
-    //     }
+        if !discreteStatesNeedUpdate {
+            break;
+        }
+    }
 
-    //     if event_info.newDiscreteStatesNeeded == fmi2False {
-    //         break;
-    //     }
-    // }
+    call(fmu.enterContinuousTimeMode())?;
 
-    // call(fmu.enterContinuousTimeMode())?;
+    let mut recorder = if let Some(path) = &settings.output_file {
+        let file = File::create(path).expect("Failed to create output file");
+        Recorder::new(
+            &settings.output_variables,
+            Box::new(file) as Box<dyn Write>,
+            &fmu,
+        )
+    } else {
+        let stdout_handle = stdout();
+        Recorder::new(
+            &settings.output_variables,
+            Box::new(stdout_handle) as Box<dyn Write>,
+            &fmu,
+        )
+    };
 
-    // let mut recorder = if let Some(path) = &settings.output_file {
-    //     let file = File::create(path).expect("Failed to create output file");
-    //     Recorder::new(
-    //         &settings.output_variables,
-    //         Box::new(file) as Box<dyn Write>,
-    //         &fmu,
-    //     )
-    // } else {
-    //     let stdout_handle = stdout();
-    //     Recorder::new(
-    //         &settings.output_variables,
-    //         Box::new(stdout_handle) as Box<dyn Write>,
-    //         &fmu,
-    //     )
-    // };
+    let mut solver = Solver::new(
+        time,
+        settings.model_description.derivatives.len(),
+        settings.model_description.numberOfEventIndicators,
+    );
 
-    // let mut solver = Solver::new(
-    //     time,
-    //     settings.model_description.derivatives.len(),
-    //     settings.model_description.numberOfEventIndicators,
-    // );
+    let mut n_steps = 0;
 
-    // let mut n_steps = 0;
+    loop {
+        recorder.sample(time)?;
 
-    // loop {
-    //     recorder.sample(time)?;
+        if time > stop_time || relative_eq!(time, stop_time) {
+            break;
+        }
 
-    //     if time > stop_time || relative_eq!(time, stop_time) {
-    //         break;
-    //     }
+        let next_regular_point = start_time + (n_steps + 1) as f64 * output_interval;
 
-    //     let next_regular_point = start_time + (n_steps + 1) as f64 * output_interval;
+        let mut next_communication_point = next_regular_point;
 
-    //     let mut next_communication_point = next_regular_point;
+        let next_input_event_time = if let Some(input) = &input {
+            input.next_event_time(time)
+        } else {
+            None
+        };
 
-    //     let next_input_event_time = if let Some(input) = &input {
-    //         input.next_event_time(time)
-    //     } else {
-    //         None
-    //     };
+        if let Some(next_input_event_time) = next_input_event_time {
+            if next_regular_point > next_input_event_time
+                && !relative_eq!(next_regular_point, next_input_event_time)
+            {
+                next_communication_point = next_input_event_time;
+            }
+        }
 
-    //     if let Some(next_input_event_time) = next_input_event_time {
-    //         if next_regular_point > next_input_event_time
-    //             && !relative_eq!(next_regular_point, next_input_event_time)
-    //         {
-    //             next_communication_point = next_input_event_time;
-    //         }
-    //     }
+        if nextEventTimeDefined && next_communication_point > nextEventTime && !relative_eq!(next_communication_point, nextEventTime)
+        {
+            next_communication_point = nextEventTime;
+        }
 
-    //     if event_info.nextEventTimeDefined != fmi2False
-    //         && next_communication_point > event_info.nextEventTime
-    //         && !relative_eq!(next_communication_point, event_info.nextEventTime)
-    //     {
-    //         next_communication_point = event_info.nextEventTime;
-    //     }
+        if next_communication_point > stop_time && !relative_eq!(next_communication_point, stop_time)
+        {
+            next_communication_point = stop_time;
+        }
 
-    //     if next_communication_point > stop_time
-    //         && !relative_eq!(next_communication_point, stop_time)
-    //     {
-    //         next_communication_point = stop_time;
-    //     }
+        let is_input_event = if let Some(input_event_time) = next_input_event_time {
+            relative_eq!(input_event_time, next_communication_point)
+        } else {
+            false
+        };
 
-    //     let is_input_event = if let Some(input_event_time) = next_input_event_time {
-    //         relative_eq!(input_event_time, next_communication_point)
-    //     } else {
-    //         false
-    //     };
+        let is_time_event = nextEventTimeDefined && relative_eq!(nextEventTime, next_communication_point);
 
-    //     let is_time_event = event_info.nextEventTimeDefined != fmi2False
-    //         && relative_eq!(event_info.nextEventTime, next_communication_point);
+        let (time_reached, is_state_event) = solver.step(next_communication_point, &fmu)?;
 
-    //     let (time_reached, is_state_event) = solver.step(next_communication_point, &fmu)?;
+        time = time_reached;
 
-    //     time = time_reached;
+        call(fmu.setTime(time))?;
 
-    //     call(fmu.setTime(time))?;
+        if is_input_event {
+            if let Some(input) = &input {
+                input.set_continuous_inputs(time, false, &fmu)?;
+            }
+        }
 
-    //     if is_input_event {
-    //         if let Some(input) = &input {
-    //             input.set_continuous_inputs(time, false, &fmu)?;
-    //         }
-    //     }
+        if relative_eq!(time, next_regular_point) {
+            n_steps += 1;
+        }
 
-    //     if relative_eq!(time, next_regular_point) {
-    //         n_steps += 1;
-    //     }
+        let mut is_step_event = false;
+        
+        if needs_completed_integrator_step {
+            let mut terminate_simulation = false;
 
-    //     let is_step_event = if needs_completed_integrator_step {
-    //         let mut is_step_event = fmi2False;
-    //         let mut terminate_simulation = fmi2False;
+            call(fmu.completedIntegratorStep(
+                false,
+                &mut is_step_event,
+                &mut terminate_simulation,
+            ))?;
 
-    //         call(fmu.completedIntegratorStep(
-    //             fmi2False,
-    //             &mut is_step_event,
-    //             &mut terminate_simulation,
-    //         ))?;
+            if terminate_simulation {
+                call(fmu.terminate())?;
+                return Ok(());
+            }
+        }
 
-    //         if terminate_simulation != fmi2False {
-    //             call(fmu.terminate())?;
-    //             return Ok(());
-    //         }
+        if is_input_event || is_time_event || is_state_event || is_step_event {
+            recorder.sample(time)?;
 
-    //         is_step_event != fmi2False
-    //     } else {
-    //         false
-    //     };
+            call(fmu.enterEventMode())?;
 
-    //     if is_input_event || is_time_event || is_state_event || is_step_event {
-    //         recorder.sample(time)?;
+            if is_input_event {
+                if let Some(input) = &input {
+                    input.set_discrete_inputs(time, true, &fmu)?;
+                    input.set_continuous_inputs(time, true, &fmu)?;
+                }
+            }
 
-    //         call(fmu.enterEventMode())?;
+            let mut reset_solver = false;
 
-    //         if is_input_event {
-    //             if let Some(input) = &input {
-    //                 input.set_discrete_inputs(time, true, &fmu)?;
-    //                 input.set_continuous_inputs(time, true, &fmu)?;
-    //             }
-    //         }
+            let mut discreteStatesNeedUpdate = false;
+            let mut terminateSimulation = false;
+            let mut nominalsOfContinuousStatesChanged = false;
+            let mut valuesOfContinuousStatesChanged = false;
+            let mut nextEventTimeDefined = false;
+            let mut nextEventTime = 0.0;
 
-    //         let mut reset_solver = false;
+            loop {
+                call(fmu.updateDiscreteStates(
+                    &mut discreteStatesNeedUpdate,
+                    &mut terminateSimulation,
+                    &mut nominalsOfContinuousStatesChanged,
+                    &mut valuesOfContinuousStatesChanged,
+                    &mut nextEventTimeDefined,
+                    &mut nextEventTime,
+                ))?;
 
-    //         loop {
-    //             call(fmu.newDiscreteStates(&mut event_info))?;
+                if terminateSimulation {
+                    call(fmu.terminate())?;
+                    return Ok(());
+                }
 
-    //             if event_info.terminateSimulation != fmi2False {
-    //                 call(fmu.terminate())?;
-    //                 return Ok(());
-    //             }
+                reset_solver |= nominalsOfContinuousStatesChanged || valuesOfContinuousStatesChanged;
 
-    //             reset_solver |= event_info.nominalsOfContinuousStatesChanged != fmi2False
-    //                 || event_info.valuesOfContinuousStatesChanged != fmi2False;
+                if !discreteStatesNeedUpdate {
+                    break;
+                }
+            }
 
-    //             if event_info.newDiscreteStatesNeeded == fmi2False {
-    //                 break;
-    //             }
-    //         }
+            call(fmu.enterContinuousTimeMode())?;
 
-    //         call(fmu.enterContinuousTimeMode())?;
+            if reset_solver {
+                solver.reset(time, &fmu)?;
+            }
+        }
+    }
 
-    //         if reset_solver {
-    //             solver.reset(time, &fmu)?;
-    //         }
-    //     }
-    // }
-
-    // call(fmu.terminate())?;
+    call(fmu.terminate())?;
 
     Ok(())
 }

@@ -525,6 +525,118 @@ impl FMU3 {
         version
     }
 
+    pub fn instantiateModelExchange(
+        unzipdir: &Path,
+        modelIdentifier: &str,
+        instanceName: &str,
+        instantiationToken: &str,
+        visible: bool,
+        loggingOn: bool,
+        logCalls: bool,
+        printCalls: bool,
+        logMessages: bool,
+        printMessages: bool,
+    ) -> Result<FMU3, Box<dyn Error>> {
+        let mut fmu = FMU3::new(
+            unzipdir,
+            modelIdentifier,
+            logCalls,
+            printCalls,
+            logMessages,
+            printMessages,
+        )?;
+
+        let resource_path = unzipdir.join("resources").join("");
+
+        let resourcePath = if resource_path.is_dir() {
+            Some(resource_path.as_path())
+        } else {
+            None
+        };
+
+        fmu.instance = fmu._instantiateModelExchange(
+            instanceName,
+            instantiationToken,
+            resourcePath,
+            visible,
+            loggingOn,
+        );
+
+        if fmu.instance.is_null() {
+            Err("Failed to instantiate FMU.".into())
+        } else {
+            Ok(fmu)
+        }
+    }
+
+    fn _instantiateModelExchange(
+        &mut self,
+        instanceName: &str,
+        instantiationToken: &str,
+        resourcePath: Option<&Path>,
+        visible: bool,
+        loggingOn: bool,
+    ) -> fmi3Instance {
+        let instance_name_cstr = CString::new(instanceName).unwrap();
+
+        let instantiation_token_cstr = CString::new(instantiationToken).unwrap();
+
+        let resource_path_cstr = resourcePath
+            .map(|path| CString::new(path.to_string_lossy().as_ref()).ok())
+            .flatten();
+
+        let path_ptr = resource_path_cstr
+            .as_ref()
+            .map(|cstr| cstr.as_ptr())
+            .unwrap_or(ptr::null());
+
+        let log_message = if self.logMessages {
+            logMessage as *const fmi3LogMessageCallback
+        } else {
+            ptr::null_mut() as *const fmi3LogMessageCallback
+        };
+
+        let instanceEnvironment = if self.logMessages && !self.printMessages {
+            &*self.messages as *const RefCell<Vec<Message>> as fmi3InstanceEnvironment
+        } else {
+            ptr::null_mut() as fmi3InstanceEnvironment
+        };
+
+        let instance = unsafe {
+            (self.fmi3InstantiateModelExchange)(
+                /* instanceName */ instance_name_cstr.as_ptr(),
+                /* instantiationToken */ instantiation_token_cstr.as_ptr(),
+                /* resourcePath */ path_ptr,
+                /* visible */ visible,
+                /* loggingOn */ loggingOn,
+                /* instanceEnvironment */ instanceEnvironment,
+                /* logMessage */ log_message,
+            )
+        };
+
+        let status = if instance.is_null() {
+            fmi3Error
+        } else {
+            fmi3OK
+        };
+
+        if self.logCalls {
+            let message = format!(
+                "fmi3InstantiateModelExchange(instanceName=\"{}\", instantiationToken=\"{}\", resourcePath={:?}, visible={}, loggingOn={}, instanceEnvironment={:p}, logMessage={:p})",
+                instanceName,
+                instantiationToken,
+                resourcePath,
+                visible,
+                loggingOn,
+                instanceEnvironment,
+                log_message,
+            );
+            self.log_call(status, &message);
+        }
+
+        instance
+    }
+
     pub fn instantiateCoSimulation(
         unzipdir: &Path,
         modelIdentifier: &str,
@@ -1487,18 +1599,18 @@ impl FMU3 {
     pub fn completedIntegratorStep(
         &self,
         noSetFMUStatePriorToCurrentPoint: fmi3Boolean,
-    ) -> Result<(fmi3Boolean, fmi3Boolean), fmi3Status> {
-        let mut enterEventMode = false;
-        let mut terminateSimulation = false;
-
+        enterEventMode: &mut fmi3Boolean,
+        terminateSimulation: &mut fmi3Boolean,
+    ) -> fmi3Status {
         let status = unsafe {
             (self.fmi3CompletedIntegratorStep)(
                 self.instance,
                 noSetFMUStatePriorToCurrentPoint,
-                &mut enterEventMode,
-                &mut terminateSimulation,
+                enterEventMode,
+                terminateSimulation,
             )
         };
+
         if self.logCalls {
             let message = format!(
                 "fmi3CompletedIntegratorStep() -> {:?}, enterEventMode={}, terminateSimulation={}",
@@ -1507,11 +1619,7 @@ impl FMU3 {
             self.log_call(status, &message);
         }
 
-        if status == fmi3OK {
-            Ok((enterEventMode, terminateSimulation))
-        } else {
-            Err(status)
-        }
+        status
     }
 
     pub fn setTime(&self, time: fmi3Float64) -> fmi3Status {

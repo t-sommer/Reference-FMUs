@@ -17,10 +17,10 @@ pub struct ForwardEuler<'a> {
     set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Error> + 'a>,
 }
 
-pub type GetEventIndicatorsFn<'a> = dyn Fn(&mut [f64]) -> Result<(), Error> + 'a;
-pub type GetContinuousStatesFn<'a> = dyn Fn(&mut [f64]) -> Result<(), Error> + 'a;
-pub type GetContinuousStateDerivativesFn<'a> = dyn Fn(&mut [f64]) -> Result<(), Error> + 'a;
-pub type SetContinuousStatesFn<'a> = dyn Fn(&[f64]) -> Result<(), Error> + 'a;
+type GetEventIndicatorsFn<'a> = Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>;
+type GetContinuousStatesFn<'a> = Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>;
+type GetContinuousStateDerivativesFn<'a> = Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>;
+type SetContinuousStatesFn<'a> = Box<dyn Fn(&[f64]) -> Result<(), Error> + 'a>;
 
 pub trait SolverFactory {
     fn create<'a>(
@@ -28,10 +28,10 @@ pub trait SolverFactory {
         time: f64,
         nx: usize,
         nz: usize,
-        get_event_indicators: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
-        get_continuous_states: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
-        get_continuous_state_derivatives: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
-        set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Error> + 'a>,
+        get_event_indicators: GetEventIndicatorsFn<'a>,
+        get_continuous_states: GetContinuousStatesFn<'a>,
+        get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
+        set_continuous_states: SetContinuousStatesFn<'a>,
     ) -> Result<Box<dyn Solver + 'a>, Error>;
 }
 
@@ -43,10 +43,10 @@ impl SolverFactory for ForwardEulerFactory {
         time: f64,
         nx: usize,
         nz: usize,
-        get_event_indicators: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
-        get_continuous_states: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
-        get_continuous_state_derivatives: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
-        set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Error> + 'a>,
+        get_event_indicators: GetEventIndicatorsFn<'a>,
+        get_continuous_states: GetContinuousStatesFn<'a>,
+        get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
+        set_continuous_states: SetContinuousStatesFn<'a>,
     ) -> Result<Box<dyn Solver + 'a>, Error> {
         Ok(Box::new({
             let nx = nx;
@@ -57,10 +57,10 @@ impl SolverFactory for ForwardEulerFactory {
                 der_x: vec![0.0; nx],
                 z: vec![0.0; nz],
                 pre_z: vec![0.0; nz],
-                get_event_indicators: get_event_indicators,
-                get_continuous_states: get_continuous_states,
-                get_continuous_state_derivatives: get_continuous_state_derivatives,
-                set_continuous_states: set_continuous_states,
+                get_event_indicators,
+                get_continuous_states,
+                get_continuous_state_derivatives,
+                set_continuous_states,
             }
         }))
     }

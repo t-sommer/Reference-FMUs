@@ -23,38 +23,60 @@ use crate::{
     types::fmiStatus::{self, fmiOK, fmiWarning},
 };
 
-struct Solver {
+trait SolvertTrait {
+    fn reset(&mut self, time: f64) -> Result<(), Box<dyn Error>>;
+    fn step(&mut self, next_time: f64) -> Result<(f64, bool), Box<dyn Error>>;
+}
+
+struct Solver<'a> {
     time: f64,
     x: Vec<f64>,
     der_x: Vec<f64>,
     z: Vec<f64>,
     pre_z: Vec<f64>,
+    get_event_indicators: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a>,
+    get_continuous_states: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a>,
+    get_continuous_state_derivatives: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a>,
+    set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Box<dyn Error>> + 'a>,
 }
 
-impl Solver {
-    pub fn new(time: f64, nx: usize, nz: usize) -> Self {
-        Self {
-            time,
-            x: vec![0.0; nx],
-            der_x: vec![0.0; nx],
-            z: vec![0.0; nz],
-            pre_z: vec![0.0; nz],
-        }
+fn new_solver<'a>(
+    time: f64,
+    nx: usize,
+    nz: usize,
+    get_event_indicators: impl Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a,
+    get_continuous_states: impl Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a,
+    get_continuous_state_derivatives: impl Fn(&mut [f64]) -> Result<(), Box<dyn Error>> + 'a,
+    set_continuous_states: impl Fn(&[f64]) -> Result<(), Box<dyn Error>> + 'a,
+) -> Solver<'a> {
+    Solver {
+        time,
+        x: vec![0.0; nx],
+        der_x: vec![0.0; nx],
+        z: vec![0.0; nz],
+        pre_z: vec![0.0; nz],
+        get_event_indicators: Box::new(get_event_indicators),
+        get_continuous_states: Box::new(get_continuous_states),
+        get_continuous_state_derivatives: Box::new(get_continuous_state_derivatives),
+        set_continuous_states: Box::new(set_continuous_states),
     }
+}
 
-    pub fn reset(&mut self, time: f64, fmu: &FMU3) -> Result<(), Box<dyn Error>> {
+impl<'a> SolvertTrait for Solver<'a> {
+
+    fn reset(&mut self, time: f64) -> Result<(), Box<dyn Error>> {
         self.time = time;
         self.x.fill(0.0);
         self.der_x.fill(0.0);
         self.z.fill(0.0);
-        fmu.getEventIndicators(self.pre_z.as_mut_slice());
+        (self.get_event_indicators)(self.pre_z.as_mut_slice())?;
         Ok(())
     }
 
-    pub fn step(&mut self, next_time: f64, fmu: &FMU3) -> Result<(f64, bool), Box<dyn Error>> {
+    fn step(&mut self, next_time: f64) -> Result<(f64, bool), Box<dyn Error>> {
         if self.x.len() > 0 {
-            fmu.getContinuousStates(self.x.as_mut_slice());
-            fmu.getContinuousStateDerivatives(self.der_x.as_mut_slice());
+            (self.get_continuous_states)(self.x.as_mut_slice())?;
+            (self.get_continuous_state_derivatives)(self.der_x.as_mut_slice())?;
 
             let h = next_time - self.time;
 
@@ -62,13 +84,13 @@ impl Solver {
                 self.x[i] += self.der_x[i] * h;
             }
 
-            fmu.setContinuousStates(self.x.as_slice());
+            (self.set_continuous_states)(self.x.as_slice())?;
         }
 
         let mut state_event = false;
 
         if self.z.len() > 0 {
-            fmu.getEventIndicators(self.z.as_mut_slice());
+            (self.get_event_indicators)(self.z.as_mut_slice())?;
 
             for i in 0..self.z.len() {
                 if self.pre_z[i] <= 0.0 && self.z[i] > 0.0 {
@@ -651,10 +673,26 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         )
     };
 
-    let mut solver = Solver::new(
+    let mut solver = new_solver(
         time,
         settings.model_description.derivatives.len(),
         settings.model_description.eventIndicators.len(),
+        |event_indicators| {
+            fmu.getEventIndicators(event_indicators);
+            Ok(())
+        },
+        |continuous_states| {
+            fmu.getContinuousStates(continuous_states);
+            Ok(())
+        },
+        |state_derivatives| {
+            fmu.getContinuousStateDerivatives(state_derivatives);
+            Ok(())
+        },
+        |continuous_states| {
+            fmu.setContinuousStates(continuous_states);
+            Ok(())
+        },
     );
 
     let mut n_steps = 0;
@@ -706,7 +744,7 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         let is_time_event =
             nextEventTimeDefined && relative_eq!(nextEventTime, next_communication_point);
 
-        let (time_reached, is_state_event) = solver.step(next_communication_point, &fmu)?;
+        let (time_reached, is_state_event) = solver.step(next_communication_point)?;
 
         time = time_reached;
 
@@ -786,7 +824,7 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
             call(fmu.enterContinuousTimeMode())?;
 
             if reset_solver {
-                solver.reset(time, &fmu)?;
+                solver.reset(time)?;
             }
         }
     }

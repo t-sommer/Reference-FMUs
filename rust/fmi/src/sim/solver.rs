@@ -1,24 +1,26 @@
-pub trait SolvertTrait {
-    fn reset(&mut self, time: f64) -> Result<(), Box<dyn std::error::Error>>;
-    fn step(&mut self, next_time: f64) -> Result<(f64, bool), Box<dyn std::error::Error>>;
+type Error = Box<dyn std::error::Error>;
+
+pub trait Solver {
+    fn reset(&mut self, time: f64) -> Result<(), Error>;
+    fn step(&mut self, next_time: f64) -> Result<(f64, bool), Error>;
 }
 
-pub struct Solver<'a> {
+pub struct ForwardEuler<'a> {
     time: f64,
     x: Vec<f64>,
     der_x: Vec<f64>,
     z: Vec<f64>,
     pre_z: Vec<f64>,
-    get_event_indicators: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-    get_continuous_states: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-    get_continuous_state_derivatives: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-    set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
+    get_event_indicators: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
+    get_continuous_states: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
+    get_continuous_state_derivatives: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
+    set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Error> + 'a>,
 }
 
-pub type GetEventIndicatorsFn<'a> = dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a;
-pub type GetContinuousStatesFn<'a> = dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a;
-pub type GetContinuousStateDerivativesFn<'a> = dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a;
-pub type SetContinuousStatesFn<'a> = dyn Fn(&[f64]) -> Result<(), Box<dyn std::error::Error>> + 'a;
+pub type GetEventIndicatorsFn<'a> = dyn Fn(&mut [f64]) -> Result<(), Error> + 'a;
+pub type GetContinuousStatesFn<'a> = dyn Fn(&mut [f64]) -> Result<(), Error> + 'a;
+pub type GetContinuousStateDerivativesFn<'a> = dyn Fn(&mut [f64]) -> Result<(), Error> + 'a;
+pub type SetContinuousStatesFn<'a> = dyn Fn(&[f64]) -> Result<(), Error> + 'a;
 
 pub trait SolverFactory {
     fn create<'a>(
@@ -26,62 +28,46 @@ pub trait SolverFactory {
         time: f64,
         nx: usize,
         nz: usize,
-        get_event_indicators: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-        get_continuous_states: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-        get_continuous_state_derivatives: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-        set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-    ) -> Result<Box<dyn SolvertTrait + 'a>, Box<dyn std::error::Error>>;
+        get_event_indicators: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
+        get_continuous_states: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
+        get_continuous_state_derivatives: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
+        set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Error> + 'a>,
+    ) -> Result<Box<dyn Solver + 'a>, Error>;
 }
 
-pub struct DefaultSolverFactory;
+pub struct ForwardEulerFactory;
 
-impl SolverFactory for DefaultSolverFactory {
+impl SolverFactory for ForwardEulerFactory {
     fn create<'a>(
         &self,
         time: f64,
         nx: usize,
         nz: usize,
-        get_event_indicators: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-        get_continuous_states: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-        get_continuous_state_derivatives: Box<dyn Fn(&mut [f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-        set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Box<dyn std::error::Error>> + 'a>,
-    ) -> Result<Box<dyn SolvertTrait + 'a>, Box<dyn std::error::Error>> {
-        Ok(Box::new(new_solver(
-            time,
-            nx,
-            nz,
-            get_event_indicators,
-            get_continuous_states,
-            get_continuous_state_derivatives,
-            set_continuous_states,
-        )))
+        get_event_indicators: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
+        get_continuous_states: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
+        get_continuous_state_derivatives: Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>,
+        set_continuous_states: Box<dyn Fn(&[f64]) -> Result<(), Error> + 'a>,
+    ) -> Result<Box<dyn Solver + 'a>, Error> {
+        Ok(Box::new({
+            let nx = nx;
+            let nz = nz;
+            ForwardEuler {
+                time: time,
+                x: vec![0.0; nx],
+                der_x: vec![0.0; nx],
+                z: vec![0.0; nz],
+                pre_z: vec![0.0; nz],
+                get_event_indicators: get_event_indicators,
+                get_continuous_states: get_continuous_states,
+                get_continuous_state_derivatives: get_continuous_state_derivatives,
+                set_continuous_states: set_continuous_states,
+            }
+        }))
     }
 }
 
-pub fn new_solver<'a>(
-    time: f64,
-    nx: usize,
-    nz: usize,
-    get_event_indicators: Box<GetEventIndicatorsFn<'a>>,
-    get_continuous_states: Box<GetContinuousStatesFn<'a>>,
-    get_continuous_state_derivatives: Box<GetContinuousStateDerivativesFn<'a>>,
-    set_continuous_states: Box<SetContinuousStatesFn<'a>>,
-) -> Solver<'a> {
-    Solver {
-        time,
-        x: vec![0.0; nx],
-        der_x: vec![0.0; nx],
-        z: vec![0.0; nz],
-        pre_z: vec![0.0; nz],
-        get_event_indicators,
-        get_continuous_states,
-        get_continuous_state_derivatives,
-        set_continuous_states,
-    }
-}
-
-impl<'a> SolvertTrait for Solver<'a> {
-    fn reset(&mut self, time: f64) -> Result<(), Box<dyn std::error::Error>> {
+impl<'a> Solver for ForwardEuler<'a> {
+    fn reset(&mut self, time: f64) -> Result<(), Error> {
         self.time = time;
         self.x.fill(0.0);
         self.der_x.fill(0.0);
@@ -90,7 +76,7 @@ impl<'a> SolvertTrait for Solver<'a> {
         Ok(())
     }
 
-    fn step(&mut self, next_time: f64) -> Result<(f64, bool), Box<dyn std::error::Error>> {
+    fn step(&mut self, next_time: f64) -> Result<(f64, bool), Error> {
         if self.x.len() > 0 {
             (self.get_continuous_states)(self.x.as_mut_slice())?;
             (self.get_continuous_state_derivatives)(self.der_x.as_mut_slice())?;

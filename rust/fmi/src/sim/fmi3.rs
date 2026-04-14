@@ -481,9 +481,9 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
     Ok(())
 }
 
-pub fn simulate_me<F: SolverFactory>(
+pub fn simulate_me<S: SolverFactory>(
     settings: &SimulationSettings,
-    factory: &F,
+    factory: &S,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;

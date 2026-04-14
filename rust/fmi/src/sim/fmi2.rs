@@ -11,7 +11,7 @@ use crate::{
     model_description::{Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
         SimulationSettings,
-        fmi2::{input::CSVInput, recorder::Recorder},
+        fmi2::{input::CSVInput, recorder::Recorder}, solver::SolverFactory,
     },
     types::{
         fmiStatus::{self, fmiOK, fmiWarning},
@@ -113,70 +113,6 @@ fn set_start_values<T>(
     }
 
     Ok(fmiOK)
-}
-
-struct Solver {
-    time: f64,
-    x: Vec<f64>,
-    der_x: Vec<f64>,
-    z: Vec<f64>,
-    pre_z: Vec<f64>,
-}
-
-impl Solver {
-    pub fn new(time: f64, nx: usize, nz: usize) -> Self {
-        Self {
-            time,
-            x: vec![0.0; nx],
-            der_x: vec![0.0; nx],
-            z: vec![0.0; nz],
-            pre_z: vec![0.0; nz],
-        }
-    }
-
-    pub fn reset(&mut self, time: f64, fmu: &FMU2<ME>) -> Result<(), Box<dyn Error>> {
-        self.time = time;
-        self.x.fill(0.0);
-        self.der_x.fill(0.0);
-        self.z.fill(0.0);
-        fmu.getEventIndicators(self.pre_z.as_mut_slice());
-        Ok(())
-    }
-
-    pub fn step(&mut self, next_time: f64, fmu: &FMU2<ME>) -> Result<(f64, bool), Box<dyn Error>> {
-        if self.x.len() > 0 {
-            fmu.getContinuousStates(self.x.as_mut_slice());
-            fmu.getDerivatives(self.der_x.as_mut_slice());
-
-            let h = next_time - self.time;
-
-            for i in 0..self.x.len() {
-                self.x[i] += self.der_x[i] * h;
-            }
-
-            fmu.setContinuousStates(self.x.as_slice());
-        }
-
-        let mut state_event = false;
-
-        if self.z.len() > 0 {
-            fmu.getEventIndicators(self.z.as_mut_slice());
-
-            for i in 0..self.z.len() {
-                if self.pre_z[i] <= 0.0 && self.z[i] > 0.0 {
-                    state_event = true; // -\+
-                } else if self.pre_z[i] > 0.0 && self.z[i] <= 0.0 {
-                    state_event = true; // +/-
-                }
-
-                self.pre_z[i] = self.z[i];
-            }
-        }
-
-        self.time = next_time;
-
-        Ok((self.time, state_event))
-    }
 }
 
 pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
@@ -336,7 +272,7 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
     Ok(())
 }
 
-pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
+pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_factory: &S) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;
@@ -433,11 +369,27 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         )
     };
 
-    let mut solver = Solver::new(
+    let mut solver = solver_factory.create(
         time,
         settings.model_description.derivatives.len(),
         settings.model_description.numberOfEventIndicators,
-    );
+        Box::new(|event_indicators| {
+            fmu.getEventIndicators(event_indicators);
+            Ok(())
+        }),
+        Box::new(|continuous_states| {
+            fmu.getContinuousStates(continuous_states);
+            Ok(())
+        }),
+        Box::new(|state_derivatives| {
+            fmu.getDerivatives(state_derivatives);
+            Ok(())
+        }),
+        Box::new(|continuous_states| {
+            fmu.setContinuousStates(continuous_states);
+            Ok(())
+        }),
+    )?;
 
     let mut n_steps = 0;
 
@@ -488,7 +440,7 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         let is_time_event = event_info.nextEventTimeDefined != fmi2False
             && relative_eq!(event_info.nextEventTime, next_communication_point);
 
-        let (time_reached, is_state_event) = solver.step(next_communication_point, &fmu)?;
+        let (time_reached, is_state_event) = solver.step(next_communication_point)?;
 
         time = time_reached;
 
@@ -557,7 +509,7 @@ pub fn simulate_me(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
             call(fmu.enterContinuousTimeMode())?;
 
             if reset_solver {
-                solver.reset(time, &fmu)?;
+                solver.reset(time)?;
             }
         }
     }

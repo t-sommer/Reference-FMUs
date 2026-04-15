@@ -240,7 +240,7 @@ fn main() -> ExitCode {
     let start_time = std::time::Instant::now();
 
     let factory = ForwardEulerFactory {
-        step_size: output_interval / 10.0,
+        step_size: output_interval,
     };
 
     let result = match (&model_description.majorVersion, interface_type) {

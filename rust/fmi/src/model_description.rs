@@ -1,7 +1,12 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
 use roxmltree::Node;
-use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
+use std::{
+    collections::HashMap,
+    error::Error,
+    path::Path,
+    str::FromStr,
+};
 
 use crate::types::fmiValueReference;
 

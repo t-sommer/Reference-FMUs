@@ -19,7 +19,7 @@
                     "--interface-type=me",
                     "--log-fmi-calls",
                     "--output-interval=0.01",
-                    // "--stop-time=3",
+                    "--stop-time=1",
                     "--output-file=BouncingBall_out.csv",
                     // "--start-value",
                     // "n=3",

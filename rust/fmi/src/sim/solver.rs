@@ -26,14 +26,6 @@ pub struct ForwardEuler<'a> {
     set_continuous_states: SetContinuousStatesFn<'a>,
 }
 
-pub trait Model {
-    fn set_time(&mut self, time: f64) -> Result<(), Error>;
-    fn get_event_indicators(&mut self, event_indicators: &mut [f64]) -> Result<(), Error>;
-    fn get_continuous_states(&mut self, continuous_states: &mut [f64]) -> Result<(), Error>;
-    fn get_continuous_state_derivatives(&mut self, state_derivatives: &mut [f64]) -> Result<(), Error>;
-    fn set_continuous_states(&mut self, continuous_states: &[f64]) -> Result<(), Error>;
-} 
-
 pub trait SolverFactory {
     fn create<'a>(
         &self,
@@ -64,15 +56,29 @@ impl SolverFactory for ForwardEulerFactory {
         get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
         set_continuous_states: SetContinuousStatesFn<'a>,
     ) -> Result<Box<dyn Solver + 'a>, Error> {
+
+        let mut x = vec![0.0; nx];
+        let der_x = vec![0.0; nx];
+        let z = vec![0.0; nz];
+        let mut pre_z = vec![0.0; nz];
+
+        if x.len() > 0 {
+            (get_continuous_states)(x.as_mut_slice())?;
+        }
+
+        if z.len() > 0 {        
+            (get_event_indicators)(pre_z.as_mut_slice())?;
+        }
+
         Ok(Box::new({
             ForwardEuler {
                 start_time,
                 fixed_step_size: self.step_size,
                 n_steps: 0,
-                x: vec![0.0; nx],
-                der_x: vec![0.0; nx],
-                z: vec![0.0; nz],
-                pre_z: vec![0.0; nz],
+                x,
+                der_x,
+                z,
+                pre_z,
                 set_time,
                 get_event_indicators,
                 get_continuous_states,
@@ -101,7 +107,7 @@ impl<'a> ForwardEuler<'a> {
 
         let time = self.start_time + self.n_steps as f64 * self.fixed_step_size;
 
-        (self.set_time)(time);
+        (self.set_time)(time)?;
 
         let mut state_event = false;
 
@@ -132,6 +138,7 @@ impl<'a> Solver for ForwardEuler<'a> {
         self.x.fill(0.0);
         self.der_x.fill(0.0);
         self.z.fill(0.0);
+        (self.get_continuous_states)(self.x.as_mut_slice())?;
         (self.get_event_indicators)(self.pre_z.as_mut_slice())?;
         Ok(())
     }
@@ -140,7 +147,16 @@ impl<'a> Solver for ForwardEuler<'a> {
 
         let mut time = self.start_time + self.n_steps as f64 * self.fixed_step_size;
 
-        while time < next_time {
+        if next_time - time < self.fixed_step_size && !relative_eq!(next_time, time + self.fixed_step_size) {
+            let message = format!(
+                "Next time {next_time} is too close to current time {time}. Minimum step size is {}.",
+                self.fixed_step_size
+            );
+            return Err(message.into());
+        }
+
+        while time + self.fixed_step_size < next_time || relative_eq!(time + self.fixed_step_size, next_time) {
+
             let (time_reached, state_event) = self.do_fixed_step()?;
 
             if state_event {

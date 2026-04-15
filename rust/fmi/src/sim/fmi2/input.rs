@@ -234,7 +234,6 @@ impl<'a> CSVInput<'a> {
                                 let x0 = values0[j];
                                 let x1 = values1[j];
                                 interpolated_values[j] = x0 + t * (x1 - x0);
-                                println!("{x0} {x1}")
                             }
 
                             call(fmu.setReal(&[variable.valueReference], &interpolated_values))?;

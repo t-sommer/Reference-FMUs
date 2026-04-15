@@ -157,10 +157,12 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, Box<dyn E
     let root = doc.root_element();
 
     if let Some(fmi_version) = root.attribute("fmiVersion") {
-        match fmi_version {
-            "2.0" => read_fmi2_model_description(&root),
-            "3.0" => read_fmi3_model_description(&root),
-            _ => Err(format!("Unsupported FMI version: {fmi_version}").into()),
+        if fmi_version == "2.0" {
+            read_fmi2_model_description(&root)
+        } else if fmi_version.starts_with("3.") {
+            read_fmi3_model_description(&root)
+        } else {
+            Err(format!("Unsupported FMI version: {fmi_version}").into())
         }
     } else {
         Err("Attribute fmiVersion is missing.".into())

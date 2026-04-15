@@ -97,6 +97,10 @@ struct Args {
     /// The interface type to use
     #[arg(long, value_enum)]
     interface_type: Option<InterfaceType>,
+
+    /// Step size for fixed step solver (default: output interval)
+    #[arg(long)]
+    fixed_step_size: Option<f64>,
 }
 
 fn main() -> ExitCode {
@@ -134,7 +138,7 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let (start_time, stop_time, tolerance) =
+    let (start_time, stop_time, _tolerance) =
         if let Some(default_experiment) = &model_description.defaultExperiment {
             let start_time: f64 = if let Some(v) = &default_experiment.startTime {
                 v.parse().unwrap()
@@ -165,11 +169,7 @@ fn main() -> ExitCode {
 
     let start_time = args.start_time.unwrap_or(start_time);
     let stop_time = args.stop_time.unwrap_or(stop_time);
-    let tolerance = if let Some(v) = args.tolerance {
-        Some(v)
-    } else {
-        tolerance
-    };
+    let tolerance  = args.tolerance;
 
     let output_interval = if let Some(v) = args.output_interval {
         v
@@ -240,7 +240,7 @@ fn main() -> ExitCode {
     let start_time = std::time::Instant::now();
 
     let factory = ForwardEulerFactory {
-        step_size: output_interval,
+        step_size: args.fixed_step_size.unwrap_or(output_interval),
     };
 
     let result = match (&model_description.majorVersion, interface_type) {

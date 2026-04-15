@@ -1,6 +1,7 @@
 type Error = Box<dyn std::error::Error>;
 
 type SetTimeFn<'a> = Box<dyn Fn(f64) -> Result<(), Error> + 'a>;
+type SetContinuousInputsFn<'a> = Box<dyn Fn(f64) -> Result<(), Error> + 'a>;
 type GetEventIndicatorsFn<'a> = Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>;
 type GetContinuousStatesFn<'a> = Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>;
 type GetContinuousStateDerivativesFn<'a> = Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>;
@@ -20,6 +21,7 @@ pub struct ForwardEuler<'a> {
     z: Vec<f64>,
     pre_z: Vec<f64>,
     set_time: SetTimeFn<'a>,
+    set_continuous_inputs: SetContinuousInputsFn<'a>,
     get_event_indicators: GetEventIndicatorsFn<'a>,
     get_continuous_states: GetContinuousStatesFn<'a>,
     get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
@@ -33,6 +35,7 @@ pub trait SolverFactory {
         nx: usize,
         nz: usize,
         set_time: SetTimeFn<'a>,
+        set_continuous_inputs: SetContinuousInputsFn<'a>,
         get_event_indicators: GetEventIndicatorsFn<'a>,
         get_continuous_states: GetContinuousStatesFn<'a>,
         get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
@@ -51,6 +54,7 @@ impl SolverFactory for ForwardEulerFactory {
         nx: usize,
         nz: usize,
         set_time: SetTimeFn<'a>,
+        set_continuous_inputs: SetContinuousInputsFn<'a>,
         get_event_indicators: GetEventIndicatorsFn<'a>,
         get_continuous_states: GetContinuousStatesFn<'a>,
         get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
@@ -80,6 +84,7 @@ impl SolverFactory for ForwardEulerFactory {
                 z,
                 pre_z,
                 set_time,
+                set_continuous_inputs,
                 get_event_indicators,
                 get_continuous_states,
                 get_continuous_state_derivatives,
@@ -108,6 +113,8 @@ impl<'a> ForwardEuler<'a> {
         let time = self.start_time + self.n_steps as f64 * self.fixed_step_size;
 
         (self.set_time)(time)?;
+        
+        (self.set_continuous_inputs)(time)?;
 
         let mut state_event = false;
 

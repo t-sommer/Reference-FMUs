@@ -599,6 +599,12 @@ pub fn simulate_me<S: SolverFactory>(
             fmu.setTime(time);
             Ok(())
         }),
+        Box::new(|time| {
+            if let Some(input) = &input {
+                input.set_continuous_inputs(time, false, &fmu)?;
+            }
+            Ok(())
+        }),
         Box::new(|event_indicators| {
             fmu.getEventIndicators(event_indicators);
             Ok(())

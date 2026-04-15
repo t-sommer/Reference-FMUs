@@ -373,6 +373,10 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
         time,
         settings.model_description.derivatives.len(),
         settings.model_description.numberOfEventIndicators,
+        Box::new(|time| {
+            fmu.setTime(time);
+            Ok(())
+        }),
         Box::new(|event_indicators| {
             fmu.getEventIndicators(event_indicators);
             Ok(())

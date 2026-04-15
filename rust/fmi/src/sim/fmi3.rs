@@ -670,8 +670,6 @@ pub fn simulate_me<S: SolverFactory>(
 
         time = time_reached;
 
-        call(fmu.setTime(time))?;
-
         if is_input_event {
             if let Some(input) = &input {
                 input.set_continuous_inputs(time, false, &fmu)?;

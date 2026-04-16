@@ -1,3 +1,5 @@
+#![allow(non_camel_case_types, non_snake_case)]
+
 // /* -----------------------------------------------------------------
 //  * Programmer(s): Scott Cohen, Alan Hindmarsh, Radu Serban,
 //  *                Aaron Collier, and Slaven Peles @ LLNL
@@ -106,6 +108,8 @@
 // #elif defined(SUNDIALS_DOUBLE_PRECISION)
 
 // typedef double sunrealtype;
+pub type sunrealtype = f64;
+
 // #define SUN_RCONST(x)     x
 // #define SUN_BIG_REAL      DBL_MAX
 // #define SUN_SMALL_REAL    DBL_MIN
@@ -139,6 +143,7 @@
 //  */
 
 // typedef SUNDIALS_INDEX_TYPE sunindextype;
+pub type sunindextype = i64;
 
 // /*
 //  *------------------------------------------------------------------
@@ -170,14 +175,17 @@
 // #ifndef sunbooleantype
 // #define sunbooleantype int
 // #endif
+pub type sunbooleantype = i32;
 
 // #ifndef SUNFALSE
 // #define SUNFALSE 0
 // #endif
+pub const SUNFALSE: sunbooleantype = 0;
 
 // #ifndef SUNTRUE
 // #define SUNTRUE 1
 // #endif
+pub const SUNTRUE: sunbooleantype = 1;
 
 // /*
 //  *------------------------------------------------------------------

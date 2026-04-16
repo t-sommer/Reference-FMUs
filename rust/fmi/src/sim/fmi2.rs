@@ -153,7 +153,6 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         settings.unzipdir.as_ref(),
         &co_simulation.modelIdentifier,
         &settings.model_description.modelName,
-        // fmi2::types::fmi2Type::fmi2CoSimulation,
         &settings.model_description.instantiationToken,
         false,
         settings.logging_on,
@@ -161,6 +160,7 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         true,
         true,
         true,
+        !co_simulation.canNotUseMemoryManagementFunctions,
     )?;
 
     set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
@@ -309,7 +309,6 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
         settings.unzipdir.as_ref(),
         &model_exchange.modelIdentifier,
         &settings.model_description.modelName,
-        // fmi2::types::fmi2Type::fmi2ModelExchange,
         &settings.model_description.instantiationToken,
         false,
         settings.logging_on,
@@ -317,6 +316,7 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
         true,
         true,
         true,
+        !model_exchange.canNotUseMemoryManagementFunctions,
     )?;
 
     set_start_values(&settings.start_values, &settings.model_description, &fmu)?;

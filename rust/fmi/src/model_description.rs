@@ -93,12 +93,14 @@ pub struct CoSimulation {
     pub modelIdentifier: String,
     pub fixedInternalStepSize: Option<String>,
     pub canHandleVariableCommunicationStepSize: bool,
+    pub canNotUseMemoryManagementFunctions: bool,
 }
 
 #[derive(Debug)]
 pub struct ModelExchange {
     pub modelIdentifier: String,
     pub needsCompletedIntegratorStep: bool,
+    pub canNotUseMemoryManagementFunctions: bool,
 }
 
 #[derive(Debug)]
@@ -295,17 +297,19 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             fixedInternalStepSize: cs.optional_attribute("fixedInternalStepSize"),
             canHandleVariableCommunicationStepSize: cs
                 .bool_attribute("canHandleVariableCommunicationStepSize", false),
+            canNotUseMemoryManagementFunctions: cs.bool_attribute("canNotUseMemoryManagementFunctions", false),
         })
     } else {
         None
     };
-
+    
     let modelExchange =
-        if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
-            Some(ModelExchange {
-                modelIdentifier: me.required_attribute("modelIdentifier")?,
-                needsCompletedIntegratorStep: !me
-                    .bool_attribute("completedIntegratorStepNotNeeded", false),
+    if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
+        Some(ModelExchange {
+            modelIdentifier: me.required_attribute("modelIdentifier")?,
+            needsCompletedIntegratorStep: !me
+            .bool_attribute("completedIntegratorStepNotNeeded", false),
+            canNotUseMemoryManagementFunctions: me.bool_attribute("canNotUseMemoryManagementFunctions", false),
             })
         } else {
             None
@@ -489,17 +493,19 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             fixedInternalStepSize: cs.attribute("fixedInternalStepSize").map(|s| s.to_string()),
             canHandleVariableCommunicationStepSize: cs
                 .bool_attribute("canHandleVariableCommunicationStepSize", false),
+            canNotUseMemoryManagementFunctions: true,
         })
     } else {
         None
     };
-
+    
     let modelExchange = if let Some(me) =
-        root.descendants().find(|n| n.has_tag_name("ModelExchange"))
+    root.descendants().find(|n| n.has_tag_name("ModelExchange"))
     {
         Some(ModelExchange {
             modelIdentifier: me.attribute("modelIdentifier").unwrap().to_string(),
             needsCompletedIntegratorStep: me.bool_attribute("needsCompletedIntegratorStep", false),
+            canNotUseMemoryManagementFunctions: true,
         })
     } else {
         None

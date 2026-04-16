@@ -8,6 +8,7 @@ use libloading::{Library, Symbol};
 use std::cell::RefCell;
 use std::error::Error;
 use std::ffi::{CStr, CString};
+use std::mem::transmute;
 use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
@@ -259,6 +260,7 @@ impl<T> FMU2<T> {
         logMessages: bool,
         printMessages: bool,
         interfaceType: T,
+        provideMemoryManagementFunctions: bool,
     ) -> Result<FMU2<T>, Box<dyn Error>> {
         let fmi2GetVersion = get_symbol(&library, b"fmi2GetVersion")?;
         let fmi2GetTypesPlatform = get_symbol(&library, b"fmi2GetTypesPlatform")?;
@@ -339,6 +341,7 @@ impl<T> FMU2<T> {
             resourceUrl.as_ref(),
             visible,
             loggingOn,
+            provideMemoryManagementFunctions,
         );
 
         if fmu.component.is_null() {
@@ -417,6 +420,7 @@ impl<T> FMU2<T> {
         resourceUrl: Option<&Url>,
         visible: bool,
         loggingOn: bool,
+        provideMemoryManagementFunctions: bool,
     ) -> fmi2Component {
         let instance_name_cstr = CString::new(instanceName).unwrap();
         let fmu_guid_cstr = CString::new(guid).unwrap();
@@ -454,19 +458,24 @@ impl<T> FMU2<T> {
             }
         }
 
-        unsafe extern "C" fn stepFinished(_env: fmi2ComponentEnvironment, _status: fmi2Status) {
-            // do nothing
-        }
-
         let mut callbacks = fmi2CallbackFunctions {
-            logger,
-            allocateMemory,
-            freeMemory,
-            stepFinished,
-            componentEnvironment,
+            logger: logger,
+            allocateMemory: if provideMemoryManagementFunctions {
+                allocateMemory } else {
+                unsafe { transmute(std::ptr::null::<()>()) }
+            },
+            freeMemory: if provideMemoryManagementFunctions {
+                freeMemory } else {
+                unsafe { transmute(std::ptr::null::<()>()) }
+            },
+            stepFinished:  unsafe { std::mem::transmute(std::ptr::null::<()>()) },
+            componentEnvironment: componentEnvironment,
         };
 
         unsafe { add_logger_proxy(&mut callbacks) };
+
+        let visible = if visible { fmi2True } else { fmi2False };
+        let loggingOn = if loggingOn { fmi2True } else { fmi2False };
 
         let component = unsafe {
             (self.fmi2Instantiate)(
@@ -475,20 +484,20 @@ impl<T> FMU2<T> {
                 fmu_guid_cstr.as_ptr(),
                 fmuResourceLocation,
                 &callbacks,
-                if visible { fmi2True } else { fmi2False },
-                if loggingOn { fmi2True } else { fmi2False },
+                visible,
+                loggingOn,
             )
         };
 
         if self.logCalls {
             let url = if let Some(url) = resourceUrl {
-                url.to_string()
+                format!("\"{}\"", url.to_string())
             } else {
-                String::from("None")
+                String::from("0x0")
             };
 
             let message = format!(
-                "fmi2Instantiate(instanceName=\"{}\", fmuType={:?}, fmuGUID=\"{}\", fmuResourceLocation={:?}, callbacks={:?}, visible={}, loggingOn={}) -> {:p}",
+                "fmi2Instantiate(instanceName={:?}, fmuType={:?}, fmuGUID={:?}, fmuResourceLocation={}, callbacks={:?}, visible={}, loggingOn={}) -> {:p}",
                 instanceName, fmuType, guid, url, callbacks, visible, loggingOn, component
             );
 
@@ -705,6 +714,7 @@ impl FMU2<ME> {
         printCalls: bool,
         logMessages: bool,
         printMessages: bool,
+        provideMemoryManagementFunctions: bool,
     ) -> Result<FMU2<ME>, Box<dyn Error>> {
         let library = FMU2::<ME>::load_library(unzipdir, modelIdentifier)?;
 
@@ -746,6 +756,7 @@ impl FMU2<ME> {
             logMessages,
             printMessages,
             modelExchangeFunctions,
+            provideMemoryManagementFunctions,
         )?;
 
         Ok(fmu)
@@ -920,6 +931,7 @@ impl FMU2<CS> {
         printCalls: bool,
         logMessages: bool,
         printMessages: bool,
+        provideMemoryManagementFunctions: bool,
     ) -> Result<FMU2<CS>, Box<dyn Error>> {
         let library = FMU2::<ME>::load_library(unzipdir, modelIdentifier)?;
 
@@ -958,6 +970,7 @@ impl FMU2<CS> {
             logMessages,
             printMessages,
             coSimulationFunctions,
+            provideMemoryManagementFunctions,
         )?;
 
         Ok(fmu)

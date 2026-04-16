@@ -4,3 +4,4 @@ libxml2/
 md-valid/build/
 md-valid/install/
 fmi-schema/vendor/
+cvode-*/

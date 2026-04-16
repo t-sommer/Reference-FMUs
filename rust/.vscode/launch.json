@@ -16,8 +16,8 @@
                     // "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\2.0\\Feedthrough.fmu",
                     // "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\3.0\\BouncingBall.fmu",
                     // "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\2.0\\BouncingBall.fmu",
-                    "C:\\Users\\tsr2\\Documents\\Dymola\\Integrator3.fmu",
-                    "--interface-type=me",
+                    "C:\\Users\\tsr2\\Documents\\Dymola\\Integrator2.fmu",
+                    "--interface-type=cs",
                     "--log-fmi-calls",
                     "--output-interval=0.2",
                     "--fixed-step-size=0.1",
@@ -32,6 +32,7 @@
                     // "--input-file=fmusim/tests/resources/fmi2/Feedthrough_types_in.csv",
                     "--output-variable=y",
                     "--show-stats",
+                    "--tolerance=1e-6",
                 ]
             }
         }

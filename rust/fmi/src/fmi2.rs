@@ -97,6 +97,10 @@ macro_rules! fmi2_set {
     }};
 }
 
+unsafe extern "C" {
+    unsafe fn add_logger_proxy(functions: *mut fmi2CallbackFunctions);
+}
+
 pub struct ME {
     fmi2EnterEventMode: Symbol<'static, fmi2EnterEventModeTYPE>,
     fmi2NewDiscreteStates: Symbol<'static, fmi2NewDiscreteStatesTYPE>,
@@ -454,13 +458,15 @@ impl<T> FMU2<T> {
             // do nothing
         }
 
-        let callbacks = fmi2CallbackFunctions {
+        let mut callbacks = fmi2CallbackFunctions {
             logger,
             allocateMemory,
             freeMemory,
             stepFinished,
             componentEnvironment,
         };
+
+        unsafe { add_logger_proxy(&mut callbacks) };
 
         let component = unsafe {
             (self.fmi2Instantiate)(

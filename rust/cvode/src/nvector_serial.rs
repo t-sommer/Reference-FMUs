@@ -88,6 +88,11 @@ pub fn NV_CONTENT_S(v: N_Vector) -> *mut _N_VectorContent_Serial {
 }
 
 // #define NV_LENGTH_S(v) (NV_CONTENT_S(v)->length)
+pub fn NV_LENGTH_S(v: N_Vector) -> sunindextype {
+    unsafe {
+        (*NV_CONTENT_S(v)).length
+    }
+}
 
 // #define NV_OWN_DATA_S(v) (NV_CONTENT_S(v)->own_data)
 

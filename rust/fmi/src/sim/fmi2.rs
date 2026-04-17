@@ -11,7 +11,7 @@ use crate::{
     model_description::{Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
         SimulationSettings,
-        fmi2::{input::CSVInput, recorder::Recorder}, solver::SolverFactory,
+        fmi2::{input::CSVInput, recorder::Recorder}, SolverFactory,
     },
     types::{
         fmiStatus::{self, fmiOK, fmiWarning},

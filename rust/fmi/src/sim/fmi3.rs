@@ -14,7 +14,7 @@ use crate::{
     sim::{
         SimulationSettings,
         fmi3::{input::CSVInput, recorder::Recorder},
-        solver::SolverFactory,
+        SolverFactory,
     },
     types::*,
     util::VariableValue,

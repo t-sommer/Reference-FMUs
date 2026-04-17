@@ -4,7 +4,7 @@ use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use fmi::{
     model_description::{Causality, MajorVersion, ModelVariable, read_model_description},
-    sim::{self, SimulationSettings, solver::ForwardEulerFactory},
+    sim::{self, SimulationSettings, euler::ForwardEulerFactory},
     util::extract_fmu,
 };
 use fmi_schema::validate_model_description_against_xsd;

@@ -70,16 +70,7 @@ impl<'a> CVodeSolver<'a> {
         get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
         set_continuous_states: SetContinuousStatesFn<'a>,
     ) -> Self {
-
-
-
         unsafe {
-        
-            // let my_num: Box<i32> = Box::new(10);
-            // let my_num_ptr: *const i32 = &*my_num;
-            // let mut my_speed: Box<i32> = Box::new(88);
-            // let my_speed_ptr: *mut i32 = &mut *my_speed;
-        
             let functions = Box::new(Functions {
                 set_time,
                 set_continuous_inputs,
@@ -107,7 +98,7 @@ impl<'a> CVodeSolver<'a> {
             let x = N_VNew_Serial(nx as sunindextype, sunctx);
             assert!(!x.is_null(), "Failed to create N_Vector");
 
-            let x_slice = from_raw_parts_mut(NV_DATA_S(x), NV_LENGTH_S(x) as usize);
+            let x_slice = (*x).as_mut();
 
             (functions.get_continuous_states)(x_slice).expect("Failed to get continuous states");
 
@@ -116,7 +107,7 @@ impl<'a> CVodeSolver<'a> {
             let abstol = N_VNew_Serial(nx as sunindextype, sunctx);
             assert!(!abstol.is_null(), "Failed to create N_Vector");
 
-            let abstol_slice = from_raw_parts_mut(NV_DATA_S(abstol), nx as usize);
+            let abstol_slice = (*abstol).as_mut();
             abstol_slice.fill(reltol);
 
             let flag = CVodeInit(cvode_mem, f, start_time, x);
@@ -159,8 +150,7 @@ impl<'a> Solver for CVodeSolver<'a> {
     fn reset(&mut self, time: f64) -> Result<(), Error> {
 
         unsafe {
-            let x_slice = from_raw_parts_mut(NV_DATA_S(self.x), self.nx as usize);
-            (self.functions.get_continuous_states)(x_slice).expect("get_continuous_states failed");
+            (self.functions.get_continuous_states)((*self.x).as_mut()).expect("get_continuous_states failed");
 
             // TODO: set tolerances
             
@@ -172,30 +162,13 @@ impl<'a> Solver for CVodeSolver<'a> {
     }
 
     fn step(&mut self, next_time: f64) -> Result<(f64, bool), Error> {
-
-        unsafe {
-
             let mut tret = 0.0;
-            
-            let x_slice = from_raw_parts_mut(NV_DATA_S(self.x), self.nx as usize);
-            
-            (self.functions.get_continuous_states)(x_slice).expect("get_continuous_states failed");
-
-            println!("Before CVodeSolver::step()");
-            
-            let flag = CVode(self.cvode_mem, next_time, self.x, &mut tret, CV_NORMAL);
-            // assert!(flag == 0, "Failed to step CVODE: error code {}", flag);
-            
-            println!("After CVodeSolver::step()");
-
-            (self.functions.set_continuous_states)(x_slice).expect("set_continuous_states failed");
-            
+            let flag = unsafe { CVode(self.cvode_mem, next_time, self.x, &mut tret, CV_NORMAL) };
             if flag < 0 {
                 return Err(format!("Solver error: {flag}").into());
             }
 
             Ok((tret, flag == CV_ROOT_RETURN))
-        }
     }
 }
 
@@ -214,30 +187,25 @@ impl<'a> Drop for CVodeSolver<'a> {
 
 // Right-hand-side function
 extern "C" fn f(t: sunrealtype, y: N_Vector, ydot: N_Vector, user_data: *mut c_void) -> i32 {
-    
-    println!("f(..., user_data: {:p})", user_data);
-
-    //let functions = unsafe { Box::from_raw(user_data as *mut Functions) };
 
     let functions: &Functions = unsafe { &*(user_data as *const Functions) };
 
     unsafe {
-        let x = from_raw_parts_mut(NV_DATA_S(y), NV_LENGTH_S(y) as usize);
-        let dx = from_raw_parts_mut(NV_DATA_S(ydot), NV_LENGTH_S(ydot) as usize);
-        dx[0] = x[1];  // velocity
+        let dx = (*ydot).as_mut();
+        
+        dx[0] = (*y).as_mut()[1];  // velocity
         dx[1] = -9.81;  // gravity
-
+    
         (functions.set_time)(t).expect("Failed to set time");
-        (functions.set_continuous_states)(x).expect("Failed to set continuous states");
+        (functions.set_continuous_states)((*y).as_mut()).expect("Failed to set continuous states");
         (functions.get_continuous_state_derivatives)(dx).expect("Failed to get continuous state derivatives");
     }
+
     0
 }
 
 // Root function
 extern "C" fn g(t: sunrealtype, y: N_Vector, gout: *mut sunrealtype, user_data: *mut c_void) -> i32 {
-
-    println!("g(..., user_data: {:p})", user_data);
 
     unsafe {
         let functions: &Functions =  &*(user_data as *const Functions);
@@ -246,12 +214,9 @@ extern "C" fn g(t: sunrealtype, y: N_Vector, gout: *mut sunrealtype, user_data: 
 
         // TODO: apply input
 
-        let x = from_raw_parts_mut(NV_DATA_S(y), NV_LENGTH_S(y) as usize);
-
-        (functions.set_continuous_states)(x).expect("Failed to set continuous states");
+        (functions.set_continuous_states)((*y).as_mut()).expect("Failed to set continuous states");
         
         let z = from_raw_parts_mut(gout, 1);
-
         (functions.get_event_indicators)(z).expect("Failed to get event indicators");
     }
     

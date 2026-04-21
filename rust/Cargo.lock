@@ -528,6 +528,7 @@ dependencies = [
  "clap",
  "colored",
  "csv",
+ "cvode",
  "fmi",
  "fmi-schema",
  "libloading",

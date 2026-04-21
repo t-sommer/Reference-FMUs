@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 libloading = "0.8.8"
 clap = { version = "4.5.54", features = ["derive"] }
+cvode = { path = "../cvode" }
 fmi = { path = "../fmi" }
 fmi-schema = { path = "../fmi-schema" }
 zip = "2.1"

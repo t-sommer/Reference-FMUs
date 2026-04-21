@@ -179,6 +179,7 @@ pub unsafe fn CVodeSVtolerances(cvode_mem: *mut std::ffi::c_void, reltol: sunrea
 // SUNDIALS_EXPORT int CVodeSetUseIntegratorFusedKernels(void* cvode_mem,
 //                                                       sunbooleantype onoff);
 // SUNDIALS_EXPORT int CVodeSetUserData(void* cvode_mem, void* user_data);
+pub unsafe fn CVodeSetUserData(cvode_mem: *mut std::ffi::c_void, user_data: *mut std::ffi::c_void) -> i32;
 
 // /* Optional step adaptivity input functions */
 
@@ -281,6 +282,7 @@ pub unsafe fn CVodeGetRootInfo(cvode_mem: *mut std::ffi::c_void, rootsfound_1d: 
 
 // /* Free function */
 // SUNDIALS_EXPORT void CVodeFree(void** cvode_mem);
+pub unsafe fn CVodeFree(cvode_mem: *mut *mut std::ffi::c_void);
 
 // /* CVLS interface function that depends on CVRhsFn */
 // SUNDIALS_EXPORT int CVodeSetJacTimesRhsFn(void* cvode_mem, CVRhsFn jtimesRhsFn);

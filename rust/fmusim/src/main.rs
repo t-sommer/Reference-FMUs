@@ -1,14 +1,18 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
+mod cvode;
+
 use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use fmi::{
     model_description::{Causality, MajorVersion, ModelVariable, read_model_description},
-    sim::{self, SimulationSettings, euler::ForwardEulerFactory},
+    sim::{self, SimulationSettings},
     util::extract_fmu,
 };
 use fmi_schema::validate_model_description_against_xsd;
 use std::{collections::HashMap, path::PathBuf, process::ExitCode};
+
+use crate::cvode::CVodeSolverFactory;
 
 #[derive(ValueEnum, Clone, Debug)]
 enum InterfaceType {
@@ -239,9 +243,11 @@ fn main() -> ExitCode {
 
     let start_time = std::time::Instant::now();
 
-    let factory = ForwardEulerFactory {
-        step_size: args.fixed_step_size.unwrap_or(output_interval),
-    };
+    // let factory = ForwardEulerFactory {
+    //     step_size: args.fixed_step_size.unwrap_or(output_interval),
+    // };
+
+    let factory = CVodeSolverFactory {};
 
     let result = match (&model_description.majorVersion, interface_type) {
         (MajorVersion::V2, InterfaceType::ModelExchange) => sim::fmi2::simulate_me(&settings, &factory),

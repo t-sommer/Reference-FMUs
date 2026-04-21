@@ -221,7 +221,7 @@ pub struct _generic_N_Vector {
     pub sunctx: SUNContext,
 }
 
-
+unsafe extern "C" {
 // /* -----------------------------------------------------------------
 //  * Functions exported by NVECTOR module
 //  * ----------------------------------------------------------------- */
@@ -238,6 +238,8 @@ pub struct _generic_N_Vector {
 // SUNDIALS_EXPORT N_Vector N_VClone(N_Vector w);
 // SUNDIALS_EXPORT N_Vector N_VCloneEmpty(N_Vector w);
 // SUNDIALS_EXPORT void N_VDestroy(N_Vector v);
+pub unsafe fn N_VDestroy(v: N_Vector);
+
 // SUNDIALS_DEPRECATED_EXPORT_MSG(
 //   "Work space functions will be removed in version 8.0.0")
 // void N_VSpace(N_Vector v, sunindextype* lrw, sunindextype* liw);
@@ -371,3 +373,4 @@ pub struct _generic_N_Vector {
 // #endif
 
 // #endif
+}

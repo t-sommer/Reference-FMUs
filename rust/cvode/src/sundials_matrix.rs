@@ -118,6 +118,7 @@ pub type SUNMatrix = *mut std::ffi::c_void;
 //   SUNContext sunctx;
 // };
 
+unsafe extern "C" {
 // /* -----------------------------------------------------------------
 //  * Functions exported by SUNMatrix module
 //  * ----------------------------------------------------------------- */
@@ -139,6 +140,7 @@ pub type SUNMatrix = *mut std::ffi::c_void;
 
 // SUNDIALS_EXPORT
 // void SUNMatDestroy(SUNMatrix A);
+pub unsafe fn SUNMatDestroy(A: SUNMatrix);
 
 // SUNDIALS_EXPORT
 // SUNErrCode SUNMatZero(SUNMatrix A);
@@ -170,3 +172,4 @@ pub type SUNMatrix = *mut std::ffi::c_void;
 // #endif
 
 // #endif /* _SUNMATRIX_H */
+}

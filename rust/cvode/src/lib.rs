@@ -1,15 +1,15 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-mod cvode;
-mod cvode_ls;
-mod nvector_serial;
-mod sundials_context;
-mod sundials_linearsolver;
-mod sundials_matrix;
-mod sundials_nvector;
-mod sundials_types;
-mod sunmatrix_dense;
-mod sunlinsol_dense;
+pub mod cvode;
+pub mod cvode_ls;
+pub mod nvector_serial;
+pub mod sundials_context;
+pub mod sundials_linearsolver;
+pub mod sundials_matrix;
+pub mod sundials_nvector;
+pub mod sundials_types;
+pub mod sunmatrix_dense;
+pub mod sunlinsol_dense;
 
 use crate::cvode::*;
 use crate::cvode_ls::*;
@@ -18,7 +18,6 @@ use crate::sundials_nvector::*;
 use crate::sundials_types::*;
 use crate::sundials_context::*;
 use crate::sunmatrix_dense::*;
-use crate::sundials_linearsolver::*;
 use crate::sunlinsol_dense::*;
 
 use std::ffi::c_void;
@@ -57,7 +56,7 @@ fn main() {
 
         let mut sunctx = std::ptr::null_mut();
 
-        let err_code =  SUNContext_Create(SUN_COMM_NULL,&mut sunctx) ;
+        let err_code =  SUNContext_Create(SUN_COMM_NULL, &mut sunctx) ;
 
         assert!(err_code == 0, "Failed to create SUNDIALS context: error code {}", err_code);
 

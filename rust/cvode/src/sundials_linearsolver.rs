@@ -120,6 +120,8 @@
 // /* Forward reference for pointer to SUNLinearSolver_Ops object */
 // typedef _SUNDIALS_STRUCT_ _generic_SUNLinearSolver_Ops* SUNLinearSolver_Ops;
 
+use crate::sundials_types::SUNErrCode;
+
 // /* Forward reference for pointer to SUNLinearSolver object */
 // typedef _SUNDIALS_STRUCT_ _generic_SUNLinearSolver* SUNLinearSolver;
 pub type SUNLinearSolver = *mut std::ffi::c_void;
@@ -158,6 +160,7 @@ pub type SUNLinearSolver = *mut std::ffi::c_void;
 //   SUNContext sunctx;
 // };
 
+unsafe extern "C" {
 // /* -----------------------------------------------------------------
 //  * Functions exported by SUNLinearSolver module
 //  * ----------------------------------------------------------------- */
@@ -226,6 +229,7 @@ pub type SUNLinearSolver = *mut std::ffi::c_void;
 
 // SUNDIALS_EXPORT
 // SUNErrCode SUNLinSolFree(SUNLinearSolver S);
+pub unsafe fn SUNLinSolFree(S: SUNLinearSolver) -> SUNErrCode;
 
 // /* -----------------------------------------------------------------
 //  * SUNLinearSolver return values
@@ -253,3 +257,4 @@ pub type SUNLinearSolver = *mut std::ffi::c_void;
 // }
 // #endif
 // #endif
+}

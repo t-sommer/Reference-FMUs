@@ -461,14 +461,16 @@ impl<T> FMU2<T> {
         let mut callbacks = fmi2CallbackFunctions {
             logger: logger,
             allocateMemory: if provideMemoryManagementFunctions {
-                allocateMemory } else {
+                allocateMemory
+            } else {
                 unsafe { transmute(std::ptr::null::<()>()) }
             },
             freeMemory: if provideMemoryManagementFunctions {
-                freeMemory } else {
+                freeMemory
+            } else {
                 unsafe { transmute(std::ptr::null::<()>()) }
             },
-            stepFinished:  unsafe { std::mem::transmute(std::ptr::null::<()>()) },
+            stepFinished: unsafe { std::mem::transmute(std::ptr::null::<()>()) },
             componentEnvironment: componentEnvironment,
         };
 
@@ -694,6 +696,85 @@ impl<T> FMU2<T> {
                 valueReferences.len(),
                 values,
                 status
+            );
+            self.log_call(status, message.as_str());
+        }
+
+        status
+    }
+
+    pub fn getFMUstate(&self, FMUstate: *mut fmi2FMUstate) -> fmi2Status {
+        todo!()
+    }
+
+    pub fn setFMUstate(&self, FMUstate: fmi2FMUstate) -> fmi2Status {
+        todo!()
+    }
+
+    pub fn freeFMUstate(&self, FMUstate: *mut fmi2FMUstate) -> fmi2Status {
+        todo!()
+    }
+
+    pub fn serializedFMUstateSize(
+        &self,
+        FMUstate: fmi2FMUstate,
+        size: *mut usize,
+    ) -> fmi2Status {
+        todo!()
+    }
+
+    pub fn serializeFMUstate(
+        &self,
+        FMUstate: fmi2FMUstate,
+        serializedState: *mut fmi2Byte,
+        size: usize,
+    ) -> fmi2Status {
+        todo!()
+    }
+
+    pub fn deSerializeFMUstate(
+        &self,
+        serializedState: *const fmi2Byte,
+        size: usize,
+        FMUstate: *mut fmi2FMUstate,
+    ) -> fmi2Status {
+        todo!()
+    }
+
+    // FMI 2.0 Getting partial derivatives
+    pub fn getDirectionalDerivative(
+        &self,
+        vUnknown_ref: &[fmi2ValueReference],
+        vKnown_ref: &[fmi2ValueReference],
+        dvKnown: &[fmi2Real],
+        dvUnknown: &mut [fmi2Real],
+    ) -> fmi2Status {
+
+        debug_assert_eq!(vUnknown_ref.len(), dvUnknown.len());
+        debug_assert_eq!(vKnown_ref.len(), dvKnown.len());
+
+        let status = unsafe {
+            (self.fmi2GetDirectionalDerivative)(
+                self.component,
+                vUnknown_ref.as_ptr(),
+                vUnknown_ref.len(),
+                vKnown_ref.as_ptr(),
+                vKnown_ref.len(),
+                dvKnown.as_ptr(),
+                dvUnknown.as_mut_ptr(),
+            )
+        };
+
+        if self.logCalls {
+            let message = format!(
+                "fmi2GetDirectionalDerivative(vUnknown_ref: {:?}, nUnknown: {}, vKnown_ref: {:?}, nKnown: {}, dvKnown: {:?}, dvUnknown: {:?}) -> {:?}",
+                vUnknown_ref,
+                vUnknown_ref.len(),
+                vKnown_ref,
+                vKnown_ref.len(),
+                dvKnown,
+                dvUnknown,
+                status,
             );
             self.log_call(status, message.as_str());
         }

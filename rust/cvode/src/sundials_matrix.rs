@@ -1,5 +1,8 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
+use std::ffi::c_void;
+use crate::sundials_types::SUNContext;
+
 // /* -----------------------------------------------------------------
 //  * Programmer(s): Daniel Reynolds @ UMBC
 //  *                David Gardner, Carol Woodward, Slaven Peles,
@@ -87,10 +90,11 @@
 
 // /* Forward reference for pointer to SUNMatrix_Ops object */
 // typedef _SUNDIALS_STRUCT_ _generic_SUNMatrix_Ops* SUNMatrix_Ops;
+pub type SUNMatrix_Ops = *mut c_void;
 
 // /* Forward reference for pointer to SUNMatrix object */
 // typedef _SUNDIALS_STRUCT_ _generic_SUNMatrix* SUNMatrix;
-pub type SUNMatrix = *mut std::ffi::c_void;
+pub type SUNMatrix = *mut _generic_SUNMatrix;
 
 // /* Structure containing function pointers to matrix operations  */
 // struct _generic_SUNMatrix_Ops
@@ -117,6 +121,11 @@ pub type SUNMatrix = *mut std::ffi::c_void;
 //   SUNMatrix_Ops ops;
 //   SUNContext sunctx;
 // };
+pub struct _generic_SUNMatrix {
+    pub content: *mut c_void,
+    pub ops: SUNMatrix_Ops,
+    pub sunctx: SUNContext,
+}
 
 unsafe extern "C" {
 // /* -----------------------------------------------------------------

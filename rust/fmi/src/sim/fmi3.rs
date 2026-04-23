@@ -12,9 +12,8 @@ use crate::{
     fmi3::FMU3,
     model_description::{ModelVariable, VariableType},
     sim::{
-        SimulationSettings,
+        SimulationSettings, SolverFactory,
         fmi3::{input::CSVInput, recorder::Recorder},
-        SolverFactory,
     },
     types::*,
     util::VariableValue,
@@ -591,10 +590,28 @@ pub fn simulate_me<S: SolverFactory>(
         )
     };
 
+    // create a HashMap value reference -> variable
+    let variables_map: HashMap<u32, &ModelVariable> = settings.model_description.modelVariables
+        .iter()
+        .map(|v| (v.valueReference, v))
+        .collect();
+
+    // Get Continuous States and Derivatives dynamically to ensure correct order
+    let derivatives_vrs: Vec<u32> = settings.model_description.derivatives.iter()
+        .map(|d| d.valueReference).collect();
+
+    let states_vrs: Vec<u32> = derivatives_vrs.iter()
+        .map(|s| variables_map[s].derivative.unwrap()).collect();
+
     let mut solver = factory.create(
         time,
         settings.model_description.derivatives.len(),
         settings.model_description.eventIndicators.len(),
+        settings.tolerance.unwrap_or(1e-6),
+        // vec![33554432, 33554433, 33554434, 33554435], // continuous states
+        // vec![1124073472, 1124073473, 1124073474, 1124073475], // derivatives
+        derivatives_vrs,
+        states_vrs,
         Box::new(|time| {
             fmu.setTime(time);
             Ok(())
@@ -613,9 +630,21 @@ pub fn simulate_me<S: SolverFactory>(
             fmu.getContinuousStates(continuous_states);
             Ok(())
         }),
+        Box::new(|nominals| {
+            fmu.getNominalsOfContinuousStates(nominals);
+            Ok(())
+        }),
         Box::new(|state_derivatives| {
             fmu.getContinuousStateDerivatives(state_derivatives);
             Ok(())
+        }),
+        Box::new(|unknowns, knowns, seed, sensitivity| {
+            let status = fmu.getDirectionalDerivative(unknowns, knowns, seed, sensitivity);
+            if status == fmiOK {
+                Ok(())
+            } else {
+                Err("Failed to get directional derivative".into())
+            }
         }),
         Box::new(|continuous_states| {
             fmu.setContinuousStates(continuous_states);
@@ -671,9 +700,9 @@ pub fn simulate_me<S: SolverFactory>(
 
         let is_time_event =
             nextEventTimeDefined && relative_eq!(nextEventTime, next_communication_point);
-
+    
         let (time_reached, is_state_event) = solver.step(next_communication_point)?;
-
+        
         time = time_reached;
 
         if is_input_event {
@@ -715,16 +744,12 @@ pub fn simulate_me<S: SolverFactory>(
                 }
             }
 
-            let mut reset_solver = false;
-
-            let mut discreteStatesNeedUpdate = false;
+            let mut discreteStatesNeedUpdate = true;
             let mut terminateSimulation = false;
-            let mut nominalsOfContinuousStatesChanged = false;
-            let mut valuesOfContinuousStatesChanged = false;
-            let mut nextEventTimeDefined = false;
-            let mut nextEventTime = 0.0;
+            let mut _nominalsOfContinuousStatesChanged = false;
+            let mut _valuesOfContinuousStatesChanged = false;
 
-            loop {
+            while discreteStatesNeedUpdate {
                 call(fmu.updateDiscreteStates(
                     &mut discreteStatesNeedUpdate,
                     &mut terminateSimulation,
@@ -738,20 +763,11 @@ pub fn simulate_me<S: SolverFactory>(
                     call(fmu.terminate())?;
                     return Ok(());
                 }
-
-                reset_solver |=
-                    nominalsOfContinuousStatesChanged || valuesOfContinuousStatesChanged;
-
-                if !discreteStatesNeedUpdate {
-                    break;
-                }
             }
 
             call(fmu.enterContinuousTimeMode())?;
 
-            if reset_solver {
-                solver.reset(time)?;
-            }
+            solver.reset(time)?;
         }
     }
 

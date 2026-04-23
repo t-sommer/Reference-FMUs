@@ -1,12 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
 use roxmltree::Node;
-use std::{
-    collections::HashMap,
-    error::Error,
-    path::Path,
-    str::FromStr,
-};
+use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 
 use crate::types::fmiValueReference;
 
@@ -117,6 +112,7 @@ pub struct ModelVariable {
     pub causality: Causality,
     pub variability: Variability,
     pub dimensions: Vec<Dimension>,
+    pub derivative: Option<fmiValueReference>,
 }
 
 #[derive(Debug)]
@@ -275,6 +271,7 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             causality,
             variability,
             dimensions,
+            derivative: None,
         };
 
         modelVariables.push(variable);
@@ -297,19 +294,21 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             fixedInternalStepSize: cs.optional_attribute("fixedInternalStepSize"),
             canHandleVariableCommunicationStepSize: cs
                 .bool_attribute("canHandleVariableCommunicationStepSize", false),
-            canNotUseMemoryManagementFunctions: cs.bool_attribute("canNotUseMemoryManagementFunctions", false),
+            canNotUseMemoryManagementFunctions: cs
+                .bool_attribute("canNotUseMemoryManagementFunctions", false),
         })
     } else {
         None
     };
-    
+
     let modelExchange =
-    if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
-        Some(ModelExchange {
-            modelIdentifier: me.required_attribute("modelIdentifier")?,
-            needsCompletedIntegratorStep: !me
-            .bool_attribute("completedIntegratorStepNotNeeded", false),
-            canNotUseMemoryManagementFunctions: me.bool_attribute("canNotUseMemoryManagementFunctions", false),
+        if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
+            Some(ModelExchange {
+                modelIdentifier: me.required_attribute("modelIdentifier")?,
+                needsCompletedIntegratorStep: !me
+                    .bool_attribute("completedIntegratorStepNotNeeded", false),
+                canNotUseMemoryManagementFunctions: me
+                    .bool_attribute("canNotUseMemoryManagementFunctions", false),
             })
         } else {
             None
@@ -446,6 +445,12 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             }
         };
 
+        let derivative = if let Some(vr) = child.attribute("derivative") {
+            Some(vr.parse().unwrap())
+        } else {
+            None
+        };
+
         let mut dimensions = vec![];
 
         for grand_child in child.children().filter(|e| e.has_tag_name("Dimension")) {
@@ -470,6 +475,7 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             causality,
             variability,
             dimensions,
+            derivative,
         };
 
         variables_for_vr.insert(valueReference, i);
@@ -498,9 +504,9 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     } else {
         None
     };
-    
+
     let modelExchange = if let Some(me) =
-    root.descendants().find(|n| n.has_tag_name("ModelExchange"))
+        root.descendants().find(|n| n.has_tag_name("ModelExchange"))
     {
         Some(ModelExchange {
             modelIdentifier: me.attribute("modelIdentifier").unwrap().to_string(),

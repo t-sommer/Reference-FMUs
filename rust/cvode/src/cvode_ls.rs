@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use crate::{sundials_linearsolver::SUNLinearSolver, sundials_matrix::SUNMatrix};
+use crate::{sundials_linearsolver::SUNLinearSolver, sundials_matrix::SUNMatrix, sundials_nvector::N_Vector, sundials_types::sunrealtype};
 
 // /* ----------------------------------------------------------------
 //  * Programmer(s): Daniel R. Reynolds @ UMBC
@@ -58,6 +58,8 @@ use crate::{sundials_linearsolver::SUNLinearSolver, sundials_matrix::SUNMatrix};
 // typedef int (*CVLsJacFn)(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix Jac,
 //                          void* user_data, N_Vector tmp1, N_Vector tmp2,
 //                          N_Vector tmp3);
+pub type CVLsJacFn = unsafe extern "C" fn(t: sunrealtype, y: N_Vector, fy: N_Vector, Jac: SUNMatrix,
+    user_data: *mut std::ffi::c_void, tmp1: N_Vector, tmp2: N_Vector, tmp3: N_Vector) -> i32;
 
 // typedef int (*CVLsPrecSetupFn)(sunrealtype t, N_Vector y, N_Vector fy,
 //                                sunbooleantype jok, sunbooleantype* jcurPtr,
@@ -93,6 +95,8 @@ pub unsafe fn CVodeSetLinearSolver(cvode_mem: *mut std::ffi::c_void, LS: SUNLine
 //   -----------------------------------------------------------------*/
 
 // SUNDIALS_EXPORT int CVodeSetJacFn(void* cvode_mem, CVLsJacFn jac);
+pub unsafe fn CVodeSetJacFn(cvode_mem: *mut std::ffi::c_void, jac: CVLsJacFn) -> i32;
+
 // SUNDIALS_EXPORT int CVodeSetJacEvalFrequency(void* cvode_mem, long int msbj);
 // SUNDIALS_EXPORT int CVodeSetLinearSolutionScaling(void* cvode_mem,
 //                                                   sunbooleantype onoff);

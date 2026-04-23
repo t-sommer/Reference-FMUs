@@ -1429,9 +1429,16 @@ impl FMU3 {
         };
         if self.logCalls {
             let message = format!(
-                "fmi3GetDirectionalDerivative(nUnknowns={}, nKnowns={})",
+                "fmi3GetDirectionalDerivative(unknowns: {:?}, nUnknowns: {}, knowns: {:?}, nKnowns: {}, seed: {:?}, nSeed: {}, sensitivity: {:?}, nSensitivity: {}) -> {:?}",
+                unknowns,
                 unknowns.len(),
+                knowns,
                 knowns.len(),
+                seed,
+                seed.len(),
+                sensitivity,
+                sensitivity.len(),
+                status,
             );
             self.log_call(status, &message);
         }

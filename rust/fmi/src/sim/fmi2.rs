@@ -373,6 +373,9 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
         time,
         settings.model_description.derivatives.len(),
         settings.model_description.numberOfEventIndicators,
+        settings.tolerance.unwrap_or(1e-4),
+        vec![0],
+        vec![0],
         Box::new(|time| {
             fmu.setTime(time);
             Ok(())
@@ -391,8 +394,16 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
             fmu.getContinuousStates(continuous_states);
             Ok(())
         }),
+        Box::new(|nominals| {
+            fmu.getNominalsOfContinuousStates(nominals);
+            Ok(())
+        }),
         Box::new(|state_derivatives| {
             fmu.getDerivatives(state_derivatives);
+            Ok(())
+        }),
+        Box::new(|unknowns, knowns, seed, sensitivity| {
+            fmu.getDirectionalDerivative(unknowns, knowns, seed, sensitivity);
             Ok(())
         }),
         Box::new(|continuous_states| {

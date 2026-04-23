@@ -1,6 +1,8 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use crate::{sundials_matrix::SUNMatrix, sundials_types::{SUNContext, sunindextype}};
+use std::ffi::c_void;
+
+use crate::{sundials_matrix::SUNMatrix, sundials_types::{SUNContext, sunindextype, sunrealtype}};
 
 // /*
 //  * -----------------------------------------------------------------
@@ -57,14 +59,25 @@ use crate::{sundials_matrix::SUNMatrix, sundials_types::{SUNContext, sunindextyp
 //   sunindextype ldata;
 //   sunrealtype** cols;
 // };
+pub struct _SUNMatrixContent_Dense {
+    pub M: sunindextype,
+    pub N: sunindextype,
+    pub data: *mut sunrealtype,
+    pub ldata: sunindextype,
+    pub cols: *mut *mut sunrealtype,
+}
 
 // typedef struct _SUNMatrixContent_Dense* SUNMatrixContent_Dense;
+pub type SUNMatrixContent_Dense = *mut _SUNMatrixContent_Dense;
 
 // /* ------------------------------------
 //  * Macros for access to SUNMATRIX_DENSE
 //  * ------------------------------------ */
 
 // #define SM_CONTENT_D(A) ((SUNMatrixContent_Dense)(A->content))
+pub fn SM_CONTENT_D(A: SUNMatrix) -> SUNMatrixContent_Dense {
+    unsafe { (*A).content as SUNMatrixContent_Dense }
+}
 
 // #define SM_ROWS_D(A) (SM_CONTENT_D(A)->M)
 
@@ -77,6 +90,10 @@ use crate::{sundials_matrix::SUNMatrix, sundials_types::{SUNContext, sunindextyp
 // #define SM_COLS_D(A) (SM_CONTENT_D(A)->cols)
 
 // #define SM_COLUMN_D(A, j) ((SM_CONTENT_D(A)->cols)[j])
+pub fn SM_COLUMN_D(A: SUNMatrix, j: usize) -> *mut sunrealtype {
+    let content = SM_CONTENT_D(A);
+    unsafe { (*content).cols.add(j).read() }
+}
 
 // #define SM_ELEMENT_D(A, i, j) ((SM_CONTENT_D(A)->cols)[j][i])
 

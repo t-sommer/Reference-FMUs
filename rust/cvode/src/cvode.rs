@@ -157,9 +157,15 @@ pub unsafe fn CVodeSVtolerances(cvode_mem: *mut std::ffi::c_void, reltol: sunrea
 // SUNDIALS_EXPORT int CVodeSetLSetupFrequency(void* cvode_mem, long int msbp);
 // SUNDIALS_EXPORT int CVodeSetMaxConvFails(void* cvode_mem, int maxncf);
 // SUNDIALS_EXPORT int CVodeSetMaxErrTestFails(void* cvode_mem, int maxnef);
+pub unsafe fn CVodeSetMaxErrTestFails(cvode_mem: *mut std::ffi::c_void, maxnef: i32) -> i32;
+
 // SUNDIALS_EXPORT int CVodeSetMaxHnilWarns(void* cvode_mem, int mxhnil);
 // SUNDIALS_EXPORT int CVodeSetMaxNonlinIters(void* cvode_mem, int maxcor);
+pub unsafe fn CVodeSetMaxNonlinIters(cvode_mem: *mut std::ffi::c_void, maxcor: i32) -> i32;
+
 // SUNDIALS_EXPORT int CVodeSetMaxNumSteps(void* cvode_mem, long int mxsteps);
+pub unsafe fn CVodeSetMaxNumSteps(cvode_mem: *mut std::ffi::c_void, mxsteps: i32) -> i32;
+
 // SUNDIALS_EXPORT int CVodeSetMaxOrd(void* cvode_mem, int maxord);
 // SUNDIALS_EXPORT int CVodeSetMaxStep(void* cvode_mem, sunrealtype hmax);
 // SUNDIALS_EXPORT int CVodeSetMinStep(void* cvode_mem, sunrealtype hmin);

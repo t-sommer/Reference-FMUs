@@ -1,4 +1,6 @@
-use crate::sim::{GetContinuousStateDerivativesFn, GetContinuousStatesFn, GetEventIndicatorsFn, SetContinuousInputsFn, SetContinuousStatesFn, SetTimeFn, Solver, SolverFactory};
+use crate::sim::{
+    GetContinuousStateDerivativesFn, GetContinuousStatesFn, GetDirectionalDerivativeFn, GetEventIndicatorsFn, GetNominalsOfContinuousStatesFn, SetContinuousInputsFn, SetContinuousStatesFn, SetTimeFn, Solver, SolverFactory
+};
 
 type Error = Box<dyn std::error::Error>;
 pub struct ForwardEuler<'a> {
@@ -27,14 +29,18 @@ impl SolverFactory for ForwardEulerFactory {
         start_time: f64,
         nx: usize,
         nz: usize,
+        _rtol: f64,
+        _unknowns: Vec<u32>,
+        _knowns: Vec<u32>,
         set_time: SetTimeFn<'a>,
         set_continuous_inputs: SetContinuousInputsFn<'a>,
         get_event_indicators: GetEventIndicatorsFn<'a>,
         get_continuous_states: GetContinuousStatesFn<'a>,
+        _get_nominals_of_continuous_states: GetNominalsOfContinuousStatesFn<'a>,
         get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
+        _get_directional_derivative: GetDirectionalDerivativeFn<'a>,
         set_continuous_states: SetContinuousStatesFn<'a>,
     ) -> Result<Box<dyn Solver + 'a>, Error> {
-
         let mut x = vec![0.0; nx];
         let der_x = vec![0.0; nx];
         let z = vec![0.0; nz];
@@ -44,7 +50,7 @@ impl SolverFactory for ForwardEulerFactory {
             (get_continuous_states)(x.as_mut_slice())?;
         }
 
-        if z.len() > 0 {        
+        if z.len() > 0 {
             (get_event_indicators)(pre_z.as_mut_slice())?;
         }
 
@@ -69,16 +75,14 @@ impl SolverFactory for ForwardEulerFactory {
 }
 
 impl<'a> ForwardEuler<'a> {
-
     fn do_fixed_step(&mut self) -> Result<(f64, bool), Error> {
-
         if self.x.len() > 0 {
             (self.get_continuous_state_derivatives)(self.der_x.as_mut_slice())?;
 
             for i in 0..self.x.len() {
                 self.x[i] += self.der_x[i] * self.fixed_step_size;
             }
-            
+
             (self.set_continuous_states)(self.x.as_slice())?;
         }
 
@@ -87,7 +91,7 @@ impl<'a> ForwardEuler<'a> {
         let time = self.start_time + self.n_steps as f64 * self.fixed_step_size;
 
         (self.set_time)(time)?;
-        
+
         (self.set_continuous_inputs)(time)?;
 
         let mut state_event = false;
@@ -108,11 +112,9 @@ impl<'a> ForwardEuler<'a> {
 
         Ok((time, state_event))
     }
-
 }
 
 impl<'a> Solver for ForwardEuler<'a> {
-    
     fn reset(&mut self, time: f64) -> Result<(), Error> {
         self.start_time = time;
         self.n_steps = 0;
@@ -125,10 +127,11 @@ impl<'a> Solver for ForwardEuler<'a> {
     }
 
     fn step(&mut self, next_time: f64) -> Result<(f64, bool), Error> {
-
         let mut time = self.start_time + self.n_steps as f64 * self.fixed_step_size;
 
-        if next_time - time < self.fixed_step_size && !relative_eq!(next_time, time + self.fixed_step_size) {
+        if next_time - time < self.fixed_step_size
+            && !relative_eq!(next_time, time + self.fixed_step_size)
+        {
             let message = format!(
                 "Next time {next_time} is too close to current time {time}. Minimum step size is {}.",
                 self.fixed_step_size
@@ -136,8 +139,9 @@ impl<'a> Solver for ForwardEuler<'a> {
             return Err(message.into());
         }
 
-        while time + self.fixed_step_size < next_time || relative_eq!(time + self.fixed_step_size, next_time) {
-
+        while time + self.fixed_step_size < next_time
+            || relative_eq!(time + self.fixed_step_size, next_time)
+        {
             let (time_reached, state_event) = self.do_fixed_step()?;
 
             if state_event {

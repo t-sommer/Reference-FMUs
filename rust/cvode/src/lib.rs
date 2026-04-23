@@ -8,17 +8,17 @@ pub mod sundials_linearsolver;
 pub mod sundials_matrix;
 pub mod sundials_nvector;
 pub mod sundials_types;
-pub mod sunmatrix_dense;
 pub mod sunlinsol_dense;
+pub mod sunmatrix_dense;
 
 use crate::cvode::*;
 use crate::cvode_ls::*;
 use crate::nvector_serial::*;
+use crate::sundials_context::*;
 use crate::sundials_nvector::*;
 use crate::sundials_types::*;
-use crate::sundials_context::*;
-use crate::sunmatrix_dense::*;
 use crate::sunlinsol_dense::*;
+use crate::sunmatrix_dense::*;
 
 use std::ffi::c_void;
 use std::slice::from_raw_parts_mut;
@@ -33,13 +33,18 @@ extern "C" fn f(t: sunrealtype, y: N_Vector, ydot: N_Vector, user_data: *mut c_v
     unsafe {
         let x = from_raw_parts_mut(NV_DATA_S(y), NV_LENGTH_S(y) as usize);
         let dx = from_raw_parts_mut(NV_DATA_S(ydot), NV_LENGTH_S(ydot) as usize);
-        dx[0] = x[1];  // velocity
-        dx[1] = -9.81;  // gravity
+        dx[0] = x[1]; // velocity
+        dx[1] = -9.81; // gravity
     }
     0
 }
 
-extern "C" fn g(t: sunrealtype, y: N_Vector, gout: *mut sunrealtype, user_data: *mut c_void) -> i32 {
+extern "C" fn g(
+    t: sunrealtype,
+    y: N_Vector,
+    gout: *mut sunrealtype,
+    user_data: *mut c_void,
+) -> i32 {
     unsafe {
         let x = as_slice_mut(y);
         *gout = x[0];
@@ -51,14 +56,18 @@ fn main() {
     unsafe {
         let RTOL = 1e-5;
         let T0 = 0.0;
-        let nx = 2;  // number of states (height, velocity)
-        let nz = 1;  // number of event indicators
+        let nx = 2; // number of states (height, velocity)
+        let nz = 1; // number of event indicators
 
         let mut sunctx = std::ptr::null_mut();
 
-        let err_code =  SUNContext_Create(SUN_COMM_NULL, &mut sunctx) ;
+        let err_code = SUNContext_Create(SUN_COMM_NULL, &mut sunctx);
 
-        assert!(err_code == 0, "Failed to create SUNDIALS context: error code {}", err_code);
+        assert!(
+            err_code == 0,
+            "Failed to create SUNDIALS context: error code {}",
+            err_code
+        );
 
         let abstol = N_VNew_Serial(nx, sunctx);
 
@@ -86,7 +95,11 @@ fn main() {
         assert!(flag == 0, "Failed to set tolerances: error code {}", flag);
 
         let flag = CVodeRootInit(cvode_mem, nz, g);
-        assert!(flag == 0, "Failed to initialize rootfinding: error code {}", flag);
+        assert!(
+            flag == 0,
+            "Failed to initialize rootfinding: error code {}",
+            flag
+        );
 
         let A = SUNDenseMatrix(nx, nx, sunctx);
         assert!(!A.is_null(), "Failed to create dense matrix");
@@ -101,13 +114,11 @@ fn main() {
         let mut tret = 0.0;
 
         while tret < 2.0 {
-
             println!("tret: {}, x_[0]: {}, x_[1]: {}", tret, x_[0], x_[1]);
 
             let flag = CVode(cvode_mem, tNext, y, &mut tret, CV_NORMAL);
 
             if flag == CV_ROOT_RETURN {
-
                 println!("root!");
 
                 let mut rootsfound = [1];
@@ -120,13 +131,15 @@ fn main() {
                 }
 
                 let flag = CVodeReInit(cvode_mem, tret, y);
-                assert!(flag == 0, "Failed to reinitialize CVODE: error code {}", flag);
-
+                assert!(
+                    flag == 0,
+                    "Failed to reinitialize CVODE: error code {}",
+                    flag
+                );
             } else {
                 assert!(flag == CV_SUCCESS, "Unexpected CVODE return code: {}", flag);
             }
-
-        }    
+        }
 
         let err_code = SUNContext_Free(&mut sunctx);
 
@@ -137,5 +150,3 @@ fn main() {
         println!("Success!");
     }
 }
-
-

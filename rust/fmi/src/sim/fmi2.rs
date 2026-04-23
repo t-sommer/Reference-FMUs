@@ -507,8 +507,6 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
                 }
             }
 
-            let mut reset_solver = false;
-
             loop {
                 call(fmu.newDiscreteStates(&mut event_info))?;
 
@@ -517,9 +515,6 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
                     return Ok(());
                 }
 
-                reset_solver |= event_info.nominalsOfContinuousStatesChanged != fmi2False
-                    || event_info.valuesOfContinuousStatesChanged != fmi2False;
-
                 if event_info.newDiscreteStatesNeeded == fmi2False {
                     break;
                 }
@@ -527,9 +522,7 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
 
             call(fmu.enterContinuousTimeMode())?;
 
-            if reset_solver {
-                solver.reset(time)?;
-            }
+            solver.reset(time)?;
         }
     }
 

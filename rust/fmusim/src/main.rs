@@ -181,7 +181,7 @@ fn main() -> ExitCode {
         if let Some(v) = internal_step_size {
             v
         } else {
-            (stop_time - start_time) / 10.0
+            (stop_time - start_time) / 500.0
         }
     };
 

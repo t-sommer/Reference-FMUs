@@ -1,15 +1,15 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-pub mod cvode;
-pub mod cvode_ls;
-pub mod nvector_serial;
-pub mod sundials_context;
-pub mod sundials_linearsolver;
-pub mod sundials_matrix;
-pub mod sundials_nvector;
-pub mod sundials_types;
-pub mod sunlinsol_dense;
-pub mod sunmatrix_dense;
+#[rustfmt::skip] pub mod cvode;
+#[rustfmt::skip] pub mod cvode_ls;
+#[rustfmt::skip] pub mod nvector_serial;
+#[rustfmt::skip] pub mod sundials_context;
+#[rustfmt::skip] pub mod sundials_linearsolver;
+#[rustfmt::skip] pub mod sundials_matrix;
+#[rustfmt::skip] pub mod sundials_nvector;
+#[rustfmt::skip] pub mod sundials_types;
+#[rustfmt::skip] pub mod sunlinsol_dense;
+#[rustfmt::skip] pub mod sunmatrix_dense;
 
 use crate::cvode::*;
 use crate::cvode_ls::*;

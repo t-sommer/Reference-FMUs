@@ -33,7 +33,8 @@ pub type GetEventIndicatorsFn<'a> = Box<dyn Fn(&mut [f64]) -> Result<(), Error> 
 pub type GetContinuousStatesFn<'a> = Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>;
 pub type GetNominalsOfContinuousStatesFn<'a> = Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>;
 pub type GetContinuousStateDerivativesFn<'a> = Box<dyn Fn(&mut [f64]) -> Result<(), Error> + 'a>;
-pub type GetDirectionalDerivativeFn<'a> = Box<dyn Fn(&[u32], &[u32], &[f64], &mut [f64]) -> Result<(), Error> + 'a>;
+pub type GetDirectionalDerivativeFn<'a> =
+    Box<dyn Fn(&[u32], &[u32], &[f64], &mut [f64]) -> Result<(), Error> + 'a>;
 pub type SetContinuousStatesFn<'a> = Box<dyn Fn(&[f64]) -> Result<(), Error> + 'a>;
 
 pub trait Solver {

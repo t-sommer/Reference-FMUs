@@ -2,7 +2,7 @@
 
 pub mod types;
 
-use crate::SHARED_LIBRARY_EXTENSION;
+use crate::{SHARED_LIBRARY_EXTENSION, fmi2};
 use colored::Colorize;
 use libloading::{Library, Symbol};
 use std::cell::RefCell;
@@ -715,11 +715,7 @@ impl<T> FMU2<T> {
         todo!()
     }
 
-    pub fn serializedFMUstateSize(
-        &self,
-        FMUstate: fmi2FMUstate,
-        size: *mut usize,
-    ) -> fmi2Status {
+    pub fn serializedFMUstateSize(&self, FMUstate: fmi2FMUstate, size: *mut usize) -> fmi2Status {
         todo!()
     }
 
@@ -749,7 +745,6 @@ impl<T> FMU2<T> {
         dvKnown: &[fmi2Real],
         dvUnknown: &mut [fmi2Real],
     ) -> fmi2Status {
-
         debug_assert_eq!(vUnknown_ref.len(), dvUnknown.len());
         debug_assert_eq!(vKnown_ref.len(), dvKnown.len());
 
@@ -852,9 +847,19 @@ impl FMU2<ME> {
         status
     }
 
-    pub fn newDiscreteStates(&self, eventInfo: &mut fmi2EventInfo) -> fmi2Status {
+    pub fn newDiscreteStates(
+        &self,
+        newDiscreteStatesNeeded: &mut bool,
+        terminateSimulation: &mut bool,
+        nominalsOfContinuousStatesChanged: &mut bool,
+        valuesOfContinuousStatesChanged: &mut bool,
+        nextEventTime: &mut Option<fmi2Real>,
+    ) -> fmi2Status {
+        let mut eventInfo = fmi2EventInfo::default();
+
         let status =
-            unsafe { (self.interfaceType.fmi2NewDiscreteStates)(self.component, eventInfo) };
+            unsafe { (self.interfaceType.fmi2NewDiscreteStates)(self.component, &mut eventInfo) };
+
         if self.logCalls {
             let message = format!(
                 "fmi2NewDiscreteStates(eventInfo={:?}) -> {:?}",
@@ -862,6 +867,18 @@ impl FMU2<ME> {
             );
             self.log_call(status, &message);
         }
+
+        *newDiscreteStatesNeeded = eventInfo.newDiscreteStatesNeeded != fmi2False;
+        *terminateSimulation = eventInfo.terminateSimulation != fmi2False;
+        *nominalsOfContinuousStatesChanged =
+            eventInfo.nominalsOfContinuousStatesChanged != fmi2False;
+        *valuesOfContinuousStatesChanged = eventInfo.valuesOfContinuousStatesChanged != fmi2False;
+        *nextEventTime = if eventInfo.nextEventTimeDefined != fmi2False {
+            Some(eventInfo.nextEventTime)
+        } else {
+            None
+        };
+
         status
     }
 

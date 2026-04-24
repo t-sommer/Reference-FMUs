@@ -6,12 +6,12 @@ pub mod recorder;
 use crate::{
     fmi2::{
         self, CS, FMU2, ME,
-        types::{fmi2Boolean, fmi2EventInfo, fmi2False},
+        types::{fmi2Boolean, fmi2False, fmi2Real},
     },
     model_description::{Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
-        SimulationSettings,
-        fmi2::{input::CSVInput, recorder::Recorder}, SolverFactory,
+        SimulationSettings, SolverFactory,
+        fmi2::{input::CSVInput, recorder::Recorder},
     },
     types::{
         fmiStatus::{self, fmiOK, fmiWarning},
@@ -272,7 +272,10 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
     Ok(())
 }
 
-pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_factory: &S) -> Result<(), Box<dyn Error>> {
+pub fn simulate_me<S: SolverFactory>(
+    settings: &SimulationSettings,
+    solver_factory: &S,
+) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;
@@ -336,17 +339,28 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
 
     call(fmu.exitInitializationMode())?;
 
-    let mut event_info = fmi2EventInfo::default();
+    let mut nextEventTime: Option<fmi2Real> = None;
 
     loop {
-        call(fmu.newDiscreteStates(&mut event_info))?;
+        let mut newDiscreteStatesNeeded: bool = false;
+        let mut terminateSimulation: bool = false;
+        let mut _nominalsOfContinuousStatesChanged: bool = false;
+        let mut _valuesOfContinuousStatesChanged: bool = false;
 
-        if event_info.terminateSimulation != fmi2False {
+        call(fmu.newDiscreteStates(
+            &mut newDiscreteStatesNeeded,
+            &mut terminateSimulation,
+            &mut _nominalsOfContinuousStatesChanged,
+            &mut _valuesOfContinuousStatesChanged,
+            &mut nextEventTime,
+        ))?;
+
+        if terminateSimulation {
             call(fmu.terminate())?;
             return Ok(());
         }
 
-        if event_info.newDiscreteStatesNeeded == fmi2False {
+        if !newDiscreteStatesNeeded {
             break;
         }
     }
@@ -439,11 +453,12 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
             }
         }
 
-        if event_info.nextEventTimeDefined != fmi2False
-            && next_communication_point > event_info.nextEventTime
-            && !relative_eq!(next_communication_point, event_info.nextEventTime)
-        {
-            next_communication_point = event_info.nextEventTime;
+        if let Some(next_event_time) = nextEventTime {
+            if next_communication_point > next_event_time
+                && !relative_eq!(next_communication_point, next_event_time)
+            {
+                next_communication_point = next_event_time;
+            }
         }
 
         if next_communication_point > stop_time
@@ -458,8 +473,8 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
             false
         };
 
-        let is_time_event = event_info.nextEventTimeDefined != fmi2False
-            && relative_eq!(event_info.nextEventTime, next_communication_point);
+        let is_time_event =
+            nextEventTime.is_some_and(|t| relative_eq!(t, next_communication_point));
 
         let (time_reached, is_state_event) = solver.step(next_communication_point)?;
 
@@ -508,14 +523,25 @@ pub fn simulate_me<S: SolverFactory>(settings: &SimulationSettings, solver_facto
             }
 
             loop {
-                call(fmu.newDiscreteStates(&mut event_info))?;
+                let mut newDiscreteStatesNeeded: bool = false;
+                let mut terminateSimulation: bool = false;
+                let mut _nominalsOfContinuousStatesChanged: bool = false;
+                let mut _valuesOfContinuousStatesChanged: bool = false;
 
-                if event_info.terminateSimulation != fmi2False {
+                call(fmu.newDiscreteStates(
+                    &mut newDiscreteStatesNeeded,
+                    &mut terminateSimulation,
+                    &mut _nominalsOfContinuousStatesChanged,
+                    &mut _valuesOfContinuousStatesChanged,
+                    &mut nextEventTime,
+                ))?;
+
+                if terminateSimulation {
                     call(fmu.terminate())?;
                     return Ok(());
                 }
 
-                if event_info.newDiscreteStatesNeeded == fmi2False {
+                if !newDiscreteStatesNeeded {
                     break;
                 }
             }

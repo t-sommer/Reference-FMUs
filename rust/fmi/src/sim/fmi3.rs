@@ -591,17 +591,25 @@ pub fn simulate_me<S: SolverFactory>(
     };
 
     // create a HashMap value reference -> variable
-    let variables_map: HashMap<u32, &ModelVariable> = settings.model_description.modelVariables
+    let variables_map: HashMap<u32, &ModelVariable> = settings
+        .model_description
+        .modelVariables
         .iter()
         .map(|v| (v.valueReference, v))
         .collect();
 
     // Get Continuous States and Derivatives dynamically to ensure correct order
-    let derivatives_vrs: Vec<u32> = settings.model_description.derivatives.iter()
-        .map(|d| d.valueReference).collect();
+    let derivatives_vrs: Vec<u32> = settings
+        .model_description
+        .derivatives
+        .iter()
+        .map(|d| d.valueReference)
+        .collect();
 
-    let states_vrs: Vec<u32> = derivatives_vrs.iter()
-        .map(|s| variables_map[s].derivative.unwrap()).collect();
+    let states_vrs: Vec<u32> = derivatives_vrs
+        .iter()
+        .map(|s| variables_map[s].derivative.unwrap())
+        .collect();
 
     let mut solver = factory.create(
         time,
@@ -700,9 +708,9 @@ pub fn simulate_me<S: SolverFactory>(
 
         let is_time_event =
             nextEventTimeDefined && relative_eq!(nextEventTime, next_communication_point);
-    
+
         let (time_reached, is_state_event) = solver.step(next_communication_point)?;
-        
+
         time = time_reached;
 
         if is_input_event {

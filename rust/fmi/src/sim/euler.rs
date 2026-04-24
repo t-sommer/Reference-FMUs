@@ -1,5 +1,7 @@
 use crate::sim::{
-    GetContinuousStateDerivativesFn, GetContinuousStatesFn, GetDirectionalDerivativeFn, GetEventIndicatorsFn, GetNominalsOfContinuousStatesFn, SetContinuousInputsFn, SetContinuousStatesFn, SetTimeFn, Solver, SolverFactory
+    GetContinuousStateDerivativesFn, GetContinuousStatesFn, GetDirectionalDerivativeFn,
+    GetEventIndicatorsFn, GetNominalsOfContinuousStatesFn, SetContinuousInputsFn,
+    SetContinuousStatesFn, SetTimeFn, Solver, SolverFactory,
 };
 
 type Error = Box<dyn std::error::Error>;

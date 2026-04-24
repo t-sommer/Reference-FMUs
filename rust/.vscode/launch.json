@@ -47,8 +47,8 @@
             "program": "${workspaceFolder}/target/debug/fmusim.exe",
             "preLaunchTask": "rust: cargo build fmusim",
             "args": [
-                // "E:\\WS\\dymola-fmi-compatibility\\2026x Refresh 1, 2026-04-08\\CoupledClutches_fmi3_Cvode.fmu",
-                "C:\\Users\\tsr2\\Documents\\Dymola\\Rectifier2.fmu",
+                "E:\\WS\\dymola-fmi-compatibility\\2026x Refresh 1, 2026-04-08\\CoupledClutches_fmi3_Cvode.fmu",
+                // "C:\\Users\\tsr2\\Documents\\Dymola\\Rectifier2.fmu",
                 // "C:\\Users\\tsr2\\Documents\\Dymola\\FullRobot3.fmu",
                 "--interface-type=me",
                 // "--log-fmi-calls",

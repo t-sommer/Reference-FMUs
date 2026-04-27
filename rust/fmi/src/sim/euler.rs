@@ -22,7 +22,7 @@ pub struct ForwardEuler<'a> {
 }
 
 pub struct ForwardEulerFactory {
-    pub step_size: f64,
+    pub fixes_step_size: f64,
 }
 
 impl SolverFactory for ForwardEulerFactory {
@@ -59,7 +59,7 @@ impl SolverFactory for ForwardEulerFactory {
         Ok(Box::new({
             ForwardEuler {
                 start_time,
-                fixed_step_size: self.step_size,
+                fixed_step_size: self.fixes_step_size,
                 n_steps: 0,
                 x,
                 der_x,

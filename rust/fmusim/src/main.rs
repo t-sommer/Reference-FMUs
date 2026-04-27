@@ -6,7 +6,7 @@ use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use fmi::{
     model_description::{Causality, MajorVersion, ModelVariable, read_model_description},
-    sim::{self, SimulationSettings},
+    sim::{self, SimulationSettings, euler::ForwardEulerFactory},
     util::extract_fmu,
 };
 use fmi_schema::validate_model_description_against_xsd;
@@ -22,6 +22,14 @@ enum InterfaceType {
     /// Co-Simulation
     #[value(name = "cs")]
     CoSimulation,
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+enum SolverType {
+    #[value(name = "euler")]
+    Euler,
+    #[value(name = "cvode")]
+    Cvode,
 }
 
 fn parse_start_value(s: &str) -> Result<(String, String), String> {
@@ -105,6 +113,10 @@ struct Args {
     /// Step size for fixed step solver (default: output interval)
     #[arg(long)]
     fixed_step_size: Option<f64>,
+
+    /// The solver to integrate Model Exchange FMUs
+    #[arg(long, value_enum, default_value_t = SolverType::Cvode)]
+    solver: SolverType,
 }
 
 fn main() -> ExitCode {
@@ -241,23 +253,24 @@ fn main() -> ExitCode {
         }
     };
 
+    let fixes_step_size = args.fixed_step_size.unwrap_or(output_interval);
     let start_time = std::time::Instant::now();
 
-    // let factory = ForwardEulerFactory {
-    //     step_size: args.fixed_step_size.unwrap_or(output_interval),
-    // };
-
-    let factory = CVodeSolverFactory {};
-
-    let result = match (&model_description.majorVersion, interface_type) {
-        (MajorVersion::V2, InterfaceType::ModelExchange) => {
-            sim::fmi2::simulate_me(&settings, &factory)
+    let result = match (&model_description.majorVersion, interface_type, args.solver) {
+        (MajorVersion::V2, InterfaceType::ModelExchange, SolverType::Euler) => {
+            sim::fmi2::simulate_me(&settings, &ForwardEulerFactory { fixes_step_size })
         }
-        (MajorVersion::V3, InterfaceType::ModelExchange) => {
-            sim::fmi3::simulate_me(&settings, &factory)
+        (MajorVersion::V2, InterfaceType::ModelExchange, SolverType::Cvode) => {
+            sim::fmi2::simulate_me(&settings, &CVodeSolverFactory)
         }
-        (MajorVersion::V2, InterfaceType::CoSimulation) => sim::fmi2::simulate_cs(&settings),
-        (MajorVersion::V3, InterfaceType::CoSimulation) => sim::fmi3::simulate_cs(&settings),
+        (MajorVersion::V3, InterfaceType::ModelExchange, SolverType::Euler) => {
+            sim::fmi3::simulate_me(&settings, &ForwardEulerFactory { fixes_step_size })
+        }
+        (MajorVersion::V3, InterfaceType::ModelExchange, SolverType::Cvode) => {
+            sim::fmi3::simulate_me(&settings, &CVodeSolverFactory)
+        }
+        (MajorVersion::V2, InterfaceType::CoSimulation, _) => sim::fmi2::simulate_cs(&settings),
+        (MajorVersion::V3, InterfaceType::CoSimulation, _) => sim::fmi3::simulate_cs(&settings),
     };
 
     let elapsed_time = start_time.elapsed();

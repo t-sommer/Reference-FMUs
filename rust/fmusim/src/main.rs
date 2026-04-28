@@ -6,11 +6,13 @@ use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use fmi::{
     model_description::{Causality, MajorVersion, ModelVariable, read_model_description},
-    sim::{self, SimulationSettings, euler::ForwardEulerFactory},
+    sim::{self, SimulationSettings, euler::ForwardEulerFactory, fmi2::Trajectory},
     util::extract_fmu,
 };
 use fmi_schema::validate_model_description_against_xsd;
-use std::{collections::HashMap, path::PathBuf, process::ExitCode};
+use plotly::{Configuration, Layout, Plot, Scatter, common::{Anchor, Line}, layout::{Annotation, Axis, GridPattern, LayoutGrid, Margin, RowOrder}};
+use zip::unstable::write;
+use std::{collections::HashMap, path::{Path, PathBuf}, process::ExitCode};
 
 use crate::cvode::CVodeSolverFactory;
 
@@ -81,6 +83,10 @@ struct Args {
     /// CSV file to store the output
     #[arg(long)]
     output_file: Option<String>,
+
+    /// Plot of up to 8 output variables
+    #[arg(long)]
+    show_plot: bool,
 
     /// Set start values for variables (format: variable_name=value)
     #[arg(long = "start-value", value_parser = parse_start_value)]
@@ -256,21 +262,55 @@ fn main() -> ExitCode {
     let fixes_step_size = args.fixed_step_size.unwrap_or(output_interval);
     let start_time = std::time::Instant::now();
 
-    let result = match (&model_description.majorVersion, interface_type, args.solver) {
-        (MajorVersion::V2, InterfaceType::ModelExchange, SolverType::Euler) => {
-            sim::fmi2::simulate_me(&settings, &ForwardEulerFactory { fixes_step_size })
-        }
-        (MajorVersion::V2, InterfaceType::ModelExchange, SolverType::Cvode) => {
-            sim::fmi2::simulate_me(&settings, &CVodeSolverFactory)
-        }
-        (MajorVersion::V3, InterfaceType::ModelExchange, SolverType::Euler) => {
-            sim::fmi3::simulate_me(&settings, &ForwardEulerFactory { fixes_step_size })
-        }
-        (MajorVersion::V3, InterfaceType::ModelExchange, SolverType::Cvode) => {
-            sim::fmi3::simulate_me(&settings, &CVodeSolverFactory)
-        }
-        (MajorVersion::V2, InterfaceType::CoSimulation, _) => sim::fmi2::simulate_cs(&settings),
-        (MajorVersion::V3, InterfaceType::CoSimulation, _) => sim::fmi3::simulate_cs(&settings),
+    let result = match &model_description.majorVersion {
+        MajorVersion::V2 => {
+            let mut sim_results = sim::fmi2::SimulationResult::new(settings.output_variables.clone());
+            
+            let result = match interface_type {
+                InterfaceType::ModelExchange => match args.solver {
+                    SolverType::Euler => sim::fmi2::simulate_me(&settings, &ForwardEulerFactory { fixes_step_size }, &mut sim_results),
+                    SolverType::Cvode => sim::fmi2::simulate_me(&settings, &CVodeSolverFactory, &mut sim_results),
+                },
+                InterfaceType::CoSimulation => sim::fmi2::simulate_cs(&settings, &mut sim_results),
+            };
+
+            if let Some(output_file) = settings.output_file.as_ref() {
+                if let Err(e) = write_fmi2_csv(&sim_results, output_file) {
+                    eprintln!("Failed to write output CSV file: {e}");
+                    return ExitCode::FAILURE;
+                }
+            }
+
+            if args.show_plot {
+                plot_fmi2_result(&sim_results).show();
+            }
+            
+            result
+        },
+        MajorVersion::V3 => {
+            let mut sim_results = sim::fmi3::SimulationResult::new(settings.output_variables.clone());
+            
+            let result = match interface_type {
+                InterfaceType::ModelExchange => match args.solver {
+                    SolverType::Euler => sim::fmi3::simulate_me(&settings, &ForwardEulerFactory { fixes_step_size }, &mut sim_results),
+                    SolverType::Cvode => sim::fmi3::simulate_me(&settings, &CVodeSolverFactory, &mut sim_results),
+                },
+                InterfaceType::CoSimulation => sim::fmi3::simulate_cs(&settings, &mut sim_results),
+            };
+
+            if let Some(output_file) = settings.output_file.as_ref() {
+                if let Err(e) = write_fmi3_csv(&sim_results, output_file) {
+                    eprintln!("Failed to write output CSV file: {e}");
+                    return ExitCode::FAILURE;
+                }
+            }
+
+            if args.show_plot {
+                plot_fmi3_result(&sim_results).show();
+            }
+            
+            result
+        },
     };
 
     let elapsed_time = start_time.elapsed();
@@ -286,4 +326,200 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+fn write_fmi2_csv(sim_results: &sim::fmi2::SimulationResult<'_>, output_file: &PathBuf) -> std::io::Result<()> {
+    let mut writer = csv::Writer::from_path(output_file)?;
+
+    let mut header = vec!["time".to_string()];
+
+    for variable in sim_results.variables.iter() {
+        header.push(variable.name.clone());
+    }
+    
+    writer.write_record(&header)?;
+
+    for i in 0..sim_results.time.len() {
+        let mut record = vec![sim_results.time[i].to_string()];
+
+        for trajectory in sim_results.trajectories.iter() {
+            match trajectory {
+                Trajectory::Real(values) => record.push(values[i].to_string()),
+                Trajectory::Integer(values) => record.push(values[i].to_string()),
+                Trajectory::Boolean(values) => record.push(values[i].to_string()),
+                Trajectory::String(values) => record.push(values[i].clone()),
+            }
+        }
+
+        writer.write_record(&record)?;
+    }
+
+    writer.flush()?;
+
+    Ok(())
+}
+
+fn write_fmi3_csv(sim_results: &sim::fmi3::SimulationResult<'_>, output_file: &PathBuf) -> std::io::Result<()> {
+    let mut writer = csv::Writer::from_path(output_file)?;
+
+    let mut header = vec!["time".to_string()];
+
+    for variable in sim_results.variables.iter() {
+        header.push(variable.name.clone());
+    }
+    
+    writer.write_record(&header)?;
+
+    for i in 0..sim_results.time.len() {
+        
+        let mut record = vec![sim_results.time[i].to_string()];
+
+        for trajectory in sim_results.trajectories.iter() {
+            match trajectory {
+                sim::fmi3::Trajectory::Float32(values) => {
+                    record.push((&values[i]).iter().map(|v| v.to_string()).collect::<Vec<String>>().join(" "));
+                },
+                sim::fmi3::Trajectory::Float64(values) => {
+                    record.push((&values[i]).iter().map(|v| v.to_string()).collect::<Vec<String>>().join(" "));
+                },
+                _ => todo!(),
+            }
+        }
+
+        writer.write_record(&record)?;
+    }
+
+    writer.flush()?;
+
+    Ok(())
+}
+
+fn plot_fmi2_result(sim_results: &sim::fmi2::SimulationResult<'_>) -> Plot {
+    let mut plot = Plot::new();
+
+    // Calculate height dynamically: 250px per variable subplot
+    let plot_height = 250 * sim_results.variables.len().max(1);
+
+    let mut layout = Layout::new()
+        // .title("Simulation Result".to_owned())
+        .x_axis(Axis::new().title("time"))
+        .grid(
+            LayoutGrid::new()
+                .rows(sim_results.variables.len())
+                .columns(1)
+                .pattern(GridPattern::Coupled), // Link X axes in the same column
+        )
+        .height(plot_height)
+        .auto_size(true)
+        .show_legend(false)
+        .margin(Margin::new().top(30).bottom(40).left(65).right(30));
+    
+    for (i, (variable, trajectory)) in sim_results.variables.iter().zip(&sim_results.trajectories).enumerate() {
+        let axis_title = variable.name.clone();
+        let y_axis = Axis::new().title(axis_title.as_str());
+
+        // Set y-axis titles for subplots (Plotly uses y1, y2, y3... internally)
+        layout = match i {
+            0 => layout.y_axis(y_axis),
+            1 => layout.y_axis2(y_axis),
+            2 => layout.y_axis3(y_axis),
+            3 => layout.y_axis4(y_axis),
+            4 => layout.y_axis5(y_axis),
+            5 => layout.y_axis6(y_axis),
+            6 => layout.y_axis7(y_axis),
+            7 => layout.y_axis8(y_axis),
+            _ => layout, // The plotly crate typed API typically supports up to y_axis8
+        };
+
+        let time = sim_results.time.clone();
+        let name = variable.name.clone();
+        let row = i + 1;
+
+        match trajectory {
+            sim::fmi2::Trajectory::Real(values) => {
+                    let mut trace = Scatter::new(time.clone(), values.clone()).name(name.clone());
+                    // Use the shared x-axis ("x") for all subplots
+                    trace = trace.x_axis("x").y_axis(format!("y{row}")).line(Line::new().width(1.5).color("#229AEB"));
+                    plot.add_trace(trace); 
+            },
+            _ => todo!(),
+        }
+    }
+
+    plot.set_layout(layout);
+
+    plot.set_configuration(Configuration::new().responsive(true));
+
+    plot 
+}
+
+fn plot_fmi3_result(sim_results: &sim::fmi3::SimulationResult<'_>) -> Plot {
+    
+    let mut plot = Plot::new();
+
+    // Calculate height dynamically: 250px per variable subplot
+    let plot_height = 250 * sim_results.variables.len().max(1);
+
+    let mut layout = Layout::new()
+        // .title("Simulation Result".to_owned())
+        .x_axis(Axis::new().title("time"))
+        .grid(
+            LayoutGrid::new()
+                .rows(sim_results.variables.len())
+                .columns(1)
+                .pattern(GridPattern::Coupled), // Link X axes in the same column
+        )
+        .height(plot_height)
+        .auto_size(true)
+        .show_legend(false)
+        .margin(Margin::new().top(30).bottom(40).left(65).right(30));
+    
+    for (i, (variable, trajectory)) in sim_results.variables.iter().zip(&sim_results.trajectories).enumerate() {
+        let axis_title = variable.name.clone();
+        let y_axis = Axis::new().title(axis_title.as_str());
+
+        // Set y-axis titles for subplots (Plotly uses y1, y2, y3... internally)
+        layout = match i {
+            0 => layout.y_axis(y_axis),
+            1 => layout.y_axis2(y_axis),
+            2 => layout.y_axis3(y_axis),
+            3 => layout.y_axis4(y_axis),
+            4 => layout.y_axis5(y_axis),
+            5 => layout.y_axis6(y_axis),
+            6 => layout.y_axis7(y_axis),
+            7 => layout.y_axis8(y_axis),
+            _ => layout, // The plotly crate typed API typically supports up to y_axis8
+        };
+
+        let time = sim_results.time.clone();
+        let name = variable.name.clone();
+        let row = i + 1;
+
+        match trajectory {
+            sim::fmi3::Trajectory::Float64(values) => {
+
+                if values.is_empty() { continue; }
+
+                for j in 0..values[0].len() {
+                    let scalar_values: Vec<f64> = values.iter().map(|v| v[j]).collect();
+                    let name = if values[0].len() > 1 { format!("{}[{}]", name, j) } else { name.clone() };
+                    let mut trace = Scatter::new(time.clone(), scalar_values).name(name);
+                    // Use the shared x-axis ("x") for all subplots
+                    trace = trace.x_axis("x").y_axis(format!("y{row}")).line(Line::new().width(1.5).color("#229AEB"));
+                    plot.add_trace(trace); 
+                }                
+            },
+            _ => todo!(),
+        }
+    }
+
+    plot.set_layout(layout);
+
+    plot.set_configuration(Configuration::new().responsive(true));  
+
+    plot
+
+    // plot.write_html(&filename);
+
+    // plot.show_html(&filename);
 }

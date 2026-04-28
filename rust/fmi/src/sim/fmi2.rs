@@ -6,7 +6,7 @@ pub mod recorder;
 use crate::{
     fmi2::{
         self, CS, FMU2, ME,
-        types::{fmi2Boolean, fmi2False, fmi2Real},
+        types::{fmi2Boolean, fmi2False, fmi2Real, fmi2True},
     },
     model_description::{Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
@@ -19,12 +19,39 @@ use crate::{
     },
     util::VariableValue,
 };
+
 use std::{
     collections::HashMap,
     error::Error,
     fs::File,
-    io::{Write, stdout},
 };
+
+#[derive(Debug, PartialEq)]
+pub enum Trajectory {
+    Real(Vec<f64>),
+    Integer(Vec<i32>),
+    Boolean(Vec<i32>),
+    String(Vec<String>),
+}
+
+pub struct SimulationResult<'a> {
+    pub variables: Vec<&'a ModelVariable>,
+    pub time: Vec<f64>,
+    pub trajectories: Vec<Trajectory>,
+}
+
+impl<'a> SimulationResult<'a> {
+    pub fn new(variables: Vec<&'a ModelVariable>) -> Self {
+        let trajectories = variables.iter().map(|variable| match variable.variableType {
+            crate::model_description::VariableType::Float64 => Trajectory::Real(vec![]),
+            crate::model_description::VariableType::Int32 | crate::model_description::VariableType::Enumeration => Trajectory::Integer(vec![]),
+            crate::model_description::VariableType::Boolean => Trajectory::Boolean(vec![]),
+            crate::model_description::VariableType::String => Trajectory::String(vec![]),
+            _ => panic!("Unexpected variable type: {:?}", variable.variableType),
+        }).collect();
+        SimulationResult { variables, time: vec![], trajectories }
+    }
+}
 
 fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
     if matches!(status, fmiOK | fmiWarning) {
@@ -59,7 +86,7 @@ pub fn parse_variable_value(
     }
 }
 
-fn set_variable_value<T>(
+pub fn set_variable_value<T>(
     fmu: &FMU2<T>,
     value_reference: fmiValueReference,
     value: &VariableValue,
@@ -68,7 +95,7 @@ fn set_variable_value<T>(
         VariableValue::Float64(values) => call(fmu.setReal(&[value_reference], values)),
         VariableValue::Int32(values) => call(fmu.setInteger(&[value_reference], values)),
         VariableValue::Boolean(values) => {
-            let values: Vec<fmi2Boolean> = values.iter().map(|v| if *v { 1 } else { 0 }).collect();
+            let values: Vec<fmi2Boolean> = values.iter().map(|v| if *v { fmi2True } else { fmi2False }).collect();
             call(fmu.setBoolean(&[value_reference], &values))
         }
         VariableValue::String(values) => {
@@ -115,7 +142,7 @@ fn set_start_values<T>(
     Ok(fmiOK)
 }
 
-pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
+pub fn simulate_cs(settings: &SimulationSettings, simulation_result: &mut SimulationResult) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;
@@ -180,23 +207,7 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
 
     call(fmu.exitInitializationMode())?;
 
-    let mut recorder = if let Some(path) = &settings.output_file {
-        let file = File::create(path).expect("Failed to create output file");
-        Recorder::new(
-            &settings.output_variables,
-            Box::new(file) as Box<dyn Write>,
-            &fmu,
-        )
-    } else {
-        let stdout_handle = stdout();
-        Recorder::new(
-            &settings.output_variables,
-            Box::new(stdout_handle) as Box<dyn Write>,
-            &fmu,
-        )
-    };
-
-    recorder.sample(time)?;
+    let mut recorder = Recorder::new(&fmu, simulation_result);
 
     let mut n_steps = 0;
 
@@ -275,6 +286,7 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
 pub fn simulate_me<S: SolverFactory>(
     settings: &SimulationSettings,
     solver_factory: &S,
+    simulation_result: &mut SimulationResult,
 ) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
@@ -367,22 +379,7 @@ pub fn simulate_me<S: SolverFactory>(
 
     call(fmu.enterContinuousTimeMode())?;
 
-    let mut recorder = if let Some(path) = &settings.output_file {
-        let file = File::create(path).expect("Failed to create output file");
-        Recorder::new(
-            &settings.output_variables,
-            Box::new(file) as Box<dyn Write>,
-            &fmu,
-        )
-    } else {
-        let stdout_handle = stdout();
-        Recorder::new(
-            &settings.output_variables,
-            Box::new(stdout_handle) as Box<dyn Write>,
-            &fmu,
-        )
-    };
-
+    let mut recorder = Recorder::new(&fmu, simulation_result);
     let mut solver = solver_factory.create(
         time,
         settings.model_description.derivatives.len(),
@@ -553,6 +550,30 @@ pub fn simulate_me<S: SolverFactory>(
     }
 
     call(fmu.terminate())?;
+
+    // let mut plot = Plot::new();
+
+    // for (variable, trajectory) in recorder.variables.iter().zip(recorder.trajectories) {
+
+    //     let time = recorder.time.clone();
+
+    //     match trajectory {
+    //         Trajectory::Real(values) => {
+    //             plot.add_trace(Scatter::new(time, values).name(variable.name.clone()));
+    //         }
+    //         Trajectory::Integer(values) => {
+    //             plot.add_trace(Scatter::new(time, values).name(variable.name.clone()));
+    //         }
+    //         Trajectory::Boolean(values) => {
+    //             plot.add_trace(Scatter::new(time, values).name(variable.name.clone()));
+    //         }
+    //         Trajectory::String(_) => {
+    //             // Plotting string variables is not supported
+    //         }
+    //     }
+    // }
+
+    // plot.write_html("plot.html");
 
     Ok(())
 }

@@ -5,7 +5,6 @@ use std::{
     collections::HashMap,
     error::Error,
     fs::File,
-    io::{Write, stdout},
 };
 
 use crate::{
@@ -22,6 +21,40 @@ use crate::{
     model_description::{Causality, ModelDescription},
     types::fmiStatus::{self, fmiOK, fmiWarning},
 };
+
+#[derive(Debug, PartialEq)]
+pub enum Trajectory {
+    Float32(Vec<Vec<fmiFloat32>>),
+    Float64(Vec<Vec<fmiFloat64>>),
+    Int8(Vec<Vec<fmiInt8>>),
+    UInt8(Vec<Vec<fmiUInt8>>),
+    Int16(Vec<Vec<fmiInt16>>),
+    UInt16(Vec<Vec<fmiUInt16>>),
+    Int32(Vec<Vec<fmiInt32>>),
+    UInt32(Vec<Vec<fmiUInt32>>),
+    Int64(Vec<Vec<fmiInt64>>),
+    UInt64(Vec<Vec<fmiUInt64>>),
+    Boolean(Vec<Vec<fmiBoolean>>),
+    String(Vec<Vec<String>>),
+    Binary(Vec<Vec<Vec<fmiByte>>>),
+    // Clock(fmiClock),
+}
+
+pub struct SimulationResult<'a> {
+    pub variables: Vec<&'a ModelVariable>,
+    pub time: Vec<f64>,
+    pub trajectories: Vec<Trajectory>,
+}
+
+impl<'a> SimulationResult<'a> {
+    pub fn new(variables: Vec<&'a ModelVariable>) -> Self {
+        let trajectories = variables.iter().map(|variable| match variable.variableType {
+            crate::model_description::VariableType::Float64 => Trajectory::Float64(vec![]),
+            _ => panic!("Unexpected variable type: {:?}", variable.variableType),
+        }).collect();
+        SimulationResult { variables, time: vec![], trajectories }
+    }
+}
 
 pub fn parse_variable_value(
     variable_type: &VariableType,
@@ -223,7 +256,7 @@ fn set_start_values(
     Ok(fmiOK)
 }
 
-pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> {
+pub fn simulate_cs(settings: &SimulationSettings, simulation_result: &mut SimulationResult) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;
@@ -320,21 +353,7 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
         call(fmu.enterStepMode())?;
     }
 
-    let mut recorder = if let Some(path) = &settings.output_file {
-        let file = File::create(path).expect("Failed to create output file");
-        Recorder::new(
-            &settings.output_variables,
-            Box::new(file) as Box<dyn Write>,
-            &fmu,
-        )
-    } else {
-        let stdout_handle = stdout();
-        Recorder::new(
-            &settings.output_variables,
-            Box::new(stdout_handle) as Box<dyn Write>,
-            &fmu,
-        )
-    };
+    let mut recorder = Recorder::new(&fmu, simulation_result);
 
     recorder.sample(time)?;
 
@@ -482,7 +501,8 @@ pub fn simulate_cs(settings: &SimulationSettings) -> Result<(), Box<dyn Error>> 
 
 pub fn simulate_me<S: SolverFactory>(
     settings: &SimulationSettings,
-    factory: &S,
+    solver_factory: &S,
+    simulation_result: &mut SimulationResult,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
@@ -574,21 +594,7 @@ pub fn simulate_me<S: SolverFactory>(
 
     call(fmu.enterContinuousTimeMode())?;
 
-    let mut recorder = if let Some(path) = &settings.output_file {
-        let file = File::create(path).expect("Failed to create output file");
-        Recorder::new(
-            &settings.output_variables,
-            Box::new(file) as Box<dyn Write>,
-            &fmu,
-        )
-    } else {
-        let stdout_handle = stdout();
-        Recorder::new(
-            &settings.output_variables,
-            Box::new(stdout_handle) as Box<dyn Write>,
-            &fmu,
-        )
-    };
+    let mut recorder = Recorder::new(&fmu, simulation_result);
 
     // create a HashMap value reference -> variable
     let variables_map: HashMap<u32, &ModelVariable> = settings
@@ -611,7 +617,7 @@ pub fn simulate_me<S: SolverFactory>(
         .map(|s| variables_map[s].derivative.unwrap())
         .collect();
 
-    let mut solver = factory.create(
+    let mut solver = solver_factory.create(
         time,
         settings.model_description.derivatives.len(),
         settings.model_description.eventIndicators.len(),

@@ -1,8 +1,7 @@
 use crate::{
     fmi2::FMU2,
-    model_description::{ModelVariable, VariableType},
+    model_description::{ModelVariable, VariableType}, sim::fmi2::{SimulationResult, Trajectory},
 };
-use std::io::Write;
 
 macro_rules! write_values {
     ($values:expr, $stream:expr) => {{
@@ -14,68 +13,104 @@ macro_rules! write_values {
         }
     }};
 }
-pub struct Recorder<'a, T: Write, I> {
-    pub variables: &'a Vec<&'a ModelVariable>,
-    pub stream: T,
-    pub fmu: &'a FMU2<I>,
+
+pub struct Recorder<'fmu, 'res, 'md, I> {
+    pub fmu: &'fmu FMU2<I>,
+    pub simulation_result: &'res mut SimulationResult<'md>,
 }
 
-impl<'a, T: Write, I> Recorder<'a, T, I> {
+impl<'fmu, 'res, 'md, I> Recorder<'fmu, 'res, 'md, I> {
     pub fn new(
-        variables: &'a Vec<&'a ModelVariable>,
-        stream: T,
-        fmu: &'a FMU2<I>,
-    ) -> Recorder<'a, T, I> {
-        let mut recorder = Recorder {
-            variables,
-            stream,
+        fmu: &'fmu FMU2<I>,
+        simulation_result: &'res mut SimulationResult<'md>,
+    ) -> Self {
+
+        // let mut trajectories = vec![];
+
+        // for variable in variables.iter() {
+
+        //     let trajectory = match variable.variableType {
+        //         VariableType::Float64 => Trajectory::Real(vec![]),
+        //         VariableType::Int32 | VariableType::Enumeration => Trajectory::Integer(vec![]),
+        //         VariableType::Boolean => Trajectory::Boolean(vec![]),
+        //         VariableType::String => Trajectory::String(vec![]),
+        //         _ => panic!("Unexpected variable type: {:?}", variable.variableType),
+        //     };
+
+        //     trajectories.push(trajectory);
+        // }
+
+        Recorder {
             fmu,
-        };
-        recorder.write_header().unwrap();
-        recorder
+            simulation_result,
+        }
     }
 
-    pub fn write_header(&mut self) -> std::io::Result<()> {
-        write!(self.stream, "\"time\"")?;
-        for variable in self.variables.iter() {
-            write!(self.stream, ",\"{}\"", variable.name)?;
-        }
-        writeln!(self.stream)?;
-        Ok(())
-    }
+    // pub fn write_header(&mut self) -> std::io::Result<()> {
+    //     write!(self.stream, "\"time\"")?;
+    //     for variable in self.simulation_result.variables.iter() {
+    //         write!(self.stream, ",\"{}\"", variable.name)?;
+    //     }
+    //     writeln!(self.stream)?;
+    //     Ok(())
+    // }
 
     pub fn sample(&mut self, time: f64) -> std::io::Result<()> {
-        write!(self.stream, "{time}")?;
 
-        for variable in self.variables {
-            write!(self.stream, ",")?;
+        // write!(self.stream, "{time}")?;
+
+        self.simulation_result.time.push(time);
+
+        for (variable, trajectory) in self.simulation_result.variables.iter().zip(self.simulation_result
+            .trajectories.iter_mut()) {
+            // write!(self.stream, ",")?;
             let value_references = [variable.valueReference];
             match variable.variableType {
                 VariableType::Float64 => {
                     let mut values = vec![0.0];
                     self.fmu.getReal(&value_references, &mut values);
-                    write_values!(values, self.stream);
+                    // write_values!(values, self.stream);
+                    if let Trajectory::Real(vec) = trajectory {
+                        vec.push(values[0]);
+                    } else {
+                        panic!("Trajectory type mismatch for variable {}", variable.name);
+                    }
                 }
                 VariableType::Int32 | VariableType::Enumeration => {
                     let mut values = vec![0];
                     self.fmu.getInteger(&value_references, &mut values);
-                    write_values!(values, self.stream);
+                    // write_values!(values, self.stream);
+                    if let Trajectory::Integer(vec) = trajectory {
+                        vec.push(values[0]);
+                    } else {
+                        panic!("Trajectory type mismatch for variable {}", variable.name);
+                    }
                 }
                 VariableType::Boolean => {
                     let mut values = vec![0];
                     self.fmu.getBoolean(&value_references, &mut values);
-                    write_values!(values, self.stream);
+                    // write_values!(values, self.stream);
+                    if let Trajectory::Boolean(vec) = trajectory {
+                        vec.push(values[0]);
+                    } else {
+                        panic!("Trajectory type mismatch for variable {}", variable.name);
+                    }
                 }
                 VariableType::String => {
                     let mut values = vec![String::new()];
                     self.fmu.getString(&value_references, &mut values);
-                    write_values!(values, self.stream);
+                    // write_values!(values, self.stream);
+                    if let Trajectory::String(vec) = trajectory {
+                        vec.push(values[0].clone());
+                    } else {
+                        panic!("Trajectory type mismatch for variable {}", variable.name);
+                    }
                 }
                 _ => panic!("Unexpected variable type: {:?}", variable.variableType),
             }
         }
 
-        writeln!(self.stream)?;
+        // writeln!(self.stream)?;
 
         Ok(())
     }

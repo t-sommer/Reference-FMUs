@@ -397,11 +397,9 @@ fn write_fmi3_csv(sim_results: &sim::fmi3::SimulationResult<'_>, output_file: &P
 fn plot_fmi2_result(sim_results: &sim::fmi2::SimulationResult<'_>) -> Plot {
     let mut plot = Plot::new();
 
-    // Calculate height dynamically: 250px per variable subplot
     let plot_height = 250 * sim_results.variables.len().max(1);
 
     let mut layout = Layout::new()
-        // .title("Simulation Result".to_owned())
         .x_axis(Axis::new().title("time"))
         .grid(
             LayoutGrid::new()
@@ -457,7 +455,6 @@ fn plot_fmi3_result(sim_results: &sim::fmi3::SimulationResult<'_>) -> Plot {
     
     let mut plot = Plot::new();
 
-    // Calculate height dynamically: 250px per variable subplot
     let plot_height = 250 * sim_results.variables.len().max(1);
 
     let mut layout = Layout::new()
@@ -518,8 +515,4 @@ fn plot_fmi3_result(sim_results: &sim::fmi3::SimulationResult<'_>) -> Plot {
     plot.set_configuration(Configuration::new().responsive(true));  
 
     plot
-
-    // plot.write_html(&filename);
-
-    // plot.show_html(&filename);
 }

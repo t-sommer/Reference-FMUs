@@ -1,26 +1,7 @@
 use crate::{
     fmi3::FMU3,
-    model_description::{Dimension, ModelVariable, VariableType}, sim::fmi3::{SimulationResult, Trajectory},
+    model_description::{Dimension, VariableType}, sim::fmi3::{SimulationResult, Trajectory},
 };
-use std::io::Write;
-
-macro_rules! write_values {
-    ($values:expr, $stream:expr) => {{
-        for (i, value) in $values.iter().enumerate() {
-            if i > 0 {
-                write!($stream, " ")?;
-            }
-            write!($stream, "{value}")?;
-        }
-    }};
-}
-
-// pub struct Recorder<'a, T: Write> {
-//     pub variables: &'a Vec<&'a ModelVariable>,
-//     pub stream: T,
-//     pub fmu: &'a FMU3,
-//     sizes: Vec<usize>,
-// }
 
 pub struct Recorder<'fmu, 'res, 'md> {
     pub fmu: &'fmu FMU3,

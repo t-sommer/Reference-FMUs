@@ -289,7 +289,7 @@ fn main() -> ExitCode {
             };
 
             if let Some(output_file) = settings.output_file.as_ref() {
-                if let Err(e) = sim::fmi2::write_csv(&sim_results, output_file) {
+                if let Err(e) = sim::fmi2::csv::write_csv(&sim_results, output_file) {
                     eprintln!("Failed to write output CSV file: {e}");
                     return ExitCode::FAILURE;
                 }
@@ -320,7 +320,7 @@ fn main() -> ExitCode {
             };
 
             if let Some(output_file) = settings.output_file.as_ref() {
-                if let Err(e) = sim::fmi3::write_csv(&sim_results, output_file) {
+                if let Err(e) = sim::fmi3::csv::write_csv(&sim_results, output_file) {
                     eprintln!("Failed to write output CSV file: {e}");
                     return ExitCode::FAILURE;
                 }

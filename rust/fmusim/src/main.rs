@@ -6,21 +6,20 @@ use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use fmi::{
     model_description::{Causality, MajorVersion, ModelVariable, read_model_description},
-    sim::{self, SimulationSettings, euler::ForwardEulerFactory, fmi2::Trajectory},
+    sim::{self, SimulationSettings, euler::ForwardEulerFactory},
     util::extract_fmu,
 };
 use fmi_schema::validate_model_description_against_xsd;
 use plotly::{
     Configuration, Layout, Plot, Scatter,
-    common::{Anchor, Line},
-    layout::{Annotation, Axis, GridPattern, LayoutGrid, Margin, RowOrder},
+    common::Line,
+    layout::{Axis, GridPattern, LayoutGrid, Margin},
 };
 use std::{
     collections::HashMap,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::ExitCode,
 };
-use zip::unstable::write;
 
 use crate::cvode::CVodeSolverFactory;
 
@@ -290,7 +289,7 @@ fn main() -> ExitCode {
             };
 
             if let Some(output_file) = settings.output_file.as_ref() {
-                if let Err(e) = write_fmi2_csv(&sim_results, output_file) {
+                if let Err(e) = sim::fmi2::write_csv(&sim_results, output_file) {
                     eprintln!("Failed to write output CSV file: {e}");
                     return ExitCode::FAILURE;
                 }
@@ -321,7 +320,7 @@ fn main() -> ExitCode {
             };
 
             if let Some(output_file) = settings.output_file.as_ref() {
-                if let Err(e) = write_fmi3_csv(&sim_results, output_file) {
+                if let Err(e) = sim::fmi3::write_csv(&sim_results, output_file) {
                     eprintln!("Failed to write output CSV file: {e}");
                     return ExitCode::FAILURE;
                 }
@@ -348,89 +347,6 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
-}
-
-fn write_fmi2_csv(
-    sim_results: &sim::fmi2::SimulationResult<'_>,
-    output_file: &PathBuf,
-) -> std::io::Result<()> {
-    let mut writer = csv::Writer::from_path(output_file)?;
-
-    let mut header = vec!["time".to_string()];
-
-    for variable in sim_results.variables.iter() {
-        header.push(variable.name.clone());
-    }
-
-    writer.write_record(&header)?;
-
-    for i in 0..sim_results.time.len() {
-        let mut record = vec![sim_results.time[i].to_string()];
-
-        for trajectory in sim_results.trajectories.iter() {
-            match trajectory {
-                Trajectory::Real(values) => record.push(values[i].to_string()),
-                Trajectory::Integer(values) => record.push(values[i].to_string()),
-                Trajectory::Boolean(values) => record.push(values[i].to_string()),
-                Trajectory::String(values) => record.push(values[i].clone()),
-            }
-        }
-
-        writer.write_record(&record)?;
-    }
-
-    writer.flush()?;
-
-    Ok(())
-}
-
-fn write_fmi3_csv(
-    sim_results: &sim::fmi3::SimulationResult<'_>,
-    output_file: &PathBuf,
-) -> std::io::Result<()> {
-    let mut writer = csv::Writer::from_path(output_file)?;
-
-    let mut header = vec!["time".to_string()];
-
-    for variable in sim_results.variables.iter() {
-        header.push(variable.name.clone());
-    }
-
-    writer.write_record(&header)?;
-
-    for i in 0..sim_results.time.len() {
-        let mut record = vec![sim_results.time[i].to_string()];
-
-        for trajectory in sim_results.trajectories.iter() {
-            match trajectory {
-                sim::fmi3::Trajectory::Float32(values) => {
-                    record.push(
-                        (&values[i])
-                            .iter()
-                            .map(|v| v.to_string())
-                            .collect::<Vec<String>>()
-                            .join(" "),
-                    );
-                }
-                sim::fmi3::Trajectory::Float64(values) => {
-                    record.push(
-                        (&values[i])
-                            .iter()
-                            .map(|v| v.to_string())
-                            .collect::<Vec<String>>()
-                            .join(" "),
-                    );
-                }
-                _ => todo!(),
-            }
-        }
-
-        writer.write_record(&record)?;
-    }
-
-    writer.flush()?;
-
-    Ok(())
 }
 
 fn plot_fmi2_result(sim_results: &sim::fmi2::SimulationResult<'_>) -> Plot {

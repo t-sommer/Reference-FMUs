@@ -1,11 +1,7 @@
 pub mod input;
 pub mod recorder;
 
-use std::{
-    collections::HashMap,
-    error::Error,
-    fs::File,
-};
+use std::{collections::HashMap, error::Error, fs::File};
 
 use crate::{
     fmi3::FMU3,
@@ -48,11 +44,18 @@ pub struct SimulationResult<'a> {
 
 impl<'a> SimulationResult<'a> {
     pub fn new(variables: Vec<&'a ModelVariable>) -> Self {
-        let trajectories = variables.iter().map(|variable| match variable.variableType {
-            crate::model_description::VariableType::Float64 => Trajectory::Float64(vec![]),
-            _ => panic!("Unexpected variable type: {:?}", variable.variableType),
-        }).collect();
-        SimulationResult { variables, time: vec![], trajectories }
+        let trajectories = variables
+            .iter()
+            .map(|variable| match variable.variableType {
+                crate::model_description::VariableType::Float64 => Trajectory::Float64(vec![]),
+                _ => panic!("Unexpected variable type: {:?}", variable.variableType),
+            })
+            .collect();
+        SimulationResult {
+            variables,
+            time: vec![],
+            trajectories,
+        }
     }
 }
 
@@ -256,7 +259,10 @@ fn set_start_values(
     Ok(fmiOK)
 }
 
-pub fn simulate_cs(settings: &SimulationSettings, simulation_result: &mut SimulationResult) -> Result<(), Box<dyn Error>> {
+pub fn simulate_cs(
+    settings: &SimulationSettings,
+    simulation_result: &mut SimulationResult,
+) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;

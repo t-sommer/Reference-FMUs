@@ -10,9 +10,17 @@ use fmi::{
     util::extract_fmu,
 };
 use fmi_schema::validate_model_description_against_xsd;
-use plotly::{Configuration, Layout, Plot, Scatter, common::{Anchor, Line}, layout::{Annotation, Axis, GridPattern, LayoutGrid, Margin, RowOrder}};
+use plotly::{
+    Configuration, Layout, Plot, Scatter,
+    common::{Anchor, Line},
+    layout::{Annotation, Axis, GridPattern, LayoutGrid, Margin, RowOrder},
+};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    process::ExitCode,
+};
 use zip::unstable::write;
-use std::{collections::HashMap, path::{Path, PathBuf}, process::ExitCode};
 
 use crate::cvode::CVodeSolverFactory;
 
@@ -264,12 +272,19 @@ fn main() -> ExitCode {
 
     let result = match &model_description.majorVersion {
         MajorVersion::V2 => {
-            let mut sim_results = sim::fmi2::SimulationResult::new(settings.output_variables.clone());
-            
+            let mut sim_results =
+                sim::fmi2::SimulationResult::new(settings.output_variables.clone());
+
             let result = match interface_type {
                 InterfaceType::ModelExchange => match args.solver {
-                    SolverType::Euler => sim::fmi2::simulate_me(&settings, &ForwardEulerFactory { fixes_step_size }, &mut sim_results),
-                    SolverType::Cvode => sim::fmi2::simulate_me(&settings, &CVodeSolverFactory, &mut sim_results),
+                    SolverType::Euler => sim::fmi2::simulate_me(
+                        &settings,
+                        &ForwardEulerFactory { fixes_step_size },
+                        &mut sim_results,
+                    ),
+                    SolverType::Cvode => {
+                        sim::fmi2::simulate_me(&settings, &CVodeSolverFactory, &mut sim_results)
+                    }
                 },
                 InterfaceType::CoSimulation => sim::fmi2::simulate_cs(&settings, &mut sim_results),
             };
@@ -284,16 +299,23 @@ fn main() -> ExitCode {
             if args.show_plot {
                 plot_fmi2_result(&sim_results).show();
             }
-            
+
             result
-        },
+        }
         MajorVersion::V3 => {
-            let mut sim_results = sim::fmi3::SimulationResult::new(settings.output_variables.clone());
-            
+            let mut sim_results =
+                sim::fmi3::SimulationResult::new(settings.output_variables.clone());
+
             let result = match interface_type {
                 InterfaceType::ModelExchange => match args.solver {
-                    SolverType::Euler => sim::fmi3::simulate_me(&settings, &ForwardEulerFactory { fixes_step_size }, &mut sim_results),
-                    SolverType::Cvode => sim::fmi3::simulate_me(&settings, &CVodeSolverFactory, &mut sim_results),
+                    SolverType::Euler => sim::fmi3::simulate_me(
+                        &settings,
+                        &ForwardEulerFactory { fixes_step_size },
+                        &mut sim_results,
+                    ),
+                    SolverType::Cvode => {
+                        sim::fmi3::simulate_me(&settings, &CVodeSolverFactory, &mut sim_results)
+                    }
                 },
                 InterfaceType::CoSimulation => sim::fmi3::simulate_cs(&settings, &mut sim_results),
             };
@@ -308,9 +330,9 @@ fn main() -> ExitCode {
             if args.show_plot {
                 plot_fmi3_result(&sim_results).show();
             }
-            
+
             result
-        },
+        }
     };
 
     let elapsed_time = start_time.elapsed();
@@ -328,7 +350,10 @@ fn main() -> ExitCode {
     }
 }
 
-fn write_fmi2_csv(sim_results: &sim::fmi2::SimulationResult<'_>, output_file: &PathBuf) -> std::io::Result<()> {
+fn write_fmi2_csv(
+    sim_results: &sim::fmi2::SimulationResult<'_>,
+    output_file: &PathBuf,
+) -> std::io::Result<()> {
     let mut writer = csv::Writer::from_path(output_file)?;
 
     let mut header = vec!["time".to_string()];
@@ -336,7 +361,7 @@ fn write_fmi2_csv(sim_results: &sim::fmi2::SimulationResult<'_>, output_file: &P
     for variable in sim_results.variables.iter() {
         header.push(variable.name.clone());
     }
-    
+
     writer.write_record(&header)?;
 
     for i in 0..sim_results.time.len() {
@@ -359,7 +384,10 @@ fn write_fmi2_csv(sim_results: &sim::fmi2::SimulationResult<'_>, output_file: &P
     Ok(())
 }
 
-fn write_fmi3_csv(sim_results: &sim::fmi3::SimulationResult<'_>, output_file: &PathBuf) -> std::io::Result<()> {
+fn write_fmi3_csv(
+    sim_results: &sim::fmi3::SimulationResult<'_>,
+    output_file: &PathBuf,
+) -> std::io::Result<()> {
     let mut writer = csv::Writer::from_path(output_file)?;
 
     let mut header = vec!["time".to_string()];
@@ -367,21 +395,32 @@ fn write_fmi3_csv(sim_results: &sim::fmi3::SimulationResult<'_>, output_file: &P
     for variable in sim_results.variables.iter() {
         header.push(variable.name.clone());
     }
-    
+
     writer.write_record(&header)?;
 
     for i in 0..sim_results.time.len() {
-        
         let mut record = vec![sim_results.time[i].to_string()];
 
         for trajectory in sim_results.trajectories.iter() {
             match trajectory {
                 sim::fmi3::Trajectory::Float32(values) => {
-                    record.push((&values[i]).iter().map(|v| v.to_string()).collect::<Vec<String>>().join(" "));
-                },
+                    record.push(
+                        (&values[i])
+                            .iter()
+                            .map(|v| v.to_string())
+                            .collect::<Vec<String>>()
+                            .join(" "),
+                    );
+                }
                 sim::fmi3::Trajectory::Float64(values) => {
-                    record.push((&values[i]).iter().map(|v| v.to_string()).collect::<Vec<String>>().join(" "));
-                },
+                    record.push(
+                        (&values[i])
+                            .iter()
+                            .map(|v| v.to_string())
+                            .collect::<Vec<String>>()
+                            .join(" "),
+                    );
+                }
                 _ => todo!(),
             }
         }
@@ -411,8 +450,13 @@ fn plot_fmi2_result(sim_results: &sim::fmi2::SimulationResult<'_>) -> Plot {
         .auto_size(true)
         .show_legend(false)
         .margin(Margin::new().top(30).bottom(40).left(65).right(30));
-    
-    for (i, (variable, trajectory)) in sim_results.variables.iter().zip(&sim_results.trajectories).enumerate() {
+
+    for (i, (variable, trajectory)) in sim_results
+        .variables
+        .iter()
+        .zip(&sim_results.trajectories)
+        .enumerate()
+    {
         let axis_title = variable.name.clone();
         let y_axis = Axis::new().title(axis_title.as_str());
 
@@ -435,11 +479,14 @@ fn plot_fmi2_result(sim_results: &sim::fmi2::SimulationResult<'_>) -> Plot {
 
         match trajectory {
             sim::fmi2::Trajectory::Real(values) => {
-                    let mut trace = Scatter::new(time.clone(), values.clone()).name(name.clone());
-                    // Use the shared x-axis ("x") for all subplots
-                    trace = trace.x_axis("x").y_axis(format!("y{row}")).line(Line::new().width(1.5).color("#229AEB"));
-                    plot.add_trace(trace); 
-            },
+                let mut trace = Scatter::new(time.clone(), values.clone()).name(name.clone());
+                // Use the shared x-axis ("x") for all subplots
+                trace = trace
+                    .x_axis("x")
+                    .y_axis(format!("y{row}"))
+                    .line(Line::new().width(1.5).color("#229AEB"));
+                plot.add_trace(trace);
+            }
             _ => todo!(),
         }
     }
@@ -448,11 +495,10 @@ fn plot_fmi2_result(sim_results: &sim::fmi2::SimulationResult<'_>) -> Plot {
 
     plot.set_configuration(Configuration::new().responsive(true));
 
-    plot 
+    plot
 }
 
 fn plot_fmi3_result(sim_results: &sim::fmi3::SimulationResult<'_>) -> Plot {
-    
     let mut plot = Plot::new();
 
     let plot_height = 250 * sim_results.variables.len().max(1);
@@ -470,8 +516,13 @@ fn plot_fmi3_result(sim_results: &sim::fmi3::SimulationResult<'_>) -> Plot {
         .auto_size(true)
         .show_legend(false)
         .margin(Margin::new().top(30).bottom(40).left(65).right(30));
-    
-    for (i, (variable, trajectory)) in sim_results.variables.iter().zip(&sim_results.trajectories).enumerate() {
+
+    for (i, (variable, trajectory)) in sim_results
+        .variables
+        .iter()
+        .zip(&sim_results.trajectories)
+        .enumerate()
+    {
         let axis_title = variable.name.clone();
         let y_axis = Axis::new().title(axis_title.as_str());
 
@@ -494,25 +545,33 @@ fn plot_fmi3_result(sim_results: &sim::fmi3::SimulationResult<'_>) -> Plot {
 
         match trajectory {
             sim::fmi3::Trajectory::Float64(values) => {
-
-                if values.is_empty() { continue; }
+                if values.is_empty() {
+                    continue;
+                }
 
                 for j in 0..values[0].len() {
                     let scalar_values: Vec<f64> = values.iter().map(|v| v[j]).collect();
-                    let name = if values[0].len() > 1 { format!("{}[{}]", name, j) } else { name.clone() };
+                    let name = if values[0].len() > 1 {
+                        format!("{}[{}]", name, j)
+                    } else {
+                        name.clone()
+                    };
                     let mut trace = Scatter::new(time.clone(), scalar_values).name(name);
                     // Use the shared x-axis ("x") for all subplots
-                    trace = trace.x_axis("x").y_axis(format!("y{row}")).line(Line::new().width(1.5).color("#229AEB"));
-                    plot.add_trace(trace); 
-                }                
-            },
+                    trace = trace
+                        .x_axis("x")
+                        .y_axis(format!("y{row}"))
+                        .line(Line::new().width(1.5).color("#229AEB"));
+                    plot.add_trace(trace);
+                }
+            }
             _ => todo!(),
         }
     }
 
     plot.set_layout(layout);
 
-    plot.set_configuration(Configuration::new().responsive(true));  
+    plot.set_configuration(Configuration::new().responsive(true));
 
     plot
 }

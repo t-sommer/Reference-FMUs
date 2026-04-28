@@ -20,11 +20,7 @@ use crate::{
     util::VariableValue,
 };
 
-use std::{
-    collections::HashMap,
-    error::Error,
-    fs::File,
-};
+use std::{collections::HashMap, error::Error, fs::File};
 
 #[derive(Debug, PartialEq)]
 pub enum Trajectory {
@@ -42,14 +38,24 @@ pub struct SimulationResult<'a> {
 
 impl<'a> SimulationResult<'a> {
     pub fn new(variables: Vec<&'a ModelVariable>) -> Self {
-        let trajectories = variables.iter().map(|variable| match variable.variableType {
-            crate::model_description::VariableType::Float64 => Trajectory::Real(vec![]),
-            crate::model_description::VariableType::Int32 | crate::model_description::VariableType::Enumeration => Trajectory::Integer(vec![]),
-            crate::model_description::VariableType::Boolean => Trajectory::Boolean(vec![]),
-            crate::model_description::VariableType::String => Trajectory::String(vec![]),
-            _ => panic!("Unexpected variable type: {:?}", variable.variableType),
-        }).collect();
-        SimulationResult { variables, time: vec![], trajectories }
+        let trajectories = variables
+            .iter()
+            .map(|variable| match variable.variableType {
+                crate::model_description::VariableType::Float64 => Trajectory::Real(vec![]),
+                crate::model_description::VariableType::Int32
+                | crate::model_description::VariableType::Enumeration => {
+                    Trajectory::Integer(vec![])
+                }
+                crate::model_description::VariableType::Boolean => Trajectory::Boolean(vec![]),
+                crate::model_description::VariableType::String => Trajectory::String(vec![]),
+                _ => panic!("Unexpected variable type: {:?}", variable.variableType),
+            })
+            .collect();
+        SimulationResult {
+            variables,
+            time: vec![],
+            trajectories,
+        }
     }
 }
 
@@ -95,7 +101,10 @@ pub fn set_variable_value<T>(
         VariableValue::Float64(values) => call(fmu.setReal(&[value_reference], values)),
         VariableValue::Int32(values) => call(fmu.setInteger(&[value_reference], values)),
         VariableValue::Boolean(values) => {
-            let values: Vec<fmi2Boolean> = values.iter().map(|v| if *v { fmi2True } else { fmi2False }).collect();
+            let values: Vec<fmi2Boolean> = values
+                .iter()
+                .map(|v| if *v { fmi2True } else { fmi2False })
+                .collect();
             call(fmu.setBoolean(&[value_reference], &values))
         }
         VariableValue::String(values) => {
@@ -142,7 +151,10 @@ fn set_start_values<T>(
     Ok(fmiOK)
 }
 
-pub fn simulate_cs(settings: &SimulationSettings, simulation_result: &mut SimulationResult) -> Result<(), Box<dyn Error>> {
+pub fn simulate_cs(
+    settings: &SimulationSettings,
+    simulation_result: &mut SimulationResult,
+) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;
@@ -550,30 +562,6 @@ pub fn simulate_me<S: SolverFactory>(
     }
 
     call(fmu.terminate())?;
-
-    // let mut plot = Plot::new();
-
-    // for (variable, trajectory) in recorder.variables.iter().zip(recorder.trajectories) {
-
-    //     let time = recorder.time.clone();
-
-    //     match trajectory {
-    //         Trajectory::Real(values) => {
-    //             plot.add_trace(Scatter::new(time, values).name(variable.name.clone()));
-    //         }
-    //         Trajectory::Integer(values) => {
-    //             plot.add_trace(Scatter::new(time, values).name(variable.name.clone()));
-    //         }
-    //         Trajectory::Boolean(values) => {
-    //             plot.add_trace(Scatter::new(time, values).name(variable.name.clone()));
-    //         }
-    //         Trajectory::String(_) => {
-    //             // Plotting string variables is not supported
-    //         }
-    //     }
-    // }
-
-    // plot.write_html("plot.html");
 
     Ok(())
 }

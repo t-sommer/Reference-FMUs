@@ -1,6 +1,7 @@
 use crate::{
     fmi2::FMU2,
-    model_description::VariableType, sim::fmi2::{SimulationResult, Trajectory},
+    model_description::VariableType,
+    sim::fmi2::{SimulationResult, Trajectory},
 };
 
 pub struct Recorder<'fmu, 'res, 'md, I> {
@@ -9,10 +10,7 @@ pub struct Recorder<'fmu, 'res, 'md, I> {
 }
 
 impl<'fmu, 'res, 'md, I> Recorder<'fmu, 'res, 'md, I> {
-    pub fn new(
-        fmu: &'fmu FMU2<I>,
-        simulation_result: &'res mut SimulationResult<'md>,
-    ) -> Self {
+    pub fn new(fmu: &'fmu FMU2<I>, simulation_result: &'res mut SimulationResult<'md>) -> Self {
         Recorder {
             fmu,
             simulation_result,
@@ -20,11 +18,14 @@ impl<'fmu, 'res, 'md, I> Recorder<'fmu, 'res, 'md, I> {
     }
 
     pub fn sample(&mut self, time: f64) -> std::io::Result<()> {
-
         self.simulation_result.time.push(time);
 
-        for (variable, trajectory) in self.simulation_result.variables.iter().zip(self.simulation_result
-            .trajectories.iter_mut()) {
+        for (variable, trajectory) in self
+            .simulation_result
+            .variables
+            .iter()
+            .zip(self.simulation_result.trajectories.iter_mut())
+        {
             let value_references = [variable.valueReference];
             match variable.variableType {
                 VariableType::Float64 => {

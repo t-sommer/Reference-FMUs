@@ -79,17 +79,11 @@ pub fn parse_variable_value(
     literal: &str,
 ) -> Result<VariableValue, Box<dyn Error>> {
     match variable_type {
-        VariableType::Float64 => {
-            let value: Result<f64, _> = literal.parse();
-            Ok(VariableValue::Real(value?))
-        }
-        VariableType::Int32 | VariableType::Enumeration => {
-            let value: Result<i32, _> = literal.parse();
-            Ok(VariableValue::Integer(value?))
-        }
+        VariableType::Float64 => Ok(VariableValue::Real(literal.parse()?)),
+        VariableType::Int32 | VariableType::Enumeration => Ok(VariableValue::Integer(literal.parse()?)),
         VariableType::Boolean => {
-            let value: Result<bool, _> = literal.parse();
-            Ok(VariableValue::Boolean(if value? {
+            let value: bool = literal.parse()?;
+            Ok(VariableValue::Boolean(if value {
                 fmi2True
             } else {
                 fmi2False

@@ -5,3 +5,5 @@ md-valid/build/
 md-valid/install/
 fmi-schema/vendor/
 cvode-*/
+*.csv
+*.html

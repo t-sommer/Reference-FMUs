@@ -57,6 +57,7 @@
                 "--output-file=BouncingBall_out.csv",
                 "--show-stats",
                 // "--output-variable=J2_w"
+                "--show-plot",
             ],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"

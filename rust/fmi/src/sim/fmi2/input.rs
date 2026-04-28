@@ -3,9 +3,8 @@ use std::{collections::HashMap, error::Error, fs::File};
 use crate::{
     fmi2::FMU2,
     model_description::{ModelDescription, ModelVariable, Variability},
-    sim::fmi2::{parse_variable_value, set_variable_value},
+    sim::fmi2::{VariableValue, parse_variable_value, set_variable_value},
     types::*,
-    util::VariableValue,
 };
 
 fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
@@ -226,17 +225,10 @@ impl<'a> CSVInput<'a> {
                 let value1 = &row1[i];
 
                 match value0 {
-                    VariableValue::Float64(values0) => {
-                        if let VariableValue::Float64(values1) = value1 {
-                            let mut interpolated_values = vec![0.0; values0.len()];
-
-                            for j in 0..interpolated_values.len() {
-                                let x0 = values0[j];
-                                let x1 = values1[j];
-                                interpolated_values[j] = x0 + t * (x1 - x0);
-                            }
-
-                            call(fmu.setReal(&[variable.valueReference], &interpolated_values))?;
+                    VariableValue::Real(value0) => {
+                        if let VariableValue::Real(value1) = value1 {
+                            let interpolated_value = value0 + t * (value1 - value0);
+                            call(fmu.setReal(&[variable.valueReference], &[interpolated_value]))?;
                         }
                     }
                     _ => panic!("Cannot set {value0:?}!"),
@@ -251,8 +243,8 @@ impl<'a> CSVInput<'a> {
                 }
 
                 match value {
-                    VariableValue::Float64(values) => {
-                        fmu.setReal(&[variable.valueReference], values);
+                    VariableValue::Real(value) => {
+                        fmu.setReal(&[variable.valueReference], &[*value]);
                     }
                     _ => panic!("Cannot set {value:?}!"),
                 }

@@ -4,19 +4,36 @@ pub mod recorder;
 use std::{collections::HashMap, error::Error, fs::File};
 
 use crate::{
-    fmi3::FMU3,
+    fmi3::{FMU3, types::*},
     model_description::{ModelVariable, VariableType},
     sim::{
         SimulationSettings, SolverFactory,
         fmi3::{input::CSVInput, recorder::Recorder},
     },
     types::*,
-    util::VariableValue,
 };
 use crate::{
     model_description::{Causality, ModelDescription},
     types::fmiStatus::{self, fmiOK, fmiWarning},
 };
+
+#[derive(Debug, PartialEq)]
+pub enum VariableValue {
+    Float32(Vec<fmi3Float32>),
+    Float64(Vec<fmi3Float64>),
+    Int8(Vec<fmi3Int8>),
+    UInt8(Vec<fmi3UInt8>),
+    Int16(Vec<fmi3Int16>),
+    UInt16(Vec<fmi3UInt16>),
+    Int32(Vec<fmi3Int32>),
+    UInt32(Vec<fmi3UInt32>),
+    Int64(Vec<fmi3Int64>),
+    UInt64(Vec<fmi3UInt64>),
+    Boolean(Vec<fmi3Boolean>),
+    String(Vec<String>),
+    Binary(Vec<Vec<fmi3Byte>>),
+    // Clock(fmiClock),
+}
 
 #[derive(Debug, PartialEq)]
 pub enum Trajectory {

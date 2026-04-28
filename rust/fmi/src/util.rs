@@ -4,24 +4,6 @@ use zip::ZipArchive;
 
 use crate::types::*;
 
-#[derive(Debug, PartialEq)]
-pub enum VariableValue {
-    Float32(Vec<fmiFloat32>),
-    Float64(Vec<fmiFloat64>),
-    Int8(Vec<fmiInt8>),
-    UInt8(Vec<fmiUInt8>),
-    Int16(Vec<fmiInt16>),
-    UInt16(Vec<fmiUInt16>),
-    Int32(Vec<fmiInt32>),
-    UInt32(Vec<fmiUInt32>),
-    Int64(Vec<fmiInt64>),
-    UInt64(Vec<fmiUInt64>),
-    Boolean(Vec<fmiBoolean>),
-    String(Vec<String>),
-    Binary(Vec<Vec<fmiByte>>),
-    // Clock(fmiClock),
-}
-
 pub fn extract_fmu(fmu_path: &str) -> Result<TempDir, Box<dyn std::error::Error>> {
     // Create temporary directory
     let temp_dir = TempDir::new()?;

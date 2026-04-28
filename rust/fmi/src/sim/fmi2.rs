@@ -6,7 +6,7 @@ pub mod recorder;
 use crate::{
     fmi2::{
         self, CS, FMU2, ME,
-        types::{fmi2Boolean, fmi2False, fmi2Real, fmi2True},
+        types::{fmi2Boolean, fmi2False, fmi2Integer, fmi2Real, fmi2True},
     },
     model_description::{Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
@@ -17,16 +17,23 @@ use crate::{
         fmiStatus::{self, fmiOK, fmiWarning},
         fmiValueReference,
     },
-    util::VariableValue,
 };
 
 use std::{collections::HashMap, error::Error, fs::File};
 
 #[derive(Debug, PartialEq)]
+pub enum VariableValue {
+    Real(fmi2Real),
+    Integer(fmi2Integer),
+    Boolean(fmi2Boolean),
+    String(String),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Trajectory {
-    Real(Vec<f64>),
-    Integer(Vec<i32>),
-    Boolean(Vec<i32>),
+    Real(Vec<fmi2Real>),
+    Integer(Vec<fmi2Integer>),
+    Boolean(Vec<fmi2Boolean>),
     String(Vec<String>),
 }
 
@@ -74,20 +81,21 @@ pub fn parse_variable_value(
     match variable_type {
         VariableType::Float64 => {
             let value: Result<f64, _> = literal.parse();
-            Ok(VariableValue::Float64(vec![value?]))
+            Ok(VariableValue::Real(value?))
         }
         VariableType::Int32 | VariableType::Enumeration => {
             let value: Result<i32, _> = literal.parse();
-            Ok(VariableValue::Int32(vec![value?]))
+            Ok(VariableValue::Integer(value?))
         }
         VariableType::Boolean => {
             let value: Result<bool, _> = literal.parse();
-            Ok(VariableValue::Boolean(vec![value?]))
+            Ok(VariableValue::Boolean(if value? {
+                fmi2True
+            } else {
+                fmi2False
+            }))
         }
-        VariableType::String => {
-            let values: Vec<String> = literal.split_whitespace().map(|v| v.to_string()).collect();
-            Ok(VariableValue::String(values))
-        }
+        VariableType::String => Ok(VariableValue::String(literal.to_string())),
         _ => Err(format!("Unsupported variable type {variable_type:?}.").into()),
     }
 }
@@ -98,20 +106,10 @@ pub fn set_variable_value<T>(
     value: &VariableValue,
 ) -> Result<fmiStatus, Box<dyn Error>> {
     match value {
-        VariableValue::Float64(values) => call(fmu.setReal(&[value_reference], values)),
-        VariableValue::Int32(values) => call(fmu.setInteger(&[value_reference], values)),
-        VariableValue::Boolean(values) => {
-            let values: Vec<fmi2Boolean> = values
-                .iter()
-                .map(|v| if *v { fmi2True } else { fmi2False })
-                .collect();
-            call(fmu.setBoolean(&[value_reference], &values))
-        }
-        VariableValue::String(values) => {
-            let string_refs: Vec<&str> = values.iter().map(|x| x.as_str()).collect();
-            call(fmu.setString(&[value_reference], &string_refs))
-        }
-        _ => Err("Unsupported variable type {value:?}.".into()),
+        VariableValue::Real(value) => call(fmu.setReal(&[value_reference], &[*value])),
+        VariableValue::Integer(value) => call(fmu.setInteger(&[value_reference], &[*value])),
+        VariableValue::Boolean(value) => call(fmu.setBoolean(&[value_reference], &[*value])),
+        VariableValue::String(value) => call(fmu.setString(&[value_reference], &[value.as_str()])),
     }
 }
 

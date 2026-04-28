@@ -29,6 +29,17 @@ pub enum VariableValue {
     String(String),
 }
 
+impl VariableValue {
+    pub fn to_literal(&self) -> String {
+        match self {
+            VariableValue::Real(v) => v.to_string(),
+            VariableValue::Integer(v) => v.to_string(),
+            VariableValue::Boolean(v) => v.to_string(),
+            VariableValue::String(v) => v.clone(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Trajectory {
     Real(Vec<fmi2Real>),

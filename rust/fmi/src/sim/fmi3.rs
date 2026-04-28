@@ -35,6 +35,34 @@ pub enum VariableValue {
     // Clock(fmiClock),
 }
 
+impl VariableValue {
+    pub fn to_literal(&self) -> String {
+        match self {
+            VariableValue::Float32(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::Float64(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::Int8(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::UInt8(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::Int16(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::UInt16(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::Int32(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::UInt32(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::Int64(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::UInt64(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::Boolean(v) => v
+                .iter()
+                .map(|&b| if b { "true" } else { "false" })
+                .collect::<Vec<_>>()
+                .join(" "),
+            VariableValue::String(v) => v.join(" "),
+            VariableValue::Binary(v) => v
+                .iter()
+                .map(|bytes| bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>())
+                .collect::<Vec<_>>()
+                .join(" "),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Trajectory {
     Float32(Vec<Vec<fmiFloat32>>),

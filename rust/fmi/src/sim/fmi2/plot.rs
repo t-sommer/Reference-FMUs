@@ -1,17 +1,18 @@
 use plotly::{Configuration, Layout, Plot, Scatter, common::Line, layout::{Axis, GridPattern, LayoutGrid, Margin}};
-use crate::sim::fmi2::{SimulationResult, Trajectory};
+use crate::sim::fmi2::SimulationResult;
+use crate::model_description::VariableType;
 
 
-pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
+pub fn plot_result(sim_result: &SimulationResult<'_>) -> Plot {
     let mut plot = Plot::new();
 
-    let plot_height = 250 * sim_results.variables.len().max(1);
+    let plot_height = 250 * sim_result.variables.len().max(1);
 
     let mut layout = Layout::new()
         .x_axis(Axis::new().title("time"))
         .grid(
             LayoutGrid::new()
-                .rows(sim_results.variables.len())
+                .rows(sim_result.variables.len())
                 .columns(1)
                 .pattern(GridPattern::Coupled), // Link X axes in the same column
         )
@@ -20,10 +21,9 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
         .show_legend(false)
         .margin(Margin::new().top(30).bottom(40).left(65).right(30));
 
-    for (i, (variable, trajectory)) in sim_results
+    for (i, variable) in sim_result
         .variables
         .iter()
-        .zip(&sim_results.trajectories)
         .enumerate()
     {
         let axis_title = variable.name.clone();
@@ -42,22 +42,23 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
             _ => layout, // The plotly crate typed API typically supports up to y_axis8
         };
 
-        let time = sim_results.time.clone();
+        let time = sim_result.time.clone();
         let name = variable.name.clone();
         let row = i + 1;
 
-        match trajectory {
-            Trajectory::Real(values) => {
-                let mut trace = Scatter::new(time.clone(), values.clone()).name(name.clone());
-                // Use the shared x-axis ("x") for all subplots
-                trace = trace
-                    .x_axis("x")
-                    .y_axis(format!("y{row}"))
-                    .line(Line::new().width(1.5).color("#229AEB"));
-                plot.add_trace(trace);
-            }
-            _ => todo!(),
+        if matches!(variable.variableType, VariableType::String) {
+            continue;
         }
+
+        let values: Vec<f64> = sim_result.rows.iter().map(|row| row[i].to_f64()).collect();
+
+        let mut trace = Scatter::new(time, values).name(name);
+        // Use the shared x-axis ("x") for all subplots
+        trace = trace
+            .x_axis("x")
+            .y_axis(format!("y{row}"))
+            .line(Line::new().width(1.5).color("#229AEB"));
+        plot.add_trace(trace);
     }
 
     plot.set_layout(layout);

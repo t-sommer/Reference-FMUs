@@ -38,6 +38,25 @@ pub enum VariableValue {
 }
 
 impl VariableValue {
+
+    pub fn len(&self) -> usize {
+        match self {
+            VariableValue::Float32(v) => v.len(),
+            VariableValue::Float64(v) => v.len(),
+            VariableValue::Int8(v) => v.len(),
+            VariableValue::UInt8(v) => v.len(),
+            VariableValue::Int16(v) => v.len(),
+            VariableValue::UInt16(v) => v.len(),
+            VariableValue::Int32(v) => v.len(),
+            VariableValue::UInt32(v) => v.len(),
+            VariableValue::Int64(v) => v.len(),
+            VariableValue::UInt64(v) => v.len(),
+            VariableValue::Boolean(v) => v.len(),
+            VariableValue::String(v) => v.len(),
+            VariableValue::Binary(v) => v.len(),
+        }
+    }
+
     pub fn to_literal(&self) -> String {
         match self {
             VariableValue::Float32(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
@@ -63,45 +82,27 @@ impl VariableValue {
                 .join(" "),
         }
     }
-}
 
-#[derive(Debug, PartialEq)]
-pub enum Trajectory {
-    Float32(Vec<Vec<fmiFloat32>>),
-    Float64(Vec<Vec<fmiFloat64>>),
-    Int8(Vec<Vec<fmiInt8>>),
-    UInt8(Vec<Vec<fmiUInt8>>),
-    Int16(Vec<Vec<fmiInt16>>),
-    UInt16(Vec<Vec<fmiUInt16>>),
-    Int32(Vec<Vec<fmiInt32>>),
-    UInt32(Vec<Vec<fmiUInt32>>),
-    Int64(Vec<Vec<fmiInt64>>),
-    UInt64(Vec<Vec<fmiUInt64>>),
-    Boolean(Vec<Vec<fmiBoolean>>),
-    String(Vec<Vec<String>>),
-    Binary(Vec<Vec<Vec<fmiByte>>>),
-    // Clock(fmiClock),
+    pub fn as_f64(&self) -> &Vec<f64> {
+        match self {
+            VariableValue::Float64(v) => v,
+            _ => panic!("VariableValue is not a Float64"),
+        }
+    }
 }
 
 pub struct SimulationResult<'a> {
     pub variables: Vec<&'a ModelVariable>,
     pub time: Vec<f64>,
-    pub trajectories: Vec<Trajectory>,
+    pub rows: Vec<Vec<VariableValue>>,
 }
 
 impl<'a> SimulationResult<'a> {
     pub fn new(variables: Vec<&'a ModelVariable>) -> Self {
-        let trajectories = variables
-            .iter()
-            .map(|variable| match variable.variableType {
-                crate::model_description::VariableType::Float64 => Trajectory::Float64(vec![]),
-                _ => panic!("Unexpected variable type: {:?}", variable.variableType),
-            })
-            .collect();
         SimulationResult {
             variables,
             time: vec![],
-            trajectories,
+            rows: vec![],
         }
     }
 }

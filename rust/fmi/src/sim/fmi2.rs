@@ -32,6 +32,15 @@ pub enum VariableValue {
 }
 
 impl VariableValue {
+
+    pub fn to_f64(&self) -> f64 {
+        if let VariableValue::Real(value) = self {
+            *value
+        } else {
+            panic!("Expected a Real variable value, but got {:?}", self);
+        }
+    }
+
     pub fn to_literal(&self) -> String {
         match self {
             VariableValue::Real(v) => v.to_string(),
@@ -42,39 +51,18 @@ impl VariableValue {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub enum Trajectory {
-    Real(Vec<fmi2Real>),
-    Integer(Vec<fmi2Integer>),
-    Boolean(Vec<fmi2Boolean>),
-    String(Vec<String>),
-}
-
 pub struct SimulationResult<'a> {
     pub variables: Vec<&'a ModelVariable>,
     pub time: Vec<f64>,
-    pub trajectories: Vec<Trajectory>,
+    pub rows: Vec<Vec<VariableValue>>,
 }
 
 impl<'a> SimulationResult<'a> {
     pub fn new(variables: Vec<&'a ModelVariable>) -> Self {
-        let trajectories = variables
-            .iter()
-            .map(|variable| match variable.variableType {
-                crate::model_description::VariableType::Float64 => Trajectory::Real(vec![]),
-                crate::model_description::VariableType::Int32
-                | crate::model_description::VariableType::Enumeration => {
-                    Trajectory::Integer(vec![])
-                }
-                crate::model_description::VariableType::Boolean => Trajectory::Boolean(vec![]),
-                crate::model_description::VariableType::String => Trajectory::String(vec![]),
-                _ => panic!("Unexpected variable type: {:?}", variable.variableType),
-            })
-            .collect();
         SimulationResult {
             variables,
             time: vec![],
-            trajectories,
+            rows: vec![],
         }
     }
 }
@@ -226,6 +214,8 @@ pub fn simulate_cs(
 
     let mut recorder = Recorder::new(&fmu, simulation_result);
 
+    recorder.sample(time)?;
+    
     let mut n_steps = 0;
 
     loop {

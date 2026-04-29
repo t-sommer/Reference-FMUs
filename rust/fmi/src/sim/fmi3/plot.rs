@@ -1,5 +1,5 @@
 use plotly::{Configuration, Layout, Plot, Scatter, common::Line, layout::{Axis, GridPattern, LayoutGrid, Margin}};
-use crate::sim::fmi3::{SimulationResult, Trajectory};
+use crate::{model_description::VariableType, sim::fmi3::SimulationResult};
 
 
 pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
@@ -21,10 +21,9 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
         .show_legend(false)
         .margin(Margin::new().top(30).bottom(40).left(65).right(30));
 
-    for (i, (variable, trajectory)) in sim_results
+    for (i, variable) in sim_results
         .variables
         .iter()
-        .zip(&sim_results.trajectories)
         .enumerate()
     {
         let axis_title = variable.name.clone();
@@ -47,29 +46,27 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
         let name = variable.name.clone();
         let row = i + 1;
 
-        match trajectory {
-            Trajectory::Float64(values) => {
-                if values.is_empty() {
-                    continue;
-                }
+        if matches!(variable.variableType, VariableType::String | VariableType::Binary) {
+            continue;
+        }
 
-                for j in 0..values[0].len() {
-                    let scalar_values: Vec<f64> = values.iter().map(|v| v[j]).collect();
-                    let name = if values[0].len() > 1 {
-                        format!("{}[{}]", name, j)
-                    } else {
-                        name.clone()
-                    };
-                    let mut trace = Scatter::new(time.clone(), scalar_values).name(name);
-                    // Use the shared x-axis ("x") for all subplots
-                    trace = trace
-                        .x_axis("x")
-                        .y_axis(format!("y{row}"))
-                        .line(Line::new().width(1.5).color("#229AEB"));
-                    plot.add_trace(trace);
-                }
-            }
-            _ => todo!(),
+        let size = sim_results.rows[0][i].len();
+
+        for j in 0..size {
+        
+            let scalar_values: Vec<f64> = sim_results.rows.iter().map(|row| row[i].as_f64()[j]).collect();    
+            let name = if size > 1 {
+                format!("{}[{}]", name, j)
+            } else {
+                name.clone()
+            };
+            let mut trace = Scatter::new(time.clone(), scalar_values).name(name);
+            // Use the shared x-axis ("x") for all subplots
+            trace = trace
+                .x_axis("x")
+                .y_axis(format!("y{row}"))
+                .line(Line::new().width(1.5).color("#229AEB"));
+            plot.add_trace(trace);
         }
     }
 

@@ -48,16 +48,17 @@
             "preLaunchTask": "rust: cargo build fmusim",
             "args": [
                 // "E:\\WS\\dymola-fmi-compatibility\\2026x Refresh 1, 2026-04-08\\CoupledClutches_fmi3_Cvode.fmu",
-                "C:\\Users\\tsr2\\Documents\\Dymola\\Rectifier3.fmu",
+                // "C:\\Users\\tsr2\\Documents\\Dymola\\Rectifier3.fmu",
                 // "C:\\Users\\tsr2\\Documents\\Dymola\\FullRobot3.fmu",
+                "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\3.0\\Feedthrough.fmu",
                 // "--interface-type=me",
-                // "--log-fmi-calls",
+                "--log-fmi-calls",
                 // "--output-interval=0.001",
                 // "--stop-time=1.8",
-                "--output-file=BouncingBall_out.csv",
+                "--output-file=Feedthrough_out.csv",
                 "--show-stats",
                 // "--output-variable=J2_w"
-                "--show-plot",
+                // "--show-plot",
             ],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"

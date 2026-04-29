@@ -716,8 +716,6 @@ pub fn simulate_me<S: SolverFactory>(
         settings.model_description.derivatives.len(),
         settings.model_description.eventIndicators.len(),
         settings.tolerance.unwrap_or(1e-6),
-        // vec![33554432, 33554433, 33554434, 33554435], // continuous states
-        // vec![1124073472, 1124073473, 1124073474, 1124073475], // derivatives
         derivatives_vrs,
         states_vrs,
         Box::new(|time| {
@@ -746,14 +744,18 @@ pub fn simulate_me<S: SolverFactory>(
             fmu.getContinuousStateDerivatives(state_derivatives);
             Ok(())
         }),
-        Box::new(|unknowns, knowns, seed, sensitivity| {
-            let status = fmu.getDirectionalDerivative(unknowns, knowns, seed, sensitivity);
-            if status == fmiOK {
-                Ok(())
-            } else {
-                Err("Failed to get directional derivative".into())
-            }
-        }),
+        if model_exchange.providesDirectionalDerivatives {
+            Some(Box::new(|unknowns, knowns, seed, sensitivity| {
+                let status = fmu.getDirectionalDerivative(unknowns, knowns, seed, sensitivity);
+                if status == fmiOK {
+                    Ok(())
+                } else {
+                    Err("Failed to get directional derivative".into())
+                }
+            }))
+        } else {
+            None
+        },
         Box::new(|continuous_states| {
             fmu.setContinuousStates(continuous_states);
             Ok(())

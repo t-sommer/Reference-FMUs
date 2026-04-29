@@ -86,6 +86,7 @@ pub struct DefaultExperiment {
 #[derive(Debug)]
 pub struct CoSimulation {
     pub modelIdentifier: String,
+    pub providesDirectionalDerivatives: bool,
     pub fixedInternalStepSize: Option<String>,
     pub canHandleVariableCommunicationStepSize: bool,
     pub canNotUseMemoryManagementFunctions: bool,
@@ -94,6 +95,7 @@ pub struct CoSimulation {
 #[derive(Debug)]
 pub struct ModelExchange {
     pub modelIdentifier: String,
+    pub providesDirectionalDerivatives: bool,
     pub needsCompletedIntegratorStep: bool,
     pub canNotUseMemoryManagementFunctions: bool,
 }
@@ -291,6 +293,8 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     {
         Some(CoSimulation {
             modelIdentifier: cs.required_attribute("modelIdentifier")?,
+            providesDirectionalDerivatives: cs
+                .bool_attribute("providesDirectionalDerivative", false),
             fixedInternalStepSize: cs.optional_attribute("fixedInternalStepSize"),
             canHandleVariableCommunicationStepSize: cs
                 .bool_attribute("canHandleVariableCommunicationStepSize", false),
@@ -305,6 +309,8 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
             Some(ModelExchange {
                 modelIdentifier: me.required_attribute("modelIdentifier")?,
+                providesDirectionalDerivatives: me
+                    .bool_attribute("providesDirectionalDerivative", false),
                 needsCompletedIntegratorStep: !me
                     .bool_attribute("completedIntegratorStepNotNeeded", false),
                 canNotUseMemoryManagementFunctions: me
@@ -496,6 +502,8 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     {
         Some(CoSimulation {
             modelIdentifier: cs.attribute("modelIdentifier").unwrap().to_string(),
+            providesDirectionalDerivatives: cs
+                .bool_attribute("providesDirectionalDerivatives", false),
             fixedInternalStepSize: cs.attribute("fixedInternalStepSize").map(|s| s.to_string()),
             canHandleVariableCommunicationStepSize: cs
                 .bool_attribute("canHandleVariableCommunicationStepSize", false),
@@ -510,6 +518,8 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     {
         Some(ModelExchange {
             modelIdentifier: me.attribute("modelIdentifier").unwrap().to_string(),
+            providesDirectionalDerivatives: me
+                .bool_attribute("providesDirectionalDerivatives", false),
             needsCompletedIntegratorStep: me.bool_attribute("needsCompletedIntegratorStep", false),
             canNotUseMemoryManagementFunctions: true,
         })

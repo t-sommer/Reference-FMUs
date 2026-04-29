@@ -56,7 +56,7 @@ pub trait SolverFactory {
         get_continuous_states: GetContinuousStatesFn<'a>,
         get_nominals_of_continuous_states: GetNominalsOfContinuousStatesFn<'a>,
         get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
-        get_directional_derivative: GetDirectionalDerivativeFn<'a>,
+        get_directional_derivative: Option<GetDirectionalDerivativeFn<'a>>,
         set_continuous_states: SetContinuousStatesFn<'a>,
     ) -> Result<Box<dyn Solver + 'a>, Error>;
 }

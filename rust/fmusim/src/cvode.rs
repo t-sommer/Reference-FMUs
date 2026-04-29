@@ -5,11 +5,10 @@ use crate::sim::{
 use cvode::{
     cvode::{
         CV_NORMAL, CV_ROOT_RETURN, CVode, CVodeCreate, CVodeFree, CVodeInit, CVodeReInit,
-        CVodeRootInit, CVodeSVtolerances, CVodeSetMaxErrTestFails, CVodeSetMaxNonlinIters,
-        CVodeSetMaxNumSteps, CVodeSetUserData,
+        CVodeRootInit, CVodeSVtolerances, CVodeSetUserData,
     },
     cvode_ls::{CVodeSetJacFn, CVodeSetLinearSolver},
-    nvector_serial::{N_VNew_Serial, NV_DATA_S, NV_LENGTH_S},
+    nvector_serial::N_VNew_Serial,
     sundials_context::{SUNContext_Create, SUNContext_Free},
     sundials_linearsolver::{SUNLinSolFree, SUNLinearSolver},
     sundials_matrix::{SUNMatDestroy, SUNMatrix},
@@ -23,6 +22,30 @@ use std::{ffi::c_void, slice::from_raw_parts_mut};
 
 type Error = Box<dyn std::error::Error>;
 
+macro_rules! expect_ok {
+    ($result:expr) => {
+        if let Err(_) = $result {
+            return -1; // Indicate failure to CVODE
+        }
+    };
+}
+
+macro_rules! expect_no_error {
+    ($flag:expr, $message:expr) => {
+        if $flag != 0 {
+            return Err(format!("{}: error code {}", $message, $flag).into());
+        }
+    };
+}
+
+macro_rules! expect_not_null {
+    ($ptr:expr, $message:expr) => {
+        if $ptr.is_null() {
+            return Err($message.into());
+        }
+    };
+}
+
 struct Functions<'a> {
     nx: usize,
     nz: usize,
@@ -35,7 +58,7 @@ struct Functions<'a> {
     get_continuous_states: GetContinuousStatesFn<'a>,
     get_nominals_of_continuous_states: GetNominalsOfContinuousStatesFn<'a>,
     get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
-    get_directional_derivative: GetDirectionalDerivativeFn<'a>,
+    get_directional_derivative: Option<GetDirectionalDerivativeFn<'a>>,
     set_continuous_states: SetContinuousStatesFn<'a>,
 }
 
@@ -66,128 +89,90 @@ impl SolverFactory for CVodeSolverFactory {
         get_continuous_states: GetContinuousStatesFn<'a>,
         get_nominals_of_continuous_states: GetNominalsOfContinuousStatesFn<'a>,
         get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
-        get_directional_derivative: GetDirectionalDerivativeFn<'a>,
+        get_directional_derivative: Option<GetDirectionalDerivativeFn<'a>>,
         set_continuous_states: SetContinuousStatesFn<'a>,
     ) -> Result<Box<dyn Solver + 'a>, Error> {
-        Ok(Box::new(CVodeSolver::new(
-            start_time,
-            nx,
-            nz,
-            rtol,
-            unknowns,
-            knowns,
-            set_time,
-            set_continuous_inputs,
-            get_event_indicators,
-            get_continuous_states,
-            get_nominals_of_continuous_states,
-            get_continuous_state_derivatives,
-            get_directional_derivative,
-            set_continuous_states,
-        )))
-    }
-}
-
-impl<'a> CVodeSolver<'a> {
-    pub fn new(
-        start_time: f64,
-        nx: usize,
-        nz: usize,
-        rtol: f64,
-        unknowns: Vec<u32>,
-        knowns: Vec<u32>,
-        set_time: SetTimeFn<'a>,
-        set_continuous_inputs: SetContinuousInputsFn<'a>,
-        get_event_indicators: GetEventIndicatorsFn<'a>,
-        get_continuous_states: GetContinuousStatesFn<'a>,
-        get_nominals_of_continuous_states: GetNominalsOfContinuousStatesFn<'a>,
-        get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
-        get_directional_derivative: GetDirectionalDerivativeFn<'a>,
-        set_continuous_states: SetContinuousStatesFn<'a>,
-    ) -> Self {
         unsafe {
             let functions = Box::new(Functions {
-                nx,
-                nz,
-                rtol,
-                unknowns,
-                knowns,
-                set_time,
-                set_continuous_inputs,
-                get_event_indicators,
-                get_continuous_states,
-                get_nominals_of_continuous_states,
-                get_continuous_state_derivatives,
-                get_directional_derivative,
-                set_continuous_states,
+                nx: nx,
+                nz: nz,
+                rtol: rtol,
+                unknowns: unknowns,
+                knowns: knowns,
+                set_time: set_time,
+                set_continuous_inputs: set_continuous_inputs,
+                get_event_indicators: get_event_indicators,
+                get_continuous_states: get_continuous_states,
+                get_nominals_of_continuous_states: get_nominals_of_continuous_states,
+                get_continuous_state_derivatives: get_continuous_state_derivatives,
+                get_directional_derivative: get_directional_derivative,
+                set_continuous_states: set_continuous_states,
             });
 
             let mut sunctx = std::ptr::null_mut();
-            let err_code = SUNContext_Create(SUN_COMM_NULL, &mut sunctx);
-            assert!(
-                err_code == 0,
-                "Failed to create SUNDIALS context: error code {}",
-                err_code
+
+            expect_no_error!(
+                SUNContext_Create(SUN_COMM_NULL, &mut sunctx),
+                "Failed to create SUNDIALS context"
             );
 
             let cvode_mem = CVodeCreate(cvode::cvode::CV_BDF, sunctx);
-            assert!(!cvode_mem.is_null(), "Failed to create CVODE memory");
+            expect_not_null!(cvode_mem, "Failed to create CVODE memory");
 
             let user_data: *const Functions = &*functions;
 
-            let flag = CVodeSetUserData(cvode_mem, user_data as *mut c_void);
-            assert!(flag == 0, "Failed to set user data: error code {}", flag);
+            expect_no_error!(
+                CVodeSetUserData(cvode_mem, user_data as *mut c_void),
+                "Failed to set user data"
+            );
 
             let x = N_VNew_Serial(nx as sunindextype, sunctx);
-            assert!(!x.is_null(), "Failed to create N_Vector");
-            (functions.get_continuous_states)((*x).as_mut())
-                .expect("Failed to get continuous states");
+            expect_not_null!(x, "Failed to create N_Vector");
+            (functions.get_continuous_states)((*x).as_mut())?;
 
             let abstol = N_VNew_Serial(nx as sunindextype, sunctx);
-            assert!(!abstol.is_null(), "Failed to create N_Vector");
+            expect_not_null!(abstol, "Failed to create N_Vector");
             let abstol_slice = (*abstol).as_mut();
-            (functions.get_nominals_of_continuous_states)(abstol_slice)
-                .expect("Failed to get continuous states");
+            (functions.get_nominals_of_continuous_states)(abstol_slice)?;
 
             for i in 0..nx {
                 abstol_slice[i] = abstol_slice[i] * rtol;
             }
 
-            let flag = CVodeInit(cvode_mem, f, start_time, x);
-            assert!(flag == 0, "Failed to initialize CVODE: error code {}", flag);
-
-            let flag = CVodeSVtolerances(cvode_mem, rtol, abstol);
-            assert!(flag == 0, "Failed to set tolerances: error code {}", flag);
-
-            let A = SUNDenseMatrix(nx as sunindextype, nx as sunindextype, sunctx);
-            assert!(!A.is_null(), "Failed to create dense matrix");
-
-            let LS = SUNLinSol_Dense(x, A, sunctx);
-            assert!(!LS.is_null(), "Failed to create linear solver");
-
-            let flag = CVodeSetLinearSolver(cvode_mem, LS, A);
-            assert!(flag == 0, "Failed to set linear solver");
-
-            // let flag = CVodeSetJacFn(cvode_mem, jac);
-            // assert!(flag == 0, "Failed to set Jacobian function");
-
-            let flag = CVodeRootInit(cvode_mem, nz as i32, g);
-            assert!(
-                flag == 0,
-                "Failed to initialize rootfinding: error code {}",
-                flag
+            expect_no_error!(
+                CVodeInit(cvode_mem, f, start_time, x),
+                "Failed to initialize CVODE"
             );
 
-            // let flag = CVodeSetMaxNumSteps(cvode_mem, 5000);
-            // assert!(flag == 0, "Failed to set max num steps: error code {}", flag);
+            expect_no_error!(
+                CVodeSVtolerances(cvode_mem, rtol, abstol),
+                "Failed to set tolerances"
+            );
 
-            // let flag = CVodeSetMaxNonlinIters(cvode_mem, 3);
-            // assert!(flag == 0, "Failed to set max nonlin iters: error code {}", flag);
+            let A = SUNDenseMatrix(nx as sunindextype, nx as sunindextype, sunctx);
+            expect_not_null!(A, "Failed to create dense matrix");
 
-            // let flag = CVodeSetMaxErrTestFails(cvode_mem, 15);
-            // assert!(flag == 0, "Failed to set max err test fails: error code {}", flag);
+            let LS = SUNLinSol_Dense(x, A, sunctx);
+            expect_not_null!(LS, "Failed to create linear solver");
 
-            Self {
+            expect_no_error!(
+                CVodeSetLinearSolver(cvode_mem, LS, A),
+                "Failed to set linear solver"
+            );
+
+            if functions.get_directional_derivative.is_some() {
+                expect_no_error!(
+                    CVodeSetJacFn(cvode_mem, jac),
+                    "Failed to set Jacobian function"
+                );
+            }
+
+            expect_no_error!(
+                CVodeRootInit(cvode_mem, nz as i32, g),
+                "Failed to initialize rootfinding"
+            );
+
+            Ok(Box::new(CVodeSolver {
                 sunctx,
                 x,
                 abstol,
@@ -195,7 +180,7 @@ impl<'a> CVodeSolver<'a> {
                 LS,
                 cvode_mem,
                 functions,
-            }
+            }))
         }
     }
 }
@@ -203,22 +188,21 @@ impl<'a> CVodeSolver<'a> {
 impl<'a> Solver for CVodeSolver<'a> {
     fn reset(&mut self, time: f64) -> Result<(), Error> {
         unsafe {
-            (self.functions.get_continuous_states)((*self.x).as_mut())
-                .expect("get_continuous_states failed");
+            (self.functions.get_continuous_states)((*self.x).as_mut())?;
 
             let abstol_slice = (*self.abstol).as_mut();
 
-            (self.functions.get_nominals_of_continuous_states)(abstol_slice)
-                .expect("get_nominals_of_continuous_states failed");
+            (self.functions.get_nominals_of_continuous_states)(abstol_slice)?;
 
             for i in 0..abstol_slice.len() {
                 abstol_slice[i] = abstol_slice[i] * self.functions.rtol;
             }
 
-            let flag = CVodeReInit(self.cvode_mem, time, self.x);
-            assert!(flag == 0, "CVodeReInit failed");
+            expect_no_error!(
+                CVodeReInit(self.cvode_mem, time, self.x),
+                "CVodeReInit failed"
+            );
         }
-
         Ok(())
     }
 
@@ -250,14 +234,15 @@ impl<'a> Drop for CVodeSolver<'a> {
 
 // Right-hand-side function
 extern "C" fn f(t: sunrealtype, y: N_Vector, ydot: N_Vector, user_data: *mut c_void) -> i32 {
-    let functions: &Functions = unsafe { &*(user_data as *const Functions) };
-
     unsafe {
-        (functions.set_time)(t).expect("Failed to set time");
-        (functions.set_continuous_inputs)(t).expect("Failed to set inputs");
-        (functions.set_continuous_states)((*y).as_mut()).expect("Failed to set continuous states");
-        (functions.get_continuous_state_derivatives)((*ydot).as_mut())
-            .expect("Failed to get continuous state derivatives");
+        let functions: &Functions = unsafe { &*(user_data as *const Functions) };
+
+        expect_ok!((functions.set_time)(t));
+        expect_ok!((functions.set_continuous_inputs)(t));
+        expect_ok!((functions.set_continuous_states)((*y).as_mut()));
+        expect_ok!((functions.get_continuous_state_derivatives)(
+            (*ydot).as_mut()
+        ));
     }
 
     0
@@ -273,12 +258,12 @@ extern "C" fn g(
     unsafe {
         let functions: &Functions = &*(user_data as *const Functions);
 
-        (functions.set_time)(t).expect("Failed to set time");
-        (functions.set_continuous_inputs)(t).expect("Failed to set inputs");
-        (functions.set_continuous_states)((*y).as_mut()).expect("Failed to set continuous states");
+        expect_ok!((functions.set_time)(t));
+        expect_ok!((functions.set_continuous_inputs)(t));
+        expect_ok!((functions.set_continuous_states)((*y).as_mut()));
 
         let z = from_raw_parts_mut(gout, functions.nz);
-        (functions.get_event_indicators)(z).expect("Failed to get event indicators");
+        expect_ok!((functions.get_event_indicators)(z));
     }
 
     0
@@ -288,87 +273,47 @@ extern "C" fn g(
 extern "C" fn jac(
     t: sunrealtype,
     y: N_Vector,
-    fy: N_Vector,
+    _fy: N_Vector,
     Jac: SUNMatrix,
     user_data: *mut std::ffi::c_void,
-    tmp1: N_Vector,
-    tmp2: N_Vector,
-    tmp3: N_Vector,
+    _tmp1: N_Vector,
+    _tmp2: N_Vector,
+    _tmp3: N_Vector,
 ) -> i32 {
     unsafe {
         let functions: &Functions = &*(user_data as *const Functions);
 
-        // 1. Synchronize FMU state with CVODE's current 'y' and 't'
-        (functions.set_time)(t).expect("Failed to set time");
-        (functions.set_continuous_inputs)(t).expect("Failed to set inputs");
-        (functions.set_continuous_states)((*y).as_mut()).expect("Failed to set continuous states");
+        expect_ok!((functions.set_time)(t));
+        expect_ok!((functions.set_continuous_inputs)(t));
+        expect_ok!((functions.set_continuous_states)((*y).as_mut()));
 
-        // 2. Prepare for Directional Derivatives
-        // We want d(dx/dt) / d(x)
-        // We compute this column by column
+        let get_directional_derivative = functions
+            .get_directional_derivative
+            .as_ref()
+            .expect("Directional derivative function not provided");
+
         let mut seed_v = vec![0.0; functions.nx]; // The 'direction' vector
-        let mut result_v = vec![0.0; functions.nx]; // The resulting column
 
         for j in 0..functions.nx {
-            // Set seed for the j-th column
-            seed_v[j] = 1.0;
-
             if j > 0 {
-                seed_v[j - 1] = 0.0; // Reset previous column's seed
+                seed_v[j - 1] = 0.0; // reset previous column's seed
             }
 
-            // 3. Call FMU to get the j-th column of the Jacobian
-            (functions.get_directional_derivative)(
+            // set seed for the j-th column
+            seed_v[j] = 1.0;
+
+            // copy the result into the SUNMatrix
+            let column_j = SM_COLUMN_D(Jac, j);
+            let colmn_j_slice = from_raw_parts_mut(column_j, functions.nx);
+
+            // get the j-th column of the Jacobian
+            expect_ok!(get_directional_derivative(
                 &functions.unknowns,
                 &functions.knowns,
                 &seed_v,
-                &mut result_v,
-            )
-            .expect("Failed to get directional derivative");
-
-            // 4. Copy the result into the SUNMatrix
-            // SM_COLUMN_D provides a pointer to the start of the j-th column
-            let column_j = SM_COLUMN_D(Jac, j);
-
-            let colmn_j_slice = from_raw_parts_mut(column_j, functions.nx);
-
-            for i in 0..functions.nx {
-                colmn_j_slice[i] = result_v[i];
-            }
+                colmn_j_slice
+            ));
         }
-
-        //     realtype seed_v[data->nx]; // The 'direction' vector
-        //     realtype result_v[data->nx]; // The resulting column
-
-        //     // Initialize seed vector to 0
-        //     for (int k = 0; k < data->nx; k++) seed_v[k] = 0.0;
-
-        //     for (int j = 0; j < data->nx; j++) {
-        //         // Set seed for the j-th column
-        //         seed_v[j] = 1.0;
-        //         if (j > 0) seed_v[j-1] = 0.0; // Reset previous column's seed
-
-        //         // 3. Call FMU to get the j-th column of the Jacobian
-        //         status = fmi2GetDirectionalDerivative(
-        //             data->fmu_instance,
-        //             data->vr_derivatives, data->nx, // Knowns (outputs of the diff)
-        //             data->vr_states,      data->nx, // Unknowns (inputs we are varying)
-        //             seed_v,                         // Seed vector
-        //             result_v                        // Output: j-th column of J
-        //         );
-
-        //         if (status != fmi2OK) return -1; // CVODE recovery/error
-
-        //         // 4. Copy the result into the SUNMatrix
-        //         // SM_COLUMN_D provides a pointer to the start of the j-th column
-        //         realtype *column_j = SM_COLUMN_D(J, j);
-        //         for (int i = 0; i < data->nx; i++) {
-        //             column_j[i] = result_v[i];
-        //         }
-        //     }
-
-        //     return 0; // Success
     }
-
     0
 }

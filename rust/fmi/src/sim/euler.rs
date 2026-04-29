@@ -40,7 +40,7 @@ impl SolverFactory for ForwardEulerFactory {
         get_continuous_states: GetContinuousStatesFn<'a>,
         _get_nominals_of_continuous_states: GetNominalsOfContinuousStatesFn<'a>,
         get_continuous_state_derivatives: GetContinuousStateDerivativesFn<'a>,
-        _get_directional_derivative: GetDirectionalDerivativeFn<'a>,
+        _get_directional_derivative: Option<GetDirectionalDerivativeFn<'a>>,
         set_continuous_states: SetContinuousStatesFn<'a>,
     ) -> Result<Box<dyn Solver + 'a>, Error> {
         let mut x = vec![0.0; nx];

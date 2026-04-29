@@ -426,10 +426,14 @@ pub fn simulate_me<S: SolverFactory>(
             fmu.getDerivatives(state_derivatives);
             Ok(())
         }),
-        Box::new(|unknowns, knowns, seed, sensitivity| {
-            fmu.getDirectionalDerivative(unknowns, knowns, seed, sensitivity);
-            Ok(())
-        }),
+        if model_exchange.providesDirectionalDerivatives {
+            Some(Box::new(|unknowns, knowns, seed, sensitivity| {
+                fmu.getDirectionalDerivative(unknowns, knowns, seed, sensitivity);
+                Ok(())
+            }))
+        } else {
+            None
+        },
         Box::new(|continuous_states| {
             fmu.setContinuousStates(continuous_states);
             Ok(())

@@ -223,9 +223,7 @@ pub fn set_variable_value(
             fmu.setString(&[value_reference], &string_refs)
         }
         VariableValue::Binary(values) => {
-            let sizes: Vec<usize> = values.iter().map(|v| v.len()).collect();
-            let values: Vec<*const u8> = values.iter().map(|v| v.as_ptr()).collect();
-            fmu.setBinary(&[value_reference], &sizes, &values)
+            fmu.setBinary(&[value_reference], &values)
         }
     }
 }

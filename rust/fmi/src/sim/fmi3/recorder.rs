@@ -122,25 +122,9 @@ impl<'fmu, 'res, 'md> Recorder<'fmu, 'res, 'md> {
                     VariableValue::String(values)
                 }
                 VariableType::Binary => {
-                    let mut sizes = vec![0usize; *size];
-                    let mut values = vec![std::ptr::null(); *size];
-                    self.fmu.getBinary(&value_references, &mut sizes, &mut values);
-                    let binary_values: Vec<Vec<fmi3Byte>> = values
-                        .iter()
-                        .zip(sizes.iter())
-                        .map(|(ptr, size)| {
-                            if ptr.is_null() || *size == 0 {
-                                vec![]
-                            } else {
-                                unsafe {
-                                    // let ptr = *ptr as *const fmi3Binary;
-                                    let slice = std::slice::from_raw_parts(*ptr, *size);
-                                    slice.to_vec()
-                                }
-                            }
-                        })
-                        .collect();
-                    VariableValue::Binary(binary_values)
+                    let mut values = vec![vec![]; *size];
+                    self.fmu.getBinary(&value_references, &mut values);
+                    VariableValue::Binary(values)
                 }
                 _ => continue
             };

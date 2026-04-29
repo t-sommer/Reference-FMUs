@@ -1011,16 +1011,19 @@ impl FMU3 {
     pub fn getBinary(
         &self,
         valueReferences: &[fmi3ValueReference],
-        sizes: &mut [usize],
-        values: &mut [fmi3Binary],
+        values: &mut [Vec<fmi3Byte>],
     ) -> fmi3Status {
+
+        let mut sizes: Vec<usize> = vec![0; values.len()];
+        let mut value_ptrs = vec![null(); values.len()];
+
         let status = unsafe {
             (self.fmi3GetBinary)(
                 self.instance,
                 valueReferences.as_ptr(),
                 valueReferences.len(),
                 sizes.as_mut_ptr(),
-                values.as_mut_ptr(),
+                value_ptrs.as_mut_ptr(),
                 values.len(),
             )
         };
@@ -1031,10 +1034,19 @@ impl FMU3 {
                 valueReferences,
                 valueReferences.len(),
                 sizes,
-                values,
-                values.len(),
+                value_ptrs,
+                value_ptrs.len(),
             );
             self.log_call(status, &message);
+        }
+
+        for (i, (&ptr, size)) in value_ptrs.iter().zip(sizes.iter()).enumerate() {
+            if !ptr.is_null() && *size > 0 {
+                let slice = unsafe { std::slice::from_raw_parts(ptr as *const fmi3Byte, *size) };
+                values[i] = slice.to_vec();
+            } else {
+                values[i] = Vec::new();
+            }
         }
 
         status
@@ -1170,17 +1182,22 @@ impl FMU3 {
     pub fn setBinary(
         &self,
         valueReferences: &[fmi3ValueReference],
-        sizes: &[usize],
-        values: &[fmi3Binary],
+        values: &[Vec<fmi3Byte>],
     ) -> fmi3Status {
+
+        let sizes: Vec<usize> = values.iter().map(|v| v.len()).collect();
+        let value_ptrs: Vec<fmi3Binary> = values.iter()
+            .map(|v| v.as_ptr())
+            .collect();
+
         let status = unsafe {
             (self.fmi3SetBinary)(
                 self.instance,
                 valueReferences.as_ptr(),
                 valueReferences.len(),
                 sizes.as_ptr(),
-                values.as_ptr(),
-                values.len(),
+                value_ptrs.as_ptr(),
+                value_ptrs.len(),
             )
         };
 
@@ -1190,8 +1207,8 @@ impl FMU3 {
                 valueReferences,
                 valueReferences.len(),
                 sizes,
-                values,
-                values.len(),
+                value_ptrs,
+                value_ptrs.len(),
             );
             self.log_call(status, &message);
         }

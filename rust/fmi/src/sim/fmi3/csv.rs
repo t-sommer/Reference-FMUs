@@ -1,6 +1,5 @@
-use std::path::Path;
 use crate::sim::fmi3::SimulationResult;
-
+use std::path::Path;
 
 pub fn write_csv<P: AsRef<Path>>(
     sim_result: &SimulationResult<'_>,
@@ -17,7 +16,6 @@ pub fn write_csv<P: AsRef<Path>>(
     writer.write_record(&header)?;
 
     for i in 0..sim_result.time.len() {
-        
         let mut record = vec![sim_result.time[i].to_string()];
 
         for variable_value in (&sim_result.rows[i]).iter() {

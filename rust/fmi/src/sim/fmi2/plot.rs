@@ -1,7 +1,10 @@
-use plotly::{Configuration, Layout, Plot, Scatter, common::Line, layout::{Axis, GridPattern, LayoutGrid, Margin}};
-use crate::sim::fmi2::SimulationResult;
 use crate::model_description::VariableType;
-
+use crate::sim::fmi2::SimulationResult;
+use plotly::{
+    Configuration, Layout, Plot, Scatter,
+    common::Line,
+    layout::{Axis, GridPattern, LayoutGrid, Margin},
+};
 
 pub fn plot_result(sim_result: &SimulationResult<'_>) -> Plot {
     let mut plot = Plot::new();
@@ -21,11 +24,7 @@ pub fn plot_result(sim_result: &SimulationResult<'_>) -> Plot {
         .show_legend(false)
         .margin(Margin::new().top(30).bottom(40).left(65).right(30));
 
-    for (i, variable) in sim_result
-        .variables
-        .iter()
-        .enumerate()
-    {
+    for (i, variable) in sim_result.variables.iter().enumerate() {
         let axis_title = variable.name.clone();
         let y_axis = Axis::new().title(axis_title.as_str());
 

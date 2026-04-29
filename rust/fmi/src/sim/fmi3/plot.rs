@@ -1,6 +1,9 @@
-use plotly::{Configuration, Layout, Plot, Scatter, common::Line, layout::{Axis, GridPattern, LayoutGrid, Margin}};
 use crate::{model_description::VariableType, sim::fmi3::SimulationResult};
-
+use plotly::{
+    Configuration, Layout, Plot, Scatter,
+    common::Line,
+    layout::{Axis, GridPattern, LayoutGrid, Margin},
+};
 
 pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
     let mut plot = Plot::new();
@@ -21,11 +24,7 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
         .show_legend(false)
         .margin(Margin::new().top(30).bottom(40).left(65).right(30));
 
-    for (i, variable) in sim_results
-        .variables
-        .iter()
-        .enumerate()
-    {
+    for (i, variable) in sim_results.variables.iter().enumerate() {
         let axis_title = variable.name.clone();
         let y_axis = Axis::new().title(axis_title.as_str());
 
@@ -46,15 +45,21 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
         let name = variable.name.clone();
         let row = i + 1;
 
-        if matches!(variable.variableType, VariableType::String | VariableType::Binary) {
+        if matches!(
+            variable.variableType,
+            VariableType::String | VariableType::Binary
+        ) {
             continue;
         }
 
         let size = sim_results.rows[0][i].len();
 
         for j in 0..size {
-        
-            let scalar_values: Vec<f64> = sim_results.rows.iter().map(|row| row[i].as_f64()[j]).collect();    
+            let scalar_values: Vec<f64> = sim_results
+                .rows
+                .iter()
+                .map(|row| row[i].as_f64()[j])
+                .collect();
             let name = if size > 1 {
                 format!("{}[{}]", name, j)
             } else {

@@ -18,14 +18,13 @@ impl<'fmu, 'res, 'md, I> Recorder<'fmu, 'res, 'md, I> {
     }
 
     pub fn sample(&mut self, time: f64) -> std::io::Result<()> {
-        
         self.simulation_result.time.push(time);
 
         let mut row = vec![];
 
         for variable in self.simulation_result.variables.iter() {
             let value_references = [variable.valueReference];
-            
+
             // TODO: handle status
 
             let variable_value = match variable.variableType {
@@ -56,7 +55,7 @@ impl<'fmu, 'res, 'md, I> Recorder<'fmu, 'res, 'md, I> {
         }
 
         self.simulation_result.rows.push(row);
-        
+
         Ok(())
     }
 }

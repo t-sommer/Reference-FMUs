@@ -1013,7 +1013,6 @@ impl FMU3 {
         valueReferences: &[fmi3ValueReference],
         values: &mut [Vec<fmi3Byte>],
     ) -> fmi3Status {
-
         let mut sizes: Vec<usize> = vec![0; values.len()];
         let mut value_ptrs = vec![null(); values.len()];
 
@@ -1184,11 +1183,8 @@ impl FMU3 {
         valueReferences: &[fmi3ValueReference],
         values: &[Vec<fmi3Byte>],
     ) -> fmi3Status {
-
         let sizes: Vec<usize> = values.iter().map(|v| v.len()).collect();
-        let value_ptrs: Vec<fmi3Binary> = values.iter()
-            .map(|v| v.as_ptr())
-            .collect();
+        let value_ptrs: Vec<fmi3Binary> = values.iter().map(|v| v.as_ptr()).collect();
 
         let status = unsafe {
             (self.fmi3SetBinary)(

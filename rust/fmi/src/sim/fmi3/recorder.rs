@@ -1,7 +1,10 @@
 use std::{ptr::null_mut, vec};
 
 use crate::{
-    fmi3::{FMU3, types::{fmi3Binary, fmi3Byte}},
+    fmi3::{
+        FMU3,
+        types::{fmi3Binary, fmi3Byte},
+    },
     model_description::{Dimension, VariableType},
     sim::fmi3::{SimulationResult, VariableValue},
 };
@@ -43,7 +46,6 @@ impl<'fmu, 'res, 'md> Recorder<'fmu, 'res, 'md> {
     }
 
     pub fn sample(&mut self, time: f64) -> Result<(), Box<dyn std::error::Error>> {
-        
         if self.sizes.is_empty() {
             self.update_sizes();
         }
@@ -55,11 +57,10 @@ impl<'fmu, 'res, 'md> Recorder<'fmu, 'res, 'md> {
         let mut row = vec![];
 
         for (i, variable) in self.simulation_result.variables.iter().enumerate() {
-            
             let size = self.sizes.get(i).unwrap();
-            
+
             let value_references = [variable.valueReference];
-            
+
             let variable_value = match variable.variableType {
                 VariableType::Float32 => {
                     let mut values = vec![0f32; *size];
@@ -126,14 +127,14 @@ impl<'fmu, 'res, 'md> Recorder<'fmu, 'res, 'md> {
                     self.fmu.getBinary(&value_references, &mut values);
                     VariableValue::Binary(values)
                 }
-                _ => continue
+                _ => continue,
             };
-            
+
             row.push(variable_value);
         }
 
         self.simulation_result.rows.push(row);
-        
+
         Ok(())
     }
 }

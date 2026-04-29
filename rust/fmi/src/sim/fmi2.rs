@@ -21,7 +21,12 @@ use crate::{
     },
 };
 
-use std::{collections::HashMap, error::Error, fs::File, path::{Path, PathBuf}};
+use std::{
+    collections::HashMap,
+    error::Error,
+    fs::File,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, PartialEq)]
 pub enum VariableValue {
@@ -32,7 +37,6 @@ pub enum VariableValue {
 }
 
 impl VariableValue {
-
     pub fn to_f64(&self) -> f64 {
         if let VariableValue::Real(value) = self {
             *value
@@ -81,7 +85,9 @@ pub fn parse_variable_value(
 ) -> Result<VariableValue, Box<dyn Error>> {
     match variable_type {
         VariableType::Float64 => Ok(VariableValue::Real(literal.parse()?)),
-        VariableType::Int32 | VariableType::Enumeration => Ok(VariableValue::Integer(literal.parse()?)),
+        VariableType::Int32 | VariableType::Enumeration => {
+            Ok(VariableValue::Integer(literal.parse()?))
+        }
         VariableType::Boolean => {
             let value: bool = literal.parse()?;
             Ok(VariableValue::Boolean(if value {
@@ -215,7 +221,7 @@ pub fn simulate_cs(
     let mut recorder = Recorder::new(&fmu, simulation_result);
 
     recorder.sample(time)?;
-    
+
     let mut n_steps = 0;
 
     loop {

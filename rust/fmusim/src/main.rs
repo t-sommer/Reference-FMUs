@@ -15,11 +15,7 @@ use plotly::{
     common::Line,
     layout::{Axis, GridPattern, LayoutGrid, Margin},
 };
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    process::ExitCode,
-};
+use std::{collections::HashMap, path::PathBuf, process::ExitCode};
 
 use crate::cvode::CVodeSolverFactory;
 

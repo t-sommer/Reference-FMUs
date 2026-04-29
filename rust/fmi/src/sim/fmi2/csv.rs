@@ -1,5 +1,8 @@
+use crate::{
+    model_description::{ModelDescription, ModelVariable},
+    sim::fmi2::{SimulationResult, parse_variable_value},
+};
 use std::{collections::HashMap, io::Read, path::Path};
-use crate::{model_description::{ModelDescription, ModelVariable}, sim::fmi2::{SimulationResult, parse_variable_value}};
 
 pub fn write_csv<P: AsRef<Path>>(
     sim_results: &SimulationResult<'_>,
@@ -16,7 +19,6 @@ pub fn write_csv<P: AsRef<Path>>(
     writer.write_record(&header)?;
 
     for i in 0..sim_results.time.len() {
-        
         let mut record = vec![sim_results.time[i].to_string()];
 
         for variable_value in (&sim_results.rows[i]).iter() {
@@ -31,12 +33,10 @@ pub fn write_csv<P: AsRef<Path>>(
     Ok(())
 }
 
-
 pub fn read_csv<'a, R: Read>(
     reader: R,
     model_description: &'a ModelDescription,
 ) -> Result<SimulationResult<'a>, Box<dyn std::error::Error>> {
-
     // Create a map for quick lookup of variables by name
     let variable_map: HashMap<&str, &ModelVariable> = model_description
         .modelVariables

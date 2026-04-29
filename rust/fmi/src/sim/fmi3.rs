@@ -38,7 +38,6 @@ pub enum VariableValue {
 }
 
 impl VariableValue {
-
     pub fn len(&self) -> usize {
         match self {
             VariableValue::Float32(v) => v.len(),
@@ -59,16 +58,56 @@ impl VariableValue {
 
     pub fn to_literal(&self) -> String {
         match self {
-            VariableValue::Float32(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
-            VariableValue::Float64(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
-            VariableValue::Int8(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
-            VariableValue::UInt8(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
-            VariableValue::Int16(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
-            VariableValue::UInt16(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
-            VariableValue::Int32(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
-            VariableValue::UInt32(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
-            VariableValue::Int64(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
-            VariableValue::UInt64(v) => v.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" "),
+            VariableValue::Float32(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+            VariableValue::Float64(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+            VariableValue::Int8(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+            VariableValue::UInt8(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+            VariableValue::Int16(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+            VariableValue::UInt16(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+            VariableValue::Int32(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+            VariableValue::UInt32(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+            VariableValue::Int64(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+            VariableValue::UInt64(v) => v
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
             VariableValue::Boolean(v) => v
                 .iter()
                 .map(|&b| if b { "true" } else { "false" })
@@ -77,7 +116,12 @@ impl VariableValue {
             VariableValue::String(v) => v.join(" "),
             VariableValue::Binary(v) => v
                 .iter()
-                .map(|bytes| bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>())
+                .map(|bytes| {
+                    bytes
+                        .iter()
+                        .map(|b| format!("{:02x}", b))
+                        .collect::<String>()
+                })
                 .collect::<Vec<_>>()
                 .join(" "),
         }
@@ -222,9 +266,7 @@ pub fn set_variable_value(
             let string_refs: Vec<&str> = values.iter().map(|x| x.as_str()).collect();
             fmu.setString(&[value_reference], &string_refs)
         }
-        VariableValue::Binary(values) => {
-            fmu.setBinary(&[value_reference], &values)
-        }
+        VariableValue::Binary(values) => fmu.setBinary(&[value_reference], &values),
     }
 }
 

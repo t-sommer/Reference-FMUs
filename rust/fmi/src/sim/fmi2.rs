@@ -25,7 +25,6 @@ use std::{
     collections::HashMap,
     error::Error,
     fs::File,
-    path::{Path, PathBuf},
 };
 
 #[derive(Debug, PartialEq)]
@@ -233,16 +232,13 @@ pub fn simulate_cs(
 
         let mut next_communication_point = next_regular_point;
 
-        if can_handle_variable_communication_step_size {
-            if let Some(input) = &input {
-                if let Some(next_input_event_time) = input.next_event_time(time) {
-                    if next_regular_point > next_input_event_time
+        if can_handle_variable_communication_step_size
+            && let Some(input) = &input
+                && let Some(next_input_event_time) = input.next_event_time(time)
+                    && next_regular_point > next_input_event_time
                         && !relative_eq!(next_regular_point, next_input_event_time)
                     {
                         next_communication_point = next_input_event_time;
-                    }
-                }
-            }
         };
 
         if next_communication_point > stop_time
@@ -459,21 +455,19 @@ pub fn simulate_me<S: SolverFactory>(
             None
         };
 
-        if let Some(next_input_event_time) = next_input_event_time {
-            if next_regular_point > next_input_event_time
+        if let Some(next_input_event_time) = next_input_event_time
+            && next_regular_point > next_input_event_time
                 && !relative_eq!(next_regular_point, next_input_event_time)
             {
                 next_communication_point = next_input_event_time;
             }
-        }
 
-        if let Some(next_event_time) = nextEventTime {
-            if next_communication_point > next_event_time
+        if let Some(next_event_time) = nextEventTime
+            && next_communication_point > next_event_time
                 && !relative_eq!(next_communication_point, next_event_time)
             {
                 next_communication_point = next_event_time;
             }
-        }
 
         if next_communication_point > stop_time
             && !relative_eq!(next_communication_point, stop_time)
@@ -494,11 +488,10 @@ pub fn simulate_me<S: SolverFactory>(
 
         time = time_reached;
 
-        if is_input_event {
-            if let Some(input) = &input {
+        if is_input_event
+            && let Some(input) = &input {
                 input.set_continuous_inputs(time, false, &fmu)?;
             }
-        }
 
         if relative_eq!(time, next_regular_point) {
             n_steps += 1;
@@ -529,12 +522,11 @@ pub fn simulate_me<S: SolverFactory>(
 
             call(fmu.enterEventMode())?;
 
-            if is_input_event {
-                if let Some(input) = &input {
+            if is_input_event
+                && let Some(input) = &input {
                     input.set_discrete_inputs(time, true, &fmu)?;
                     input.set_continuous_inputs(time, true, &fmu)?;
                 }
-            }
 
             loop {
                 let mut newDiscreteStatesNeeded: bool = false;

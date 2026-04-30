@@ -2,7 +2,7 @@
 
 pub mod types;
 
-use crate::{SHARED_LIBRARY_EXTENSION, fmi2};
+use crate::SHARED_LIBRARY_EXTENSION;
 use colored::Colorize;
 use libloading::{Library, Symbol};
 use std::cell::RefCell;
@@ -459,7 +459,7 @@ impl<T> FMU2<T> {
         }
 
         let mut callbacks = fmi2CallbackFunctions {
-            logger: logger,
+            logger,
             allocateMemory: if provideMemoryManagementFunctions {
                 allocateMemory
             } else {
@@ -471,7 +471,7 @@ impl<T> FMU2<T> {
                 unsafe { transmute(std::ptr::null::<()>()) }
             },
             stepFinished: unsafe { std::mem::transmute(std::ptr::null::<()>()) },
-            componentEnvironment: componentEnvironment,
+            componentEnvironment,
         };
 
         unsafe { add_logger_proxy(&mut callbacks) };

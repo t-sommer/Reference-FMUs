@@ -772,7 +772,7 @@ impl FMU3 {
     pub fn terminate(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3Terminate)(self.instance) };
         if self.logCalls {
-            let message = format!("fmi3Termiate()");
+            let message = "fmi3Termiate()".to_string();
             self.log_call(status, &message);
         }
         status
@@ -820,7 +820,7 @@ impl FMU3 {
     pub fn exitInitializationMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3ExitInitializationMode)(self.instance) };
         if self.logCalls {
-            let message = format!("fmi3ExitInitializationMode()");
+            let message = "fmi3ExitInitializationMode()".to_string();
             self.log_call(status, &message);
         }
         status
@@ -829,7 +829,7 @@ impl FMU3 {
     pub fn reset(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3Reset)(self.instance) };
         if self.logCalls {
-            let message = format!("fmi3Reset()");
+            let message = "fmi3Reset()".to_string();
             self.log_call(status, &message);
         }
         status
@@ -1245,7 +1245,7 @@ impl FMU3 {
     pub fn enterEventMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3EnterEventMode)(self.instance) };
         if self.logCalls {
-            let message = format!("fmi3EnterEventMode()");
+            let message = "fmi3EnterEventMode()".to_string();
             self.log_call(status, &message);
         }
         status
@@ -1254,7 +1254,7 @@ impl FMU3 {
     pub fn enterStepMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3EnterStepMode)(self.instance) };
         if self.logCalls {
-            let message = format!("fmi3EnterStepMode()");
+            let message = "fmi3EnterStepMode()".to_string();
             self.log_call(status, &message);
         }
         status
@@ -1324,7 +1324,7 @@ impl FMU3 {
         let status = unsafe { (self.fmi3GetFMUState)(self.instance, &mut fmuState) };
 
         if self.logCalls {
-            let message = format!("fmi3GetFMUState()");
+            let message = "fmi3GetFMUState()".to_string();
             self.log_call(status, &message);
         }
 
@@ -1338,7 +1338,7 @@ impl FMU3 {
     pub fn setFMUState(&self, fmuState: fmi3FMUState) -> fmi3Status {
         let status = unsafe { (self.fmi3SetFMUState)(self.instance, fmuState) };
         if self.logCalls {
-            let message = format!("fmi3SetFMUState()");
+            let message = "fmi3SetFMUState()".to_string();
             self.log_call(status, &message);
         }
         status
@@ -1347,7 +1347,7 @@ impl FMU3 {
     pub fn freeFMUState(&self, fmuState: &mut fmi3FMUState) -> fmi3Status {
         let status = unsafe { (self.fmi3FreeFMUState)(self.instance, fmuState) };
         if self.logCalls {
-            let message = format!("fmi3FreeFMUState()");
+            let message = "fmi3FreeFMUState()".to_string();
             self.log_call(status, &message);
         }
         status
@@ -1492,7 +1492,7 @@ impl FMU3 {
     pub fn enterConfigurationMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3EnterConfigurationMode)(self.instance) };
         if self.logCalls {
-            let message = format!("fmi3EnterConfigurationMode()");
+            let message = "fmi3EnterConfigurationMode()".to_string();
             self.log_call(status, &message);
         }
         status
@@ -1501,7 +1501,7 @@ impl FMU3 {
     pub fn exitConfigurationMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3ExitConfigurationMode)(self.instance) };
         if self.logCalls {
-            let message = format!("fmi3ExitConfigurationMode()");
+            let message = "fmi3ExitConfigurationMode()".to_string();
             self.log_call(status, &message);
         }
         status
@@ -1610,7 +1610,7 @@ impl FMU3 {
     pub fn enterContinuousTimeMode(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3EnterContinuousTimeMode)(self.instance) };
         if self.logCalls {
-            let message = format!("fmi3EnterContinuousTimeMode()");
+            let message = "fmi3EnterContinuousTimeMode()".to_string();
             self.log_call(status, &message);
         }
         status
@@ -1788,7 +1788,7 @@ impl FMU3 {
     pub fn evaluateDiscreteStates(&self) -> fmi3Status {
         let status = unsafe { (self.fmi3EvaluateDiscreteStates)(self.instance) };
         if self.logCalls {
-            let message = format!("fmi3EvaluateDiscreteStates()");
+            let message = "fmi3EvaluateDiscreteStates()".to_string();
             self.log_call(status, &message);
         }
         status

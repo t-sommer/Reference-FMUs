@@ -294,8 +294,8 @@ fn set_start_values(
 
     // set structural parameters first
     for (var_name, value) in start_values {
-        if let Some(variable) = variable_map.get(var_name.as_str()) {
-            if variable.causality == Causality::StructuralParameter {
+        if let Some(variable) = variable_map.get(var_name.as_str())
+            && variable.causality == Causality::StructuralParameter {
                 if !configuration_mode {
                     call(fmu.enterConfigurationMode())?;
                     configuration_mode = true;
@@ -317,7 +317,6 @@ fn set_start_values(
                 }
             }
         }
-    }
 
     if configuration_mode {
         call(fmu.exitConfigurationMode())?;
@@ -470,14 +469,13 @@ pub fn simulate_cs(
             None
         };
 
-        if let Some(next_input_event_time) = next_input_event_time {
-            if can_handle_variable_communication_step_size
+        if let Some(next_input_event_time) = next_input_event_time
+            && can_handle_variable_communication_step_size
                 && next_communication_point > next_input_event_time
                 && !relative_eq!(next_regular_point, next_input_event_time)
             {
                 next_communication_point = next_input_event_time;
             }
-        }
 
         if next_communication_point > stop_time
             && !relative_eq!(next_communication_point, stop_time)
@@ -489,12 +487,11 @@ pub fn simulate_cs(
             }
         }
 
-        if !input_applied {
-            if let Some(input) = &input {
+        if !input_applied
+            && let Some(input) = &input {
                 input.set_discrete_inputs(time, !event_mode_used, &fmu)?;
                 input.set_continuous_inputs(time, !event_mode_used, &fmu)?;
             }
-        }
 
         let communication_step_size = next_communication_point - time;
         let mut event_handling_needed = false;
@@ -544,12 +541,11 @@ pub fn simulate_cs(
         input_applied = if event_mode_used && (input_event || event_handling_needed) {
             call(fmu.enterEventMode())?;
 
-            if input_event {
-                if let Some(input) = &input {
+            if input_event
+                && let Some(input) = &input {
                     input.set_discrete_inputs(time, true, &fmu)?;
                     input.set_continuous_inputs(time, true, &fmu)?;
                 }
-            }
 
             loop {
                 let mut discreteStatesNeedUpdate = false;
@@ -781,13 +777,12 @@ pub fn simulate_me<S: SolverFactory>(
             None
         };
 
-        if let Some(next_input_event_time) = next_input_event_time {
-            if next_regular_point > next_input_event_time
+        if let Some(next_input_event_time) = next_input_event_time
+            && next_regular_point > next_input_event_time
                 && !relative_eq!(next_regular_point, next_input_event_time)
             {
                 next_communication_point = next_input_event_time;
             }
-        }
 
         if nextEventTimeDefined
             && next_communication_point > nextEventTime
@@ -815,11 +810,10 @@ pub fn simulate_me<S: SolverFactory>(
 
         time = time_reached;
 
-        if is_input_event {
-            if let Some(input) = &input {
+        if is_input_event
+            && let Some(input) = &input {
                 input.set_continuous_inputs(time, false, &fmu)?;
             }
-        }
 
         if relative_eq!(time, next_regular_point) {
             n_steps += 1;
@@ -847,12 +841,11 @@ pub fn simulate_me<S: SolverFactory>(
 
             call(fmu.enterEventMode())?;
 
-            if is_input_event {
-                if let Some(input) = &input {
+            if is_input_event
+                && let Some(input) = &input {
                     input.set_discrete_inputs(time, true, &fmu)?;
                     input.set_continuous_inputs(time, true, &fmu)?;
                 }
-            }
 
             let mut discreteStatesNeedUpdate = true;
             let mut terminateSimulation = false;

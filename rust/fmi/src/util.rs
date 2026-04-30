@@ -2,7 +2,6 @@ use std::fs::File;
 use tempfile::TempDir;
 use zip::ZipArchive;
 
-use crate::types::*;
 
 pub fn extract_fmu(fmu_path: &str) -> Result<TempDir, Box<dyn std::error::Error>> {
     // Create temporary directory
@@ -25,11 +24,10 @@ pub fn extract_fmu(fmu_path: &str) -> Result<TempDir, Box<dyn std::error::Error>
             std::fs::create_dir_all(&outpath)?;
         } else {
             // File
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
+            if let Some(p) = outpath.parent()
+                && !p.exists() {
                     std::fs::create_dir_all(p)?;
                 }
-            }
             let mut outfile = File::create(&outpath)?;
             std::io::copy(&mut file, &mut outfile)?;
         }

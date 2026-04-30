@@ -1,10 +1,7 @@
-use std::{ptr::null_mut, vec};
+use std::vec;
 
 use crate::{
-    fmi3::{
-        FMU3,
-        types::{fmi3Binary, fmi3Byte},
-    },
+    fmi3::FMU3,
     model_description::{Dimension, VariableType},
     sim::fmi3::{SimulationResult, VariableValue},
 };

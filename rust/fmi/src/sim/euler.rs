@@ -48,11 +48,11 @@ impl SolverFactory for ForwardEulerFactory {
         let z = vec![0.0; nz];
         let mut pre_z = vec![0.0; nz];
 
-        if x.len() > 0 {
+        if !x.is_empty() {
             (get_continuous_states)(x.as_mut_slice())?;
         }
 
-        if z.len() > 0 {
+        if !z.is_empty() {
             (get_event_indicators)(pre_z.as_mut_slice())?;
         }
 
@@ -78,7 +78,7 @@ impl SolverFactory for ForwardEulerFactory {
 
 impl<'a> ForwardEuler<'a> {
     fn do_fixed_step(&mut self) -> Result<(f64, bool), Error> {
-        if self.x.len() > 0 {
+        if !self.x.is_empty() {
             (self.get_continuous_state_derivatives)(self.der_x.as_mut_slice())?;
 
             for i in 0..self.x.len() {
@@ -98,7 +98,7 @@ impl<'a> ForwardEuler<'a> {
 
         let mut state_event = false;
 
-        if self.z.len() > 0 {
+        if !self.z.is_empty() {
             (self.get_event_indicators)(self.z.as_mut_slice())?;
 
             for i in 0..self.z.len() {

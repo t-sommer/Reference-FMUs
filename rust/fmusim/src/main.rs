@@ -10,11 +10,6 @@ use fmi::{
     util::extract_fmu,
 };
 use fmi_schema::validate_model_description_against_xsd;
-use plotly::{
-    Configuration, Layout, Plot, Scatter,
-    common::Line,
-    layout::{Axis, GridPattern, LayoutGrid, Margin},
-};
 use std::{collections::HashMap, path::PathBuf, process::ExitCode};
 
 use crate::cvode::CVodeSolverFactory;

@@ -29,7 +29,7 @@ fn as_slice_mut<'a>(v: N_Vector) -> &'a [f64] {
     unsafe { std::slice::from_raw_parts(data, len as usize) }
 }
 
-extern "C" fn f(t: sunrealtype, y: N_Vector, ydot: N_Vector, user_data: *mut c_void) -> i32 {
+extern "C" fn f(_t: sunrealtype, y: N_Vector, ydot: N_Vector, _user_data: *mut c_void) -> i32 {
     unsafe {
         let x = from_raw_parts_mut(NV_DATA_S(y), NV_LENGTH_S(y) as usize);
         let dx = from_raw_parts_mut(NV_DATA_S(ydot), NV_LENGTH_S(ydot) as usize);
@@ -40,10 +40,10 @@ extern "C" fn f(t: sunrealtype, y: N_Vector, ydot: N_Vector, user_data: *mut c_v
 }
 
 extern "C" fn g(
-    t: sunrealtype,
+    _t: sunrealtype,
     y: N_Vector,
     gout: *mut sunrealtype,
-    user_data: *mut c_void,
+    _user_data: *mut c_void,
 ) -> i32 {
     unsafe {
         let x = as_slice_mut(y);
@@ -110,7 +110,7 @@ fn main() {
         let flag = CVodeSetLinearSolver(cvode_mem, LS, A);
         assert!(flag == 0, "Failed to set linear solver");
 
-        let mut tNext = 2.0;
+        let tNext = 2.0;
         let mut tret = 0.0;
 
         while tret < 2.0 {

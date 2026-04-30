@@ -1,6 +1,5 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use std::ffi::c_void;
 
 use crate::{sundials_matrix::SUNMatrix, sundials_types::{SUNContext, sunindextype, sunrealtype}};
 

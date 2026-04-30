@@ -1,5 +1,4 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
-
 mod cvode;
 
 use clap::{Parser, ValueEnum};
@@ -9,10 +8,9 @@ use fmi::{
     sim::{self, SimulationSettings, euler::ForwardEulerFactory},
     util::extract_fmu,
 };
-use fmi_schema::validate_model_description_against_xsd;
+use fmi_rs_xsd::validate_model_description_against_xsd;
 use std::{collections::HashMap, path::PathBuf, process::ExitCode};
 
-use crate::cvode::CVodeSolverFactory;
 
 #[derive(ValueEnum, Clone, Debug)]
 enum InterfaceType {
@@ -273,7 +271,7 @@ fn main() -> ExitCode {
                         &mut sim_results,
                     ),
                     SolverType::Cvode => {
-                        sim::fmi2::simulate_me(&settings, &CVodeSolverFactory, &mut sim_results)
+                        sim::fmi2::simulate_me(&settings, &cvode::CVodeSolverFactory, &mut sim_results)
                     }
                 },
                 InterfaceType::CoSimulation => sim::fmi2::simulate_cs(&settings, &mut sim_results),
@@ -304,7 +302,7 @@ fn main() -> ExitCode {
                         &mut sim_results,
                     ),
                     SolverType::Cvode => {
-                        sim::fmi3::simulate_me(&settings, &CVodeSolverFactory, &mut sim_results)
+                        sim::fmi3::simulate_me(&settings, &cvode::CVodeSolverFactory, &mut sim_results)
                     }
                 },
                 InterfaceType::CoSimulation => sim::fmi3::simulate_cs(&settings, &mut sim_results),

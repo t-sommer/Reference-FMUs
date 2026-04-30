@@ -1,5 +1,5 @@
 [package]
-name = "fmi-schema"
+name = "fmi-rs-cvode"
 version = "0.1.0"
 edition = "2024"
 

@@ -6,9 +6,9 @@ edition = "2024"
 [dependencies]
 libloading = "0.8.8"
 clap = { version = "4.5.54", features = ["derive"] }
-cvode = { path = "../cvode" }
-fmi = { path = "../fmi" }
-fmi-schema = { path = "../fmi-schema" }
+fmi-rs = { path = "../fmi-rs" }
+fmi-rs-cvode = { path = "../fmi-rs-cvode" }
+fmi-rs-xsd = { path = "../fmi-rs-xsd" }
 zip = "2.1"
 tempfile = "3.8"
 csv = "1.4.0"

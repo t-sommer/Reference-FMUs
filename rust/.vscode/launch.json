@@ -52,7 +52,7 @@
                 // "C:\\Users\\tsr2\\Documents\\Dymola\\FullRobot3.fmu",
                 // "C:\\Users\\tsr2\\Downloads\\Reference-FMUs-0.0.39\\3.0\\Feedthrough.fmu",
                 "--interface-type=me",
-                "--log-fmi-calls",
+                // "--log-fmi-calls",
                 // "--output-interval=0.001",
                 // "--stop-time=1.8",
                 // "--output-file=Feedthrough_out.csv",

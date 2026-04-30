@@ -1,7 +1,10 @@
 [package]
-name = "fmi"
+name = "fmi-rs"
 version = "0.1.0"
 edition = "2024"
+
+[lib]
+name = "fmi"
 
 [dependencies]
 approx = "0.5.1"

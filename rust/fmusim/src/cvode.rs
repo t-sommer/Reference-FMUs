@@ -2,7 +2,7 @@ use crate::sim::{
     GetContinuousStateDerivativesFn, GetContinuousStatesFn, GetEventIndicatorsFn,
     SetContinuousInputsFn, SetContinuousStatesFn, SetTimeFn, Solver, SolverFactory,
 };
-use cvode::{
+use fmi_rs_cvode::{
     cvode::{
         CV_NORMAL, CV_ROOT_RETURN, CVode, CVodeCreate, CVodeFree, CVodeInit, CVodeReInit,
         CVodeRootInit, CVodeSVtolerances, CVodeSetUserData,
@@ -116,7 +116,7 @@ impl SolverFactory for CVodeSolverFactory {
                 "Failed to create SUNDIALS context"
             );
 
-            let cvode_mem = CVodeCreate(cvode::cvode::CV_BDF, sunctx);
+            let cvode_mem = CVodeCreate(fmi_rs_cvode::cvode::CV_BDF, sunctx);
             expect_not_null!(cvode_mem, "Failed to create CVODE memory");
 
             let user_data: *const Functions = &*functions;

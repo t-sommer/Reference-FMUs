@@ -741,19 +741,15 @@ impl<T> FMU2<T> {
         FMUstate: fmi2FMUstate,
         serializedState: &mut Vec<fmi2Byte>,
     ) -> fmi2Status {
-
         let mut size = 0;
 
-        let status = unsafe {
-            (self.fmi2SerializedFMUstateSize)(self.component, FMUstate, &mut size)
-        };
+        let status =
+            unsafe { (self.fmi2SerializedFMUstateSize)(self.component, FMUstate, &mut size) };
 
         if self.logCalls {
             let message = format!(
                 "fmi2SerializedFMUstateSize(FMUstate={:p}, size={:p}) -> {:?}",
-                FMUstate,
-                &size as *const usize,
-                status
+                FMUstate, &size as *const usize, status
             );
             self.log_call(status, message.as_str());
         }

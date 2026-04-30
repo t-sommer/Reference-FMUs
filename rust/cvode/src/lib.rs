@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types, non_snake_case)]
+#![allow(non_camel_case_types, non_snake_case, unused)]
 
 #[rustfmt::skip] pub mod cvode;
 #[rustfmt::skip] pub mod cvode_ls;
@@ -52,7 +52,8 @@ extern "C" fn g(
     0
 }
 
-fn main() {
+#[test]
+fn test_cvode() {
     unsafe {
         let RTOL = 1e-5;
         let T0 = 0.0;

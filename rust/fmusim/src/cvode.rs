@@ -235,7 +235,7 @@ impl<'a> Drop for CVodeSolver<'a> {
 // Right-hand-side function
 extern "C" fn f(t: sunrealtype, y: N_Vector, ydot: N_Vector, user_data: *mut c_void) -> i32 {
     unsafe {
-        let functions: &Functions = unsafe { &*(user_data as *const Functions) };
+        let functions: &Functions = &*(user_data as *const Functions);
 
         expect_ok!((functions.set_time)(t));
         expect_ok!((functions.set_continuous_inputs)(t));

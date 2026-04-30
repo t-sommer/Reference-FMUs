@@ -704,37 +704,115 @@ impl<T> FMU2<T> {
     }
 
     pub fn getFMUstate(&self, FMUstate: *mut fmi2FMUstate) -> fmi2Status {
-        todo!()
+        let status = unsafe { (self.fmi2GetFMUstate)(self.component, FMUstate) };
+
+        if self.logCalls {
+            let message = format!("fmi2GetFMUstate(FMUstate={:p}) -> {:?}", FMUstate, status);
+            self.log_call(status, message.as_str());
+        }
+
+        status
     }
 
     pub fn setFMUstate(&self, FMUstate: fmi2FMUstate) -> fmi2Status {
-        todo!()
+        let status = unsafe { (self.fmi2SetFMUstate)(self.component, FMUstate) };
+
+        if self.logCalls {
+            let message = format!("fmi2SetFMUstate(FMUstate={:p}) -> {:?}", FMUstate, status);
+            self.log_call(status, message.as_str());
+        }
+
+        status
     }
 
     pub fn freeFMUstate(&self, FMUstate: *mut fmi2FMUstate) -> fmi2Status {
-        todo!()
-    }
+        let status = unsafe { (self.fmi2FreeFMUstate)(self.component, FMUstate) };
 
-    pub fn serializedFMUstateSize(&self, FMUstate: fmi2FMUstate, size: *mut usize) -> fmi2Status {
-        todo!()
+        if self.logCalls {
+            let message = format!("fmi2FreeFMUstate(FMUstate={:p}) -> {:?}", FMUstate, status);
+            self.log_call(status, message.as_str());
+        }
+
+        status
     }
 
     pub fn serializeFMUstate(
         &self,
         FMUstate: fmi2FMUstate,
-        serializedState: *mut fmi2Byte,
-        size: usize,
+        serializedState: &mut Vec<fmi2Byte>,
     ) -> fmi2Status {
-        todo!()
+
+        let mut size = 0;
+
+        let status = unsafe {
+            (self.fmi2SerializedFMUstateSize)(self.component, FMUstate, &mut size)
+        };
+
+        if self.logCalls {
+            let message = format!(
+                "fmi2SerializedFMUstateSize(FMUstate={:p}, size={:p}) -> {:?}",
+                FMUstate,
+                &size as *const usize,
+                status
+            );
+            self.log_call(status, message.as_str());
+        }
+
+        if status != fmi2OK {
+            return status;
+        }
+
+        serializedState.resize(size, 0u8);
+
+        let status = unsafe {
+            (self.fmi2SerializeFMUstate)(
+                self.component,
+                FMUstate,
+                serializedState.as_mut_ptr(),
+                serializedState.len(),
+            )
+        };
+
+        if self.logCalls {
+            let message = format!(
+                "fmi2SerializeFMUstate(FMUstate={:p}, serializedState={:p}, size={}) -> {:?}",
+                FMUstate,
+                serializedState.as_ptr(),
+                serializedState.len(),
+                status
+            );
+            self.log_call(status, message.as_str());
+        }
+
+        status
     }
 
     pub fn deSerializeFMUstate(
         &self,
-        serializedState: *const fmi2Byte,
-        size: usize,
+        serializedState: &[fmi2Byte],
         FMUstate: *mut fmi2FMUstate,
     ) -> fmi2Status {
-        todo!()
+        let status = unsafe {
+            (self.fmi2DeSerializeFMUstate)(
+                self.component,
+                serializedState.as_ptr(),
+                serializedState.len(),
+                FMUstate,
+            )
+        };
+
+        if self.logCalls {
+            let message = format!(
+                "fmi2DeSerializeFMUstate(serializedState={:p}, size={}, FMUstate={:p}) -> {:?}",
+                serializedState.as_ptr(),
+                serializedState.len(),
+                FMUstate,
+                status
+            );
+            self.log_call(status, message.as_str());
+        }
+
+        status
     }
 
     // FMI 2.0 Getting partial derivatives

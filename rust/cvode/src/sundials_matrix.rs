@@ -121,6 +121,7 @@ pub type SUNMatrix = *mut _generic_SUNMatrix;
 //   SUNMatrix_Ops ops;
 //   SUNContext sunctx;
 // };
+#[repr(C)]
 pub struct _generic_SUNMatrix {
     pub content: *mut c_void,
     pub ops: SUNMatrix_Ops,

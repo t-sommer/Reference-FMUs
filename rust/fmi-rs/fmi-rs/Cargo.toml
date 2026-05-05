@@ -1,0 +1,25 @@
+[package]
+name = "fmi-rs"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "fmi"
+
+[features]
+default = ["zip"]
+zip = []
+
+[dependencies]
+approx = "0.5.1"
+colored = "3.1.1"
+csv = "1.4.0"
+libloading = "0.8.8"
+plotly = "0.14.1"
+roxmltree = "0.21.1"
+tempfile = "3.8"
+url = "2"
+zip = "2.1"
+
+[build-dependencies]
+cc = "1.0"

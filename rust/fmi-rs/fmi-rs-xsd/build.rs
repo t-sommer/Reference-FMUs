@@ -1,7 +1,4 @@
 fn main() {
-    // static_vcruntime::metabuild();
-
-    // Link to the static model_description_validator library
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let library_dir = manifest_dir.join("vendor/x86_64-windows");
 

@@ -235,7 +235,7 @@ fn main() -> ExitCode {
         output_interval,
         tolerance,
         start_values: args.start_values.clone(),
-        output_variables,
+        // output_variables,
         output_file: args.output_file.as_ref().map(|f| PathBuf::from(f)),
         log_fmi_calls: args.log_fmi_calls,
         input_file: args.input_file.as_ref().map(|f| PathBuf::from(f)),
@@ -261,7 +261,7 @@ fn main() -> ExitCode {
     let result = match &model_description.majorVersion {
         MajorVersion::V2 => {
             let mut sim_results =
-                sim::fmi2::SimulationResult::new(settings.output_variables.clone());
+                sim::fmi2::SimulationResult::new(output_variables.clone());
 
             let result = match interface_type {
                 InterfaceType::ModelExchange => match args.solver {
@@ -292,7 +292,7 @@ fn main() -> ExitCode {
         }
         MajorVersion::V3 => {
             let mut sim_results =
-                sim::fmi3::SimulationResult::new(settings.output_variables.clone());
+                sim::fmi3::SimulationResult::new(output_variables.clone());
 
             let result = match interface_type {
                 InterfaceType::ModelExchange => match args.solver {

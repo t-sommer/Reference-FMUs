@@ -3,7 +3,7 @@ use std::{collections::HashMap, error::Error, fs::File};
 use crate::{
     fmi2::FMU2,
     model_description::{ModelDescription, ModelVariable, Variability},
-    sim::fmi2::{VariableValue, parse_variable_value, set_variable_value},
+    sim::fmi2::{SimulationResult, VariableValue, parse_variable_value, set_variable_value},
     types::*,
 };
 
@@ -17,9 +17,7 @@ fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
 
 #[derive(Debug)]
 pub struct CSVInput<'a> {
-    variables: Vec<&'a ModelVariable>,
-    time: Vec<f64>,
-    rows: Vec<Vec<VariableValue>>,
+    trajectories: SimulationResult<'a>,
 }
 
 fn approx_eq(a: f64, b: f64) -> bool {
@@ -46,82 +44,17 @@ fn approx_eq(a: f64, b: f64) -> bool {
 }
 
 impl<'a> CSVInput<'a> {
-    pub fn new(
-        file: &File,
-        model_description: &'a ModelDescription,
-    ) -> Result<CSVInput<'a>, Box<dyn Error>> {
-        // Create a map for quick lookup of variables by name
-        let variable_map: HashMap<&str, &ModelVariable> = model_description
-            .modelVariables
-            .iter()
-            .map(|var| (var.name.as_str(), var))
-            .collect();
 
-        let mut reader = csv::Reader::from_reader(file);
-
-        let headers = match reader.headers() {
-            Ok(record) => record,
-            Err(e) => {
-                return Err(format!("Failed to read headers. {e}").into());
-            }
-        };
-
-        let mut variables: Vec<&ModelVariable> = vec![];
-
-        for name in headers.iter().skip(1) {
-            if let Some(variable) = variable_map.get(name) {
-                variables.push(variable);
-            } else {
-                return Err(format!("Variable {name:?} does not exist in the FMU.").into());
-            }
+    pub fn new(trajectories: SimulationResult<'a>) -> Self {
+        CSVInput {
+            trajectories,
         }
-
-        let mut time = vec![];
-        let mut rows = vec![];
-
-        for (i, result) in reader.records().enumerate() {
-            match result {
-                Ok(record) => {
-                    let mut row = vec![];
-
-                    let mut it = record.iter();
-
-                    time.push(it.next().unwrap().parse().unwrap());
-
-                    for (j, literal) in it.enumerate() {
-                        let variable: &ModelVariable = variables[j];
-
-                        match parse_variable_value(&variable.variableType, literal) {
-                            Ok(v) => row.push(v),
-                            Err(e) => {
-                                return Err(format!(
-                                    "Failed to parse {literal:?} (row {i}, column {}). {e}",
-                                    j + 1
-                                )
-                                .into());
-                            }
-                        }
-                    }
-
-                    rows.push(row);
-                }
-                Err(e) => {
-                    return Err(format!("Error reading input. {e}").into());
-                }
-            }
-        }
-
-        Ok(CSVInput {
-            variables,
-            time,
-            rows,
-        })
     }
 
     pub fn next_event_time(&self, time: f64) -> Option<f64> {
-        for i in 0..self.time.len() - 1 {
-            let t0 = self.time[i];
-            let t1 = self.time[i + 1];
+        for i in 0..self.trajectories.time.len() - 1 {
+            let t0 = self.trajectories.time[i];
+            let t1 = self.trajectories.time[i + 1];
 
             if time >= t1 {
                 // TODO: use is_close()
@@ -132,10 +65,10 @@ impl<'a> CSVInput<'a> {
                 return Some(t0); // discrete change of a continuous variable
             }
 
-            let row0 = &self.rows[i];
-            let row1 = &self.rows[i + 1];
+            let row0 = &self.trajectories.rows[i];
+            let row1 = &self.trajectories.rows[i + 1];
 
-            for (j, variable) in self.variables.iter().enumerate() {
+            for (j, variable) in self.trajectories.variables.iter().enumerate() {
                 if variable.variability == Variability::Continuous {
                     continue; // skip continuous variables
                 }
@@ -160,16 +93,16 @@ impl<'a> CSVInput<'a> {
     ) -> Result<(), Box<dyn Error>> {
         let mut index = 0;
 
-        for (i, t) in self.time.iter().enumerate() {
+        for (i, t) in self.trajectories.time.iter().enumerate() {
             if *t > time {
                 break;
             }
             index = i;
         }
 
-        let row = &self.rows[index];
+        let row = &self.trajectories.rows[index];
 
-        for (variable, value) in self.variables.iter().zip(row.iter()) {
+        for (variable, value) in self.trajectories.variables.iter().zip(row.iter()) {
             if variable.variability == Variability::Continuous {
                 continue;
             }
@@ -188,8 +121,8 @@ impl<'a> CSVInput<'a> {
         let mut row_index = 0;
 
         // find the index
-        while row_index < self.time.len() - 1 {
-            let next_time = self.time[row_index + 1];
+        while row_index < self.trajectories.time.len() - 1 {
+            let next_time = self.trajectories.time[row_index + 1];
 
             if !after_event && (approx_eq(next_time, time) || next_time > time) {
                 break;
@@ -202,23 +135,23 @@ impl<'a> CSVInput<'a> {
             row_index += 1;
         }
 
-        let time_s = self.time[0];
-        let time_e = self.time[self.time.len() - 1];
+        let time_s = self.trajectories.time[0];
+        let time_e = self.trajectories.time[self.trajectories.time.len() - 1];
 
         let interpolate =
             time > time_s && !approx_eq(time, time_s) && time < time_e && !approx_eq(time, time_e);
 
         if interpolate {
-            let row0 = &self.rows[row_index];
-            let row1 = &self.rows[row_index + 1];
+            let row0 = &self.trajectories.rows[row_index];
+            let row1 = &self.trajectories.rows[row_index + 1];
 
-            for (i, variable) in self.variables.iter().enumerate() {
+            for (i, variable) in self.trajectories.variables.iter().enumerate() {
                 if variable.variability != Variability::Continuous {
                     continue;
                 }
 
-                let t0 = self.time[row_index];
-                let t1 = self.time[row_index + 1];
+                let t0 = self.trajectories.time[row_index];
+                let t1 = self.trajectories.time[row_index + 1];
                 let t = (time - t0) / (t1 - t0);
 
                 let value0 = &row0[i];
@@ -235,9 +168,9 @@ impl<'a> CSVInput<'a> {
                 }
             }
         } else {
-            let row = &self.rows[row_index];
+            let row = &self.trajectories.rows[row_index];
 
-            for (variable, value) in self.variables.iter().zip(row.iter()) {
+            for (variable, value) in self.trajectories.variables.iter().zip(row.iter()) {
                 if variable.variability != Variability::Continuous {
                     continue;
                 }

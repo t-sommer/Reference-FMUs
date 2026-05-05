@@ -10,7 +10,7 @@ use crate::{
     model_description::{ModelVariable, VariableType},
     sim::{
         SimulationSettings, SolverFactory,
-        fmi3::{input::CSVInput, recorder::Recorder},
+        fmi3::{csv::read_csv, input::CSVInput, recorder::Recorder},
     },
     types::*,
 };
@@ -135,6 +135,7 @@ impl VariableValue {
     }
 }
 
+#[derive(Debug)]
 pub struct SimulationResult<'a> {
     pub variables: Vec<&'a ModelVariable>,
     pub time: Vec<f64>,
@@ -369,17 +370,9 @@ pub fn simulate_cs(
         co_simulation.canHandleVariableCommunicationStepSize.clone();
 
     let input = if let Some(path) = &settings.input_file {
-        match File::open(&path) {
-            Ok(file) => match CSVInput::new(&file, &settings.model_description) {
-                Ok(input) => Some(input),
-                Err(e) => {
-                    return Err(format!("Failed to load input from {path:?}. {e}").into());
-                }
-            },
-            Err(e) => {
-                return Err(format!("Failed to open input file {path:?}. {e}").into());
-            }
-        }
+        let file = File::open(&path)?;
+        let trajectories = read_csv(&file, &settings.model_description)?;
+        Some(CSVInput::new(trajectories))
     } else {
         None
     };
@@ -609,17 +602,9 @@ pub fn simulate_me<S: SolverFactory>(
     let needs_completed_integrator_step = model_exchange.needsCompletedIntegratorStep;
 
     let input = if let Some(path) = &settings.input_file {
-        match File::open(&path) {
-            Ok(file) => match CSVInput::new(&file, &settings.model_description) {
-                Ok(input) => Some(input),
-                Err(e) => {
-                    return Err(format!("Failed to load input from {path:?}. {e}").into());
-                }
-            },
-            Err(e) => {
-                return Err(format!("Failed to open input file {path:?}. {e}").into());
-            }
-        }
+        let file = File::open(&path)?;
+        let trajectories = read_csv(&file, &settings.model_description)?;
+        Some(CSVInput::new(trajectories))
     } else {
         None
     };

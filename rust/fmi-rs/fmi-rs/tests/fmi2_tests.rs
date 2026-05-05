@@ -1,7 +1,11 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use fmi::fmi2::types::*;
+use fmi::model_description::{Causality, read_model_description};
+use fmi::sim::SimulationSettings;
+use fmi::sim::fmi2::SimulationResult;
+use fmi::{fmi2::types::*, sim::fmi2::simulate_cs};
 use fmi::fmi2::*;
+use std::vec;
 use std::{env, path::PathBuf};
 
 macro_rules! assert_ok {
@@ -28,6 +32,7 @@ fn create_fmu() -> FMU2<CS> {
         true,
         true,
         true,
+        false,
     )
     .unwrap();
 
@@ -39,6 +44,43 @@ fn create_fmu() -> FMU2<CS> {
     assert_ok!(fmu.exitInitializationMode());
 
     fmu
+}
+
+#[test]
+fn test_csv_input() {
+
+    let resources_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("resources");
+
+    let unzipdir = resources_dir
+        .join("fmi2")
+        .join("Feedthrough");
+
+    let model_description = read_model_description(&unzipdir.join("modelDescription.xml")).unwrap();
+
+    let settings = SimulationSettings {
+        unzipdir: &unzipdir,
+        model_description: &model_description,
+        start_time: 0.0,
+        stop_time: 1.0,
+        logging_on: true,
+        set_stop_time: true,
+        output_interval: 0.1,
+        tolerance: None,
+        start_values: vec![],
+        output_file: None,
+        log_fmi_calls: true,
+        input_file: Some(resources_dir.join("fmi2").join("Feedthrough_in.csv")),
+        early_return_allowed: false,
+        event_mode_used: false,
+    };
+
+    let output_variables = settings.model_description.modelVariables.iter().filter(|var| var.causality == Causality::Output).collect();
+
+    let mut simulation_result = SimulationResult::new(output_variables);
+
+    simulate_cs(&settings, &mut simulation_result).unwrap();
 }
 
 #[test]

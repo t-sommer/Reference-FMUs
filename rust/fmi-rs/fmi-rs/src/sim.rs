@@ -4,7 +4,7 @@ pub mod euler;
 pub mod fmi2;
 pub mod fmi3;
 
-use crate::model_description::{ModelDescription, ModelVariable};
+use crate::model_description::ModelDescription;
 use std::path::{Path, PathBuf};
 
 pub struct SimulationSettings<'a> {
@@ -17,7 +17,6 @@ pub struct SimulationSettings<'a> {
     pub output_interval: f64,
     pub tolerance: Option<f64>,
     pub start_values: Vec<(String, String)>,
-    pub output_variables: Vec<&'a ModelVariable>,
     pub output_file: Option<PathBuf>,
     pub log_fmi_calls: bool,
     pub input_file: Option<PathBuf>,

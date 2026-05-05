@@ -101,6 +101,6 @@ pub fn read_csv<'a, R: Read>(
     Ok(SimulationResult {
         time,
         variables,
-        rows: vec![],
+        rows,
     })
 }

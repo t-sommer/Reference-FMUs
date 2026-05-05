@@ -17,7 +17,6 @@ pub struct SimulationSettings<'a> {
     pub output_interval: f64,
     pub tolerance: Option<f64>,
     pub start_values: Vec<(String, String)>,
-    pub output_file: Option<PathBuf>,
     pub log_fmi_calls: bool,
     pub input_file: Option<PathBuf>,
     pub early_return_allowed: bool,

@@ -235,8 +235,6 @@ fn main() -> ExitCode {
         output_interval,
         tolerance,
         start_values: args.start_values.clone(),
-        // output_variables,
-        output_file: args.output_file.as_ref().map(|f| PathBuf::from(f)),
         log_fmi_calls: args.log_fmi_calls,
         input_file: args.input_file.as_ref().map(|f| PathBuf::from(f)),
         early_return_allowed: args.early_return_allowed,
@@ -277,7 +275,7 @@ fn main() -> ExitCode {
                 InterfaceType::CoSimulation => sim::fmi2::simulate_cs(&settings, &mut sim_results),
             };
 
-            if let Some(output_file) = settings.output_file.as_ref() {
+            if let Some(output_file) = args.output_file.as_ref() {
                 if let Err(e) = sim::fmi2::csv::write_csv(&sim_results, output_file) {
                     eprintln!("Failed to write output CSV file: {e}");
                     return ExitCode::FAILURE;
@@ -308,7 +306,7 @@ fn main() -> ExitCode {
                 InterfaceType::CoSimulation => sim::fmi3::simulate_cs(&settings, &mut sim_results),
             };
 
-            if let Some(output_file) = settings.output_file.as_ref() {
+            if let Some(output_file) = args.output_file.as_ref() {
                 if let Err(e) = sim::fmi3::csv::write_csv(&sim_results, output_file) {
                     eprintln!("Failed to write output CSV file: {e}");
                     return ExitCode::FAILURE;

@@ -3,6 +3,8 @@ pub mod fmi3;
 pub mod model_description;
 pub mod sim;
 pub mod types;
+
+#[cfg(feature = "zip")]
 pub mod util;
 
 #[macro_use]

@@ -6,6 +6,10 @@ edition = "2024"
 [lib]
 name = "fmi"
 
+[features]
+default = ["zip"]
+zip = []
+
 [dependencies]
 approx = "0.5.1"
 colored = "3.1.1"

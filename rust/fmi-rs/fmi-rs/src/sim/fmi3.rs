@@ -10,7 +10,7 @@ use crate::{
     model_description::{ModelVariable, VariableType},
     sim::{
         SimulationSettings, SolverFactory,
-        fmi3::{csv::read_csv, input::CSVInput, recorder::Recorder},
+        fmi3::{csv::read_csv, input::StaticInput, recorder::Recorder},
     },
     types::*,
 };
@@ -372,7 +372,7 @@ pub fn simulate_cs(
     let input = if let Some(path) = &settings.input_file {
         let file = File::open(&path)?;
         let trajectories = read_csv(&file, &settings.model_description)?;
-        Some(CSVInput::new(trajectories))
+        Some(StaticInput::new(trajectories))
     } else {
         None
     };
@@ -604,7 +604,7 @@ pub fn simulate_me<S: SolverFactory>(
     let input = if let Some(path) = &settings.input_file {
         let file = File::open(&path)?;
         let trajectories = read_csv(&file, &settings.model_description)?;
-        Some(CSVInput::new(trajectories))
+        Some(StaticInput::new(trajectories))
     } else {
         None
     };

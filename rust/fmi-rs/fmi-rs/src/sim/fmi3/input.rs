@@ -1,9 +1,9 @@
-use std::{collections::HashMap, error::Error, fs::File};
+use std::error::Error;
 
 use crate::{
     fmi3::FMU3,
-    model_description::{ModelDescription, ModelVariable, Variability},
-    sim::fmi3::{SimulationResult, VariableValue, parse_variable_value, set_variable_value},
+    model_description::Variability,
+    sim::fmi3::{SimulationResult, VariableValue, set_variable_value},
     types::*,
 };
 
@@ -16,7 +16,7 @@ fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
 }
 
 #[derive(Debug)]
-pub struct CSVInput<'a> {
+pub struct StaticInput<'a> {
     trajectories: SimulationResult<'a>
 }
 
@@ -43,10 +43,10 @@ fn approx_eq(a: f64, b: f64) -> bool {
     diff <= rel_tol * a.abs().max(b.abs())
 }
 
-impl<'a> CSVInput<'a> {
+impl<'a> StaticInput<'a> {
 
     pub fn new(trajectories: SimulationResult<'a>) -> Self {
-        CSVInput {
+        StaticInput {
             trajectories,
         }
     }

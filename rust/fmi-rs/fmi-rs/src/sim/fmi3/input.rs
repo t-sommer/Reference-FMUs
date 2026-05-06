@@ -17,7 +17,7 @@ fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
 
 #[derive(Debug)]
 pub struct StaticInput<'a> {
-    trajectories: SimulationResult<'a>
+    trajectories: SimulationResult<'a>,
 }
 
 fn approx_eq(a: f64, b: f64) -> bool {
@@ -44,11 +44,8 @@ fn approx_eq(a: f64, b: f64) -> bool {
 }
 
 impl<'a> StaticInput<'a> {
-
     pub fn new(trajectories: SimulationResult<'a>) -> Self {
-        StaticInput {
-            trajectories,
-        }
+        StaticInput { trajectories }
     }
 
     pub fn next_event_time(&self, time: f64) -> Option<f64> {

@@ -1,4 +1,7 @@
-use crate::{model_description::{ModelDescription, ModelVariable}, sim::fmi3::{SimulationResult, parse_variable_value}};
+use crate::{
+    model_description::{ModelDescription, ModelVariable},
+    sim::fmi3::{SimulationResult, parse_variable_value},
+};
 use std::{collections::HashMap, io::Read, path::Path};
 
 pub fn write_csv<P: AsRef<Path>>(

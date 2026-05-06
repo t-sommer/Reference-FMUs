@@ -1,10 +1,10 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
+use fmi::fmi2::*;
 use fmi::model_description::{Causality, read_model_description};
 use fmi::sim::SimulationSettings;
 use fmi::sim::fmi2::SimulationResult;
 use fmi::{fmi2::types::*, sim::fmi2::simulate_cs};
-use fmi::fmi2::*;
 use std::vec;
 use std::{env, path::PathBuf};
 
@@ -48,14 +48,11 @@ fn create_fmu() -> FMU2<CS> {
 
 #[test]
 fn test_csv_input() {
-
     let resources_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("resources");
 
-    let unzipdir = resources_dir
-        .join("fmi2")
-        .join("Feedthrough");
+    let unzipdir = resources_dir.join("fmi2").join("Feedthrough");
 
     let model_description = read_model_description(&unzipdir.join("modelDescription.xml")).unwrap();
 
@@ -76,7 +73,12 @@ fn test_csv_input() {
         event_mode_used: false,
     };
 
-    let output_variables = settings.model_description.modelVariables.iter().filter(|var| var.causality == Causality::Output).collect();
+    let output_variables = settings
+        .model_description
+        .modelVariables
+        .iter()
+        .filter(|var| var.causality == Causality::Output)
+        .collect();
 
     let mut simulation_result = SimulationResult::new(output_variables);
 

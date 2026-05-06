@@ -6,24 +6,20 @@ use crate::{
     sim::fmi3::{SimulationResult, VariableValue},
 };
 
-pub struct Recorder<'fmu, 'res, 'md> {
-    pub fmu: &'fmu FMU3,
+pub struct Recorder<'res, 'md> {
     pub simulation_result: &'res mut SimulationResult<'md>,
     pub sizes: Vec<usize>,
 }
 
-impl<'fmu, 'res, 'md> Recorder<'fmu, 'res, 'md> {
-    pub fn new(fmu: &'fmu FMU3, simulation_result: &'res mut SimulationResult<'md>) -> Self {
-        let mut recorder = Recorder {
-            fmu,
+impl<'res, 'md> Recorder<'res, 'md> {
+    pub fn new(simulation_result: &'res mut SimulationResult<'md>) -> Self {
+        Recorder {
             simulation_result,
             sizes: vec![],
-        };
-        recorder.update_sizes();
-        recorder
+        }
     }
 
-    pub fn update_sizes(&mut self) {
+    pub fn update_sizes(&mut self, fmu: &FMU3) {
         self.sizes.clear();
         for variable in self.simulation_result.variables.iter() {
             let mut size = 1usize;
@@ -33,7 +29,7 @@ impl<'fmu, 'res, 'md> Recorder<'fmu, 'res, 'md> {
                     Dimension::Variable(value_reference) => {
                         let mut values = [0u64];
                         // TODO: handle status
-                        self.fmu.getUInt64(&[*value_reference], &mut values);
+                        fmu.getUInt64(&[*value_reference], &mut values);
                         values[0] as usize
                     }
                 };
@@ -42,9 +38,10 @@ impl<'fmu, 'res, 'md> Recorder<'fmu, 'res, 'md> {
         }
     }
 
-    pub fn sample(&mut self, time: f64) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn sample(&mut self, time: f64, fmu: &FMU3) -> Result<(), Box<dyn std::error::Error>> {
+        
         if self.sizes.is_empty() {
-            self.update_sizes();
+            self.update_sizes(fmu);
         }
 
         // TODO: handle FMI status
@@ -61,67 +58,67 @@ impl<'fmu, 'res, 'md> Recorder<'fmu, 'res, 'md> {
             let variable_value = match variable.variableType {
                 VariableType::Float32 => {
                     let mut values = vec![0f32; *size];
-                    self.fmu.getFloat32(&value_references, &mut values);
+                    fmu.getFloat32(&value_references, &mut values);
                     VariableValue::Float32(values)
                 }
                 VariableType::Float64 => {
                     let mut values = vec![0f64; *size];
-                    self.fmu.getFloat64(&value_references, &mut values);
+                    fmu.getFloat64(&value_references, &mut values);
                     VariableValue::Float64(values)
                 }
                 VariableType::Int8 => {
                     let mut values = vec![0i8; *size];
-                    self.fmu.getInt8(&value_references, &mut values);
+                    fmu.getInt8(&value_references, &mut values);
                     VariableValue::Int8(values)
                 }
                 VariableType::UInt8 => {
                     let mut values = vec![0u8; *size];
-                    self.fmu.getUInt8(&value_references, &mut values);
+                    fmu.getUInt8(&value_references, &mut values);
                     VariableValue::UInt8(values)
                 }
                 VariableType::Int16 => {
                     let mut values = vec![0i16; *size];
-                    self.fmu.getInt16(&value_references, &mut values);
+                    fmu.getInt16(&value_references, &mut values);
                     VariableValue::Int16(values)
                 }
                 VariableType::UInt16 => {
                     let mut values = vec![0u16; *size];
-                    self.fmu.getUInt16(&value_references, &mut values);
+                    fmu.getUInt16(&value_references, &mut values);
                     VariableValue::UInt16(values)
                 }
                 VariableType::Int32 => {
                     let mut values = vec![0i32; *size];
-                    self.fmu.getInt32(&value_references, &mut values);
+                    fmu.getInt32(&value_references, &mut values);
                     VariableValue::Int32(values)
                 }
                 VariableType::UInt32 => {
                     let mut values = vec![0u32; *size];
-                    self.fmu.getUInt32(&value_references, &mut values);
+                    fmu.getUInt32(&value_references, &mut values);
                     VariableValue::UInt32(values)
                 }
                 VariableType::Int64 | VariableType::Enumeration => {
                     let mut values = vec![0i64; *size];
-                    self.fmu.getInt64(&value_references, &mut values);
+                    fmu.getInt64(&value_references, &mut values);
                     VariableValue::Int64(values)
                 }
                 VariableType::UInt64 => {
                     let mut values = vec![0u64; *size];
-                    self.fmu.getUInt64(&value_references, &mut values);
+                    fmu.getUInt64(&value_references, &mut values);
                     VariableValue::UInt64(values)
                 }
                 VariableType::Boolean => {
                     let mut values = vec![false; *size];
-                    self.fmu.getBoolean(&value_references, &mut values);
+                    fmu.getBoolean(&value_references, &mut values);
                     VariableValue::Boolean(values)
                 }
                 VariableType::String => {
                     let mut values = vec![String::new(); *size];
-                    self.fmu.getString(&value_references, &mut values);
+                    fmu.getString(&value_references, &mut values);
                     VariableValue::String(values)
                 }
                 VariableType::Binary => {
                     let mut values = vec![vec![]; *size];
-                    self.fmu.getBinary(&value_references, &mut values);
+                    fmu.getBinary(&value_references, &mut values);
                     VariableValue::Binary(values)
                 }
                 _ => continue,

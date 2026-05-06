@@ -4,20 +4,18 @@ use crate::{
     sim::fmi2::{SimulationResult, VariableValue},
 };
 
-pub struct Recorder<'fmu, 'res, 'md, I> {
-    pub fmu: &'fmu FMU2<I>,
+pub struct Recorder<'res, 'md> {
     pub simulation_result: &'res mut SimulationResult<'md>,
 }
 
-impl<'fmu, 'res, 'md, I> Recorder<'fmu, 'res, 'md, I> {
-    pub fn new(fmu: &'fmu FMU2<I>, simulation_result: &'res mut SimulationResult<'md>) -> Self {
+impl<'res, 'md> Recorder<'res, 'md> {
+    pub fn new(simulation_result: &'res mut SimulationResult<'md>) -> Self {
         Recorder {
-            fmu,
             simulation_result,
         }
     }
 
-    pub fn sample(&mut self, time: f64) -> std::io::Result<()> {
+    pub fn sample<I>(&mut self, time: f64, fmu: &FMU2<I>) -> std::io::Result<()> {
         self.simulation_result.time.push(time);
 
         let mut row = vec![];
@@ -30,22 +28,22 @@ impl<'fmu, 'res, 'md, I> Recorder<'fmu, 'res, 'md, I> {
             let variable_value = match variable.variableType {
                 VariableType::Float64 => {
                     let mut values = [0.0];
-                    self.fmu.getReal(&value_references, &mut values);
+                    fmu.getReal(&value_references, &mut values);
                     VariableValue::Real(values[0])
                 }
                 VariableType::Int32 | VariableType::Enumeration => {
                     let mut values = [0];
-                    self.fmu.getInteger(&value_references, &mut values);
+                    fmu.getInteger(&value_references, &mut values);
                     VariableValue::Integer(values[0])
                 }
                 VariableType::Boolean => {
                     let mut values = [0];
-                    self.fmu.getBoolean(&value_references, &mut values);
+                    fmu.getBoolean(&value_references, &mut values);
                     VariableValue::Boolean(values[0])
                 }
                 VariableType::String => {
                     let mut values = [String::new()];
-                    self.fmu.getString(&value_references, &mut values);
+                    fmu.getString(&value_references, &mut values);
                     VariableValue::String(values[0].clone())
                 }
                 _ => panic!("Unexpected variable type: {:?}", variable.variableType),

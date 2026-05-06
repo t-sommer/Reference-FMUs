@@ -5,7 +5,7 @@ use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use fmi::{
     model_description::{Causality, MajorVersion, ModelVariable, read_model_description},
-    sim::{self, SimulationSettings, euler::ForwardEulerFactory},
+    sim::{self, SimulationSettings, euler::ForwardEulerFactory, fmi2::recorder},
     util::extract_fmu,
 };
 use fmi_rs_xsd::validate_model_description_against_xsd;
@@ -266,7 +266,9 @@ fn main() -> ExitCode {
                 None
             };
 
-            let mut sim_results = sim::fmi2::SimulationResult::new(output_variables.clone());
+            let mut simulation_result = sim::fmi2::SimulationResult::new(output_variables.clone());
+
+            let mut recorder = sim::fmi2::recorder::Recorder::new(&mut simulation_result);
 
             let result = match interface_type {
                 InterfaceType::ModelExchange => match args.solver {
@@ -274,29 +276,29 @@ fn main() -> ExitCode {
                         &settings,
                         &ForwardEulerFactory { fixes_step_size },
                         input.as_ref(),
-                        &mut sim_results,
+                        &mut recorder,
                     ),
                     SolverType::Cvode => sim::fmi2::simulate_me(
                         &settings,
                         &cvode::CVodeSolverFactory,
                         input.as_ref(),
-                        &mut sim_results,
+                        &mut recorder,
                     ),
                 },
                 InterfaceType::CoSimulation => {
-                    sim::fmi2::simulate_cs(&settings, input.as_ref(), &mut sim_results)
+                    sim::fmi2::simulate_cs(&settings, input.as_ref(), &mut recorder)
                 }
             };
 
             if let Some(output_file) = args.output_file.as_ref() {
-                if let Err(e) = sim::fmi2::csv::write_csv(&sim_results, output_file) {
+                if let Err(e) = sim::fmi2::csv::write_csv(&simulation_result, output_file) {
                     eprintln!("Failed to write output CSV file: {e}");
                     return ExitCode::FAILURE;
                 }
             }
 
             if args.show_plot {
-                sim::fmi2::plot::plot_result(&sim_results).show();
+                sim::fmi2::plot::plot_result(&simulation_result).show();
             }
 
             result
@@ -311,7 +313,9 @@ fn main() -> ExitCode {
                 None
             };
 
-            let mut sim_results = sim::fmi3::SimulationResult::new(output_variables.clone());
+            let mut simulation_result = sim::fmi3::SimulationResult::new(output_variables.clone());
+
+            let mut recorder = sim::fmi3::recorder::Recorder::new(&mut simulation_result);
 
             let result = match interface_type {
                 InterfaceType::ModelExchange => match args.solver {
@@ -319,29 +323,29 @@ fn main() -> ExitCode {
                         &settings,
                         &ForwardEulerFactory { fixes_step_size },
                         input.as_ref(),
-                        &mut sim_results,
+                        &mut recorder,
                     ),
                     SolverType::Cvode => sim::fmi3::simulate_me(
                         &settings,
                         &cvode::CVodeSolverFactory,
                         input.as_ref(),
-                        &mut sim_results,
+                        &mut recorder,
                     ),
                 },
                 InterfaceType::CoSimulation => {
-                    sim::fmi3::simulate_cs(&settings, input.as_ref(), &mut sim_results)
+                    sim::fmi3::simulate_cs(&settings, input.as_ref(), &mut recorder)
                 }
             };
 
             if let Some(output_file) = args.output_file.as_ref() {
-                if let Err(e) = sim::fmi3::csv::write_csv(&sim_results, output_file) {
+                if let Err(e) = sim::fmi3::csv::write_csv(&simulation_result, output_file) {
                     eprintln!("Failed to write output CSV file: {e}");
                     return ExitCode::FAILURE;
                 }
             }
 
             if args.show_plot {
-                sim::fmi3::plot::plot_result(&sim_results).show();
+                sim::fmi3::plot::plot_result(&simulation_result).show();
             }
 
             result

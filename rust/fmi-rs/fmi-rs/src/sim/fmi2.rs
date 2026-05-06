@@ -10,10 +10,10 @@ use crate::{
         self, CS, FMU2, ME,
         types::{fmi2Boolean, fmi2False, fmi2Integer, fmi2Real, fmi2True},
     },
-    model_description::{Causality, ModelDescription, ModelVariable, VariableType},
+    model_description::{self, Causality, ModelDescription, ModelVariable, VariableType},
     sim::{
         SimulationSettings, SolverFactory,
-        fmi2::{csv::read_csv, input::StaticInput, recorder::Recorder},
+        fmi2::{input::StaticInput, recorder::Recorder},
     },
     types::{
         fmiStatus::{self, fmiOK, fmiWarning},
@@ -21,7 +21,7 @@ use crate::{
     },
 };
 
-use std::{collections::HashMap, error::Error, fs::File};
+use std::{collections::HashMap, error::Error};
 
 #[derive(Debug, PartialEq)]
 pub enum VariableValue {
@@ -149,7 +149,7 @@ fn set_start_values<T>(
 pub fn simulate_cs(
     settings: &SimulationSettings,
     input: Option<&StaticInput>,
-    simulation_result: &mut SimulationResult,
+    recorder: &mut Recorder,
 ) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
@@ -199,9 +199,7 @@ pub fn simulate_cs(
 
     call(fmu.exitInitializationMode())?;
 
-    let mut recorder = Recorder::new(&fmu, simulation_result);
-
-    recorder.sample(time)?;
+    recorder.sample(time, &fmu)?;
 
     let mut n_steps = 0;
 
@@ -262,7 +260,7 @@ pub fn simulate_cs(
             n_steps += 1;
         }
 
-        recorder.sample(time)?;
+        recorder.sample(time, &fmu)?;
 
         if terminate_simulation != 0 {
             break;
@@ -278,7 +276,7 @@ pub fn simulate_me<S: SolverFactory>(
     settings: &SimulationSettings,
     solver_factory: &S,
     input: Option<&StaticInput>,
-    simulation_result: &mut SimulationResult,
+    recorder: &mut Recorder,
 ) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
@@ -355,14 +353,35 @@ pub fn simulate_me<S: SolverFactory>(
 
     call(fmu.enterContinuousTimeMode())?;
 
-    let mut recorder = Recorder::new(&fmu, simulation_result);
+    // let mut recorder = Recorder::new(simulation_result);
+
+    let derivative_indices: Vec<u32> = settings
+        .model_description
+        .derivatives
+        .iter()
+        .map(|d| d.valueReference)
+        .collect();
+
+    let derivative_vrs: Vec<u32> = derivative_indices
+        .iter()
+        .map(|i| settings.model_description.modelVariables[(*i - 1) as usize].valueReference)
+        .collect();
+
+    let state_vrs: Vec<u32> = derivative_indices
+        .iter()
+        .map(|i| {
+            let state_index = settings.model_description.modelVariables[(*i - 1) as usize].derivative.expect("Derivative variables must have a derivative element.");
+            settings.model_description.modelVariables[(state_index - 1) as usize].valueReference
+    })
+        .collect();
+
     let mut solver = solver_factory.create(
         time,
         settings.model_description.derivatives.len(),
         settings.model_description.numberOfEventIndicators,
         settings.tolerance.unwrap_or(1e-4),
-        vec![0],
-        vec![0],
+        derivative_vrs,
+        state_vrs,
         Box::new(|time| {
             fmu.setTime(time);
             Ok(())
@@ -406,7 +425,7 @@ pub fn simulate_me<S: SolverFactory>(
     let mut n_steps = 0;
 
     loop {
-        recorder.sample(time)?;
+        recorder.sample(time, &fmu)?;
 
         if time > stop_time || relative_eq!(time, stop_time) {
             break;
@@ -484,7 +503,7 @@ pub fn simulate_me<S: SolverFactory>(
         };
 
         if is_input_event || is_time_event || is_state_event || is_step_event {
-            recorder.sample(time)?;
+            recorder.sample(time, &fmu)?;
 
             call(fmu.enterEventMode())?;
 

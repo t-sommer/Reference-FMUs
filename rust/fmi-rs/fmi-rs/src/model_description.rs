@@ -200,12 +200,18 @@ fn get_fmi2_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Er
 
     let mut unkonwns = vec![];
 
-    for output in container
+    for child in container
         .descendants()
         .filter(|n| n.has_tag_name("Unknown"))
     {
+        let index = child
+            .attribute("index")
+            .ok_or(format!("Missing index attribute in {}", name))?
+            .parse()
+            .unwrap();
+
         unkonwns.push(Unknown {
-            valueReference: 0,
+            valueReference: index,
             dependencies: None,
             dependenciesKind: None,
         });
@@ -266,6 +272,14 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
 
         let dimensions = vec![];
 
+        let mut derivative = None;
+
+        for grand_child in child.children().filter(|e| e.has_tag_name("Real")) {
+            if let Some(value) = grand_child.attribute("derivative") {
+                derivative = Some(value.parse().unwrap());
+            }
+        }
+
         let variable = ModelVariable {
             variableType,
             name,
@@ -273,7 +287,7 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             causality,
             variability,
             dimensions,
-            derivative: None,
+            derivative,
         };
 
         modelVariables.push(variable);

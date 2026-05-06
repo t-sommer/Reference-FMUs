@@ -350,7 +350,7 @@ fn set_start_values(
 pub fn simulate_cs(
     settings: &SimulationSettings,
     input: Option<&StaticInput>,
-    simulation_result: &mut SimulationResult,
+    recorder: &mut Recorder,
 ) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
@@ -432,9 +432,7 @@ pub fn simulate_cs(
         call(fmu.enterStepMode())?;
     }
 
-    let mut recorder = Recorder::new(&fmu, simulation_result);
-
-    recorder.sample(time)?;
+    recorder.sample(time, &fmu)?;
 
     let mut n_steps = 0;
 
@@ -510,7 +508,7 @@ pub fn simulate_cs(
             n_steps += 1;
         }
 
-        recorder.sample(time)?;
+        recorder.sample(time, &fmu)?;
 
         if terminate_simulation {
             call(fmu.terminate())?;
@@ -560,7 +558,7 @@ pub fn simulate_cs(
 
             call(fmu.enterStepMode())?;
 
-            recorder.sample(time)?;
+            recorder.sample(time, &fmu)?;
 
             true
         } else {
@@ -577,7 +575,7 @@ pub fn simulate_me<S: SolverFactory>(
     settings: &SimulationSettings,
     solver_factory: &S,
     input: Option<&StaticInput>,
-    simulation_result: &mut SimulationResult,
+    recorder: &mut Recorder,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = settings.start_time;
     let stop_time = settings.stop_time;
@@ -652,8 +650,6 @@ pub fn simulate_me<S: SolverFactory>(
     }
 
     call(fmu.enterContinuousTimeMode())?;
-
-    let mut recorder = Recorder::new(&fmu, simulation_result);
 
     // create a HashMap value reference -> variable
     let variables_map: HashMap<u32, &ModelVariable> = settings
@@ -730,7 +726,7 @@ pub fn simulate_me<S: SolverFactory>(
     let mut n_steps = 0;
 
     loop {
-        recorder.sample(time)?;
+        recorder.sample(time, &fmu)?;
 
         if time > stop_time || relative_eq!(time, stop_time) {
             break;
@@ -805,7 +801,7 @@ pub fn simulate_me<S: SolverFactory>(
         }
 
         if is_input_event || is_time_event || is_state_event || is_step_event {
-            recorder.sample(time)?;
+            recorder.sample(time, &fmu)?;
 
             call(fmu.enterEventMode())?;
 

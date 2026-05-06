@@ -349,6 +349,7 @@ fn set_start_values(
 
 pub fn simulate_cs(
     settings: &SimulationSettings,
+    input: Option<&StaticInput>,
     simulation_result: &mut SimulationResult,
 ) -> Result<(), Box<dyn Error>> {
     let start_time = settings.start_time;
@@ -368,14 +369,6 @@ pub fn simulate_cs(
 
     let can_handle_variable_communication_step_size =
         co_simulation.canHandleVariableCommunicationStepSize.clone();
-
-    let input = if let Some(path) = &settings.input_file {
-        let file = File::open(&path)?;
-        let trajectories = read_csv(&file, &settings.model_description)?;
-        Some(StaticInput::new(trajectories))
-    } else {
-        None
-    };
 
     let fmu = FMU3::instantiateCoSimulation(
         settings.unzipdir.as_ref(),
@@ -583,6 +576,7 @@ pub fn simulate_cs(
 pub fn simulate_me<S: SolverFactory>(
     settings: &SimulationSettings,
     solver_factory: &S,
+    input: Option<&StaticInput>,
     simulation_result: &mut SimulationResult,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let start_time = settings.start_time;
@@ -600,14 +594,6 @@ pub fn simulate_me<S: SolverFactory>(
     };
 
     let needs_completed_integrator_step = model_exchange.needsCompletedIntegratorStep;
-
-    let input = if let Some(path) = &settings.input_file {
-        let file = File::open(&path)?;
-        let trajectories = read_csv(&file, &settings.model_description)?;
-        Some(StaticInput::new(trajectories))
-    } else {
-        None
-    };
 
     let fmu = FMU3::instantiateModelExchange(
         settings.unzipdir.as_ref(),

@@ -9,7 +9,7 @@ use fmi::{
     util::extract_fmu,
 };
 use fmi_rs_xsd::validate_model_description_against_xsd;
-use std::{collections::HashMap, path::PathBuf, process::ExitCode};
+use std::{collections::HashMap, fs::File, path::PathBuf, process::ExitCode};
 
 
 #[derive(ValueEnum, Clone, Debug)]
@@ -258,6 +258,15 @@ fn main() -> ExitCode {
 
     let result = match &model_description.majorVersion {
         MajorVersion::V2 => {
+
+            let input = if let Some(path) = &args.input_file {
+                let file = File::open(&path).expect("Failed to open input file");
+                let trajectories = sim::fmi2::csv::read_csv(&file, &settings.model_description).expect("Failed to read CSV");
+                Some(sim::fmi2::input::StaticInput::new(trajectories))
+            } else {
+                None
+            };
+
             let mut sim_results =
                 sim::fmi2::SimulationResult::new(output_variables.clone());
 
@@ -266,13 +275,14 @@ fn main() -> ExitCode {
                     SolverType::Euler => sim::fmi2::simulate_me(
                         &settings,
                         &ForwardEulerFactory { fixes_step_size },
+                        input.as_ref(),
                         &mut sim_results,
                     ),
                     SolverType::Cvode => {
-                        sim::fmi2::simulate_me(&settings, &cvode::CVodeSolverFactory, &mut sim_results)
+                        sim::fmi2::simulate_me(&settings, &cvode::CVodeSolverFactory, input.as_ref(), &mut sim_results)
                     }
                 },
-                InterfaceType::CoSimulation => sim::fmi2::simulate_cs(&settings, &mut sim_results),
+                InterfaceType::CoSimulation => sim::fmi2::simulate_cs(&settings, input.as_ref(), &mut sim_results),
             };
 
             if let Some(output_file) = args.output_file.as_ref() {
@@ -289,6 +299,15 @@ fn main() -> ExitCode {
             result
         }
         MajorVersion::V3 => {
+
+            let input = if let Some(path) = &args.input_file {
+                let file = File::open(&path).expect("Failed to open input file");
+                let trajectories = sim::fmi3::csv::read_csv(&file, &settings.model_description).expect("Failed to read CSV");
+                Some(sim::fmi3::input::StaticInput::new(trajectories))
+            } else {
+                None
+            };
+
             let mut sim_results =
                 sim::fmi3::SimulationResult::new(output_variables.clone());
 
@@ -297,13 +316,14 @@ fn main() -> ExitCode {
                     SolverType::Euler => sim::fmi3::simulate_me(
                         &settings,
                         &ForwardEulerFactory { fixes_step_size },
+                        input.as_ref(),
                         &mut sim_results,
                     ),
                     SolverType::Cvode => {
-                        sim::fmi3::simulate_me(&settings, &cvode::CVodeSolverFactory, &mut sim_results)
+                        sim::fmi3::simulate_me(&settings, &cvode::CVodeSolverFactory, input.as_ref(), &mut sim_results)
                     }
                 },
-                InterfaceType::CoSimulation => sim::fmi3::simulate_cs(&settings, &mut sim_results),
+                InterfaceType::CoSimulation => sim::fmi3::simulate_cs(&settings, input.as_ref(), &mut sim_results),
             };
 
             if let Some(output_file) = args.output_file.as_ref() {

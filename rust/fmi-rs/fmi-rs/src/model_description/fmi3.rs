@@ -59,8 +59,48 @@ pub enum VariableType {
         reinit: bool,
     },
     Int8 {
-        // fmi3Int8
         start: Option<i8>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+        quantity: Option<String>,
+        min: Option<i8>,
+        max: Option<i8>,
+    },
+    UInt8 {
+        start: Option<u8>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+        quantity: Option<String>,
+        min: Option<u8>,
+        max: Option<u8>,
+    },
+    Int16 {
+        start: Option<i16>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+        quantity: Option<String>,
+        min: Option<i16>,
+        max: Option<i16>,
+    },
+    UInt16 {
+        start: Option<u16>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+        quantity: Option<String>,
+        min: Option<u16>,
+        max: Option<u16>,
+    },
+    Int32 {
+        // fmi3Int8
+        start: Option<i32>,
         // fmi3InitializableVariable
         initial: Option<Initial>,
         // fmi3TypedArrayableVariable
@@ -72,21 +112,74 @@ pub enum VariableType {
         // fmi3IntegerBaseAttributes
         quantity: Option<String>,
         // fmi3Int8Attributes
-        min: Option<i8>,
-        max: Option<i8>,
+        min: Option<i32>,
+        max: Option<i32>,
     },
-    UInt8,
-    Int16,
-    UInt16,
-    Int32,
-    UInt32,
-    Int64,
-    UInt64,
-    Boolean,
-    String,
-    Binary,
-    Clock,
-    Enumeration,
+    UInt32 {
+        start: Option<u32>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+        quantity: Option<String>,
+        min: Option<u32>,
+        max: Option<u32>,
+    },
+    Int64 {
+        start: Option<i64>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+        quantity: Option<String>,
+        min: Option<i64>,
+        max: Option<i64>,
+    },
+    UInt64 {
+        start: Option<u64>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+        quantity: Option<String>,
+        min: Option<u64>,
+        max: Option<u64>,
+    },
+    Boolean {
+        start: Option<bool>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+    },
+    String {
+        start: Option<String>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+    },
+    Binary {
+        start: Option<Vec<u8>>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+    },
+    Clock {
+        start: Option<bool>,
+        initial: Option<Initial>,
+        declaredType: Option<String>,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+    },
+    Enumeration {
+        start: Option<i64>,
+        initial: Option<Initial>,
+        declaredType: String,
+        intermediateUpdate: bool,
+        previous: Option<u32>,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -188,7 +281,7 @@ pub struct ModelExchange {
 
 #[derive(Debug)]
 pub enum Dimension {
-    Fixed { size: usize },
+    Fixed { start: usize },
     Variable { valueReference: fmiValueReference },
 }
 
@@ -283,7 +376,6 @@ fn get_fmi3_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Er
 fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
     if node.has_tag_name("Float32") {
         return Ok(VariableType::Float32 {
-            // dimensions: get_dimensions(node)?,
             intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
             previous: node.optional_attribute_as("previous"),
             declaredType: node.optional_attribute("declaredType"),
@@ -302,7 +394,6 @@ fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
         });
     } else if node.has_tag_name("Float64") {
         return Ok(VariableType::Float64 {
-            // dimensions: get_dimensions(node)?,
             intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
             previous: node.optional_attribute_as("previous"),
             declaredType: node.optional_attribute("declaredType"),
@@ -324,7 +415,6 @@ fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
             start: node.optional_attribute_as("start"),
             initial: node.optional_attribute_as("initial"),
             declaredType: node.optional_attribute("declaredType"),
-            // dimensions: get_dimensions(node)?,
             intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
             previous: node.optional_attribute_as("previous"),
             quantity: node.optional_attribute("quantity"),
@@ -332,29 +422,127 @@ fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
             max: node.optional_attribute_as("max"),
         });
     } else if node.has_tag_name("UInt8") {
-        return Ok(VariableType::UInt8);
+        return Ok(VariableType::UInt8 {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+            quantity: node.optional_attribute("quantity"),
+            min: node.optional_attribute_as("min"),
+            max: node.optional_attribute_as("max"),
+        });
     } else if node.has_tag_name("Int16") {
-        return Ok(VariableType::Int16);
+        return Ok(VariableType::Int16 {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+            quantity: node.optional_attribute("quantity"),
+            min: node.optional_attribute_as("min"),
+            max: node.optional_attribute_as("max"),
+        });
     } else if node.has_tag_name("UInt16") {
-        return Ok(VariableType::UInt16);
+        return Ok(VariableType::UInt16 {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+            quantity: node.optional_attribute("quantity"),
+            min: node.optional_attribute_as("min"),
+            max: node.optional_attribute_as("max"),
+        });
     } else if node.has_tag_name("Int32") {
-        return Ok(VariableType::Int32);
+        return Ok(VariableType::Int32 {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            // dimensions: get_dimensions(node)?,
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+            quantity: node.optional_attribute("quantity"),
+            min: node.optional_attribute_as("min"),
+            max: node.optional_attribute_as("max"),
+        });
     } else if node.has_tag_name("UInt32") {
-        return Ok(VariableType::UInt32);
+        return Ok(VariableType::UInt32 {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            // dimensions: get_dimensions(node)?,
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+            quantity: node.optional_attribute("quantity"),
+            min: node.optional_attribute_as("min"),
+            max: node.optional_attribute_as("max"),
+        });
     } else if node.has_tag_name("Int64") {
-        return Ok(VariableType::Int64);
+        return Ok(VariableType::Int64 {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            // dimensions: get_dimensions(node)?,
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+            quantity: node.optional_attribute("quantity"),
+            min: node.optional_attribute_as("min"),
+            max: node.optional_attribute_as("max"),
+        });
     } else if node.has_tag_name("UInt64") {
-        return Ok(VariableType::UInt64);
+        return Ok(VariableType::UInt64 {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            // dimensions: get_dimensions(node)?,
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+            quantity: node.optional_attribute("quantity"),
+            min: node.optional_attribute_as("min"),
+            max: node.optional_attribute_as("max"),
+        });
     } else if node.has_tag_name("Boolean") {
-        return Ok(VariableType::Boolean);
+        return Ok(VariableType::Boolean {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+        });
     } else if node.has_tag_name("String") {
-        return Ok(VariableType::String);
+        return Ok(VariableType::String {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+        });
     } else if node.has_tag_name("Binary") {
-        return Ok(VariableType::Binary);
+        return Ok(VariableType::Binary {
+            start: None, // TODO: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            // dimensions: get_dimensions(node)?,
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+        });
     } else if node.has_tag_name("Clock") {
-        return Ok(VariableType::Clock);
+        return Ok(VariableType::Clock {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.optional_attribute("declaredType"),
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+        });
     } else if node.has_tag_name("Enumeration") {
-        return Ok(VariableType::Enumeration);
+        return Ok(VariableType::Enumeration {
+            start: node.optional_attribute_as("start"),
+            initial: node.optional_attribute_as("initial"),
+            declaredType: node.required_attribute("declaredType")?,
+            intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+            previous: node.optional_attribute_as("previous"),
+        });
     }
 
     Err("Missing variable type element".into())
@@ -363,18 +551,16 @@ fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
 fn get_dimensions(node: &Node) -> Result<Vec<Dimension>, Box<dyn Error>> {
     let mut dimensions = vec![];
 
-    for dim in node.children().filter(|n| n.has_tag_name("Dimensions")) {
-        for child in dim.children().filter(|n| n.is_element()) {
-            if child.has_tag_name("Dimension") {
-                if let Some(size_str) = child.attribute("size") {
-                    let size = size_str.parse()?;
-                    dimensions.push(Dimension::Fixed { size });
-                } else if let Some(vr_str) = child.attribute("valueReference") {
-                    let vr = vr_str.parse()?;
-                    dimensions.push(Dimension::Variable { valueReference: vr });
-                } else {
-                    return Err("Dimension must have either size or valueReference attribute".into());
-                }
+    for child in node.children().filter(|n| n.is_element()) {
+        if child.has_tag_name("Dimension") {
+            if let Some(size_str) = child.attribute("start") {
+                let size = size_str.parse()?;
+                dimensions.push(Dimension::Fixed { start: size });
+            } else if let Some(vr_str) = child.attribute("valueReference") {
+                let vr = vr_str.parse()?;
+                dimensions.push(Dimension::Variable { valueReference: vr });
+            } else {
+                return Err("Dimension must have either size or valueReference attribute".into());
             }
         }
     }

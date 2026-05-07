@@ -28,7 +28,7 @@ impl<'res, 'md> Recorder<'res, 'md> {
             let mut size = 1usize;
             for dimension in variable.dimensions.iter() {
                 size *= match dimension {
-                    Dimension::Fixed { size } => *size,
+                    Dimension::Fixed { start: size } => *size,
                     Dimension::Variable { valueReference } => {
                         let mut values = [0u64];
                         // TODO: handle status
@@ -74,52 +74,52 @@ impl<'res, 'md> Recorder<'res, 'md> {
                     fmu.getInt8(&value_references, &mut values);
                     VariableValue::Int8(values)
                 }
-                VariableType::UInt8 => {
+                VariableType::UInt8 {..} => {
                     let mut values = vec![0u8; *size];
                     fmu.getUInt8(&value_references, &mut values);
                     VariableValue::UInt8(values)
                 }
-                VariableType::Int16 => {
+                VariableType::Int16 {..} => {
                     let mut values = vec![0i16; *size];
                     fmu.getInt16(&value_references, &mut values);
                     VariableValue::Int16(values)
                 }
-                VariableType::UInt16 => {
+                VariableType::UInt16 {..} => {
                     let mut values = vec![0u16; *size];
                     fmu.getUInt16(&value_references, &mut values);
                     VariableValue::UInt16(values)
                 }
-                VariableType::Int32 => {
+                VariableType::Int32 {..} => {
                     let mut values = vec![0i32; *size];
                     fmu.getInt32(&value_references, &mut values);
                     VariableValue::Int32(values)
                 }
-                VariableType::UInt32 => {
+                VariableType::UInt32 {..} => {
                     let mut values = vec![0u32; *size];
                     fmu.getUInt32(&value_references, &mut values);
                     VariableValue::UInt32(values)
                 }
-                VariableType::Int64 | VariableType::Enumeration => {
+                VariableType::Int64 {..} | VariableType::Enumeration {..} => {
                     let mut values = vec![0i64; *size];
                     fmu.getInt64(&value_references, &mut values);
                     VariableValue::Int64(values)
                 }
-                VariableType::UInt64 => {
+                VariableType::UInt64 {..} => {
                     let mut values = vec![0u64; *size];
                     fmu.getUInt64(&value_references, &mut values);
                     VariableValue::UInt64(values)
                 }
-                VariableType::Boolean => {
+                VariableType::Boolean {..} => {
                     let mut values = vec![false; *size];
                     fmu.getBoolean(&value_references, &mut values);
                     VariableValue::Boolean(values)
                 }
-                VariableType::String => {
+                VariableType::String {..} => {
                     let mut values = vec![String::new(); *size];
                     fmu.getString(&value_references, &mut values);
                     VariableValue::String(values)
                 }
-                VariableType::Binary => {
+                VariableType::Binary {..} => {
                     let mut values = vec![vec![]; *size];
                     fmu.getBinary(&value_references, &mut values);
                     VariableValue::Binary(values)

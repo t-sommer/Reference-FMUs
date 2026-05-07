@@ -47,7 +47,7 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
 
         if matches!(
             variable.variableType,
-            VariableType::String | VariableType::Binary
+            VariableType::String {..} | VariableType::Binary {..}
         ) {
             continue;
         }

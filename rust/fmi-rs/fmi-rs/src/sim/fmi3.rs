@@ -175,7 +175,7 @@ pub fn parse_variable_value(
     literal: &str,
 ) -> Result<VariableValue, Box<dyn Error>> {
     match variable_type {
-        VariableType::Float32 {..}=> {
+        VariableType::Float32 {..} => {
             let values: Result<Vec<fmiFloat32>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Float32(values?))
@@ -190,51 +190,51 @@ pub fn parse_variable_value(
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Int8(values?))
         }
-        VariableType::UInt8 => {
+        VariableType::UInt8 {..} => {
             let values: Result<Vec<fmiUInt8>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt8(values?))
         }
-        VariableType::Int16 => {
+        VariableType::Int16 {..} => {
             let values: Result<Vec<fmiInt16>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Int16(values?))
         }
-        VariableType::UInt16 => {
+        VariableType::UInt16 {..} => {
             let values: Result<Vec<fmiUInt16>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt16(values?))
         }
-        VariableType::Int32 => {
+        VariableType::Int32 {..} => {
             let values: Result<Vec<fmiInt32>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Int32(values?))
         }
-        VariableType::UInt32 => {
+        VariableType::UInt32 {..} => {
             let values: Result<Vec<fmiUInt32>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt32(values?))
         }
-        VariableType::Int64 | VariableType::Enumeration => {
+        VariableType::Int64 {..} | VariableType::Enumeration {..} => {
             let values: Result<Vec<fmiInt64>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Int64(values?))
         }
-        VariableType::UInt64 => {
+        VariableType::UInt64 {..} => {
             let values: Result<Vec<fmiUInt64>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt64(values?))
         }
-        VariableType::Boolean | VariableType::Clock => {
+        VariableType::Boolean {..} | VariableType::Clock {..} => {
             let values: Result<Vec<fmiBoolean>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Boolean(values?))
         }
-        VariableType::String => {
+        VariableType::String {..} => {
             let values: Vec<String> = literal.split_whitespace().map(|v| v.to_string()).collect();
             Ok(VariableValue::String(values))
         }
-        VariableType::Binary => {
+        VariableType::Binary {..} => {
             let values: Result<Vec<Vec<fmiByte>>, Box<dyn Error>> = literal
                 .split_whitespace()
                 .map(|hex_str| {

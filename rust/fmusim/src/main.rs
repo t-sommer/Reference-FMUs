@@ -4,9 +4,7 @@ mod cvode;
 use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use fmi::{
-    model_description::{Causality, MajorVersion, ModelVariable, read_model_description},
-    sim::{self, SimulationSettings, euler::ForwardEulerFactory, fmi2::recorder},
-    util::extract_fmu,
+    model_description::{self, peak_fmi_version}, sim::{self, euler::ForwardEulerFactory}, util::extract_fmu
 };
 use fmi_rs_xsd::validate_model_description_against_xsd;
 use std::{collections::HashMap, fs::File, path::PathBuf, process::ExitCode};
@@ -135,15 +133,19 @@ fn main() -> ExitCode {
 
     let xml_path = unzipdir.path().join("modelDescription.xml");
 
-    let model_description = match read_model_description(xml_path.as_path()) {
-        Ok(desc) => desc,
-        Err(e) => {
-            eprintln!("Failed to read model description: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
+    let fmi_version = peak_fmi_version(xml_path.as_path()).unwrap_or_else(|e| {
+        eprintln!("Failed to determine FMI version: {e}");
+        std::process::exit(1);
+    });
 
-    let fmi_major_version = model_description.majorVersion.clone() as i32;
+    let fmi_major_version = if fmi_version == "2.0" {
+        2
+    } else if fmi_version.starts_with("3.") {
+        3
+    } else {
+        eprintln!("Unsupported FMI version: {fmi_version}");
+        return ExitCode::FAILURE;
+    };
 
     if let Err(validation_errors) =
         validate_model_description_against_xsd(&xml_path, fmi_major_version)
@@ -155,108 +157,115 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let (start_time, stop_time, _tolerance) =
-        if let Some(default_experiment) = &model_description.defaultExperiment {
-            let start_time: f64 = if let Some(v) = &default_experiment.startTime {
-                v.parse().unwrap()
-            } else {
-                0.0
-            };
-            let stop_time: f64 = if let Some(v) = &default_experiment.stopTime {
-                v.parse().unwrap()
-            } else {
-                start_time + 1.0
-            };
-            let tolerance: Option<f64> = default_experiment
-                .tolerance
-                .as_ref()
-                .map(|v| v.parse().unwrap());
-            (start_time, stop_time, tolerance)
-        } else {
-            (0.0, 1.0, None)
-        };
-
-    let internal_step_size: Option<f64> = model_description
-        .coSimulation
-        .as_ref()
-        .unwrap()
-        .fixedInternalStepSize
-        .as_ref()
-        .map(|v| v.parse().unwrap());
-
-    let start_time = args.start_time.unwrap_or(start_time);
-    let stop_time = args.stop_time.unwrap_or(stop_time);
-    let tolerance = args.tolerance;
-
-    let output_interval = if let Some(v) = args.output_interval {
-        v
-    } else {
-        if let Some(v) = internal_step_size {
-            v
-        } else {
-            (stop_time - start_time) / 500.0
-        }
-    };
-
-    let output_variables: Vec<&ModelVariable> = if args.output_variable.is_empty() {
-        model_description
-            .modelVariables
-            .iter()
-            .filter(|v| v.causality == Causality::Output)
-            .collect()
-    } else {
-        let variable_map: HashMap<&str, &ModelVariable> = model_description
-            .modelVariables
-            .iter()
-            .map(|var| (var.name.as_str(), var))
-            .collect();
-
-        let mut output_variables = vec![];
-
-        for variable_name in args.output_variable {
-            if let Some(&variable) = variable_map.get(variable_name.as_str()) {
-                output_variables.push(variable);
-            } else {
-                eprintln!("The requested output variable {variable_name:?} does not exist.");
-                return ExitCode::FAILURE;
-            }
-        }
-
-        output_variables
-    };
-
-    let settings = SimulationSettings {
-        unzipdir: unzipdir.path(),
-        model_description: &model_description,
-        start_time,
-        stop_time,
-        set_stop_time: args.set_stop_time,
-        output_interval,
-        tolerance,
-        start_values: args.start_values.clone(),
-        log_fmi_calls: args.log_fmi_calls,
-        input_file: args.input_file.as_ref().map(|f| PathBuf::from(f)),
-        early_return_allowed: args.early_return_allowed,
-        event_mode_used: args.event_mode_used,
-        logging_on: args.logging_on,
-    };
-
-    let interface_type = match args.interface_type {
-        Some(t) => t,
-        None => {
-            if let Some(_) = &model_description.coSimulation {
-                InterfaceType::CoSimulation
-            } else {
-                InterfaceType::ModelExchange
-            }
-        }
-    };
-
-    let fixes_step_size = args.fixed_step_size.unwrap_or(output_interval);
     let start_time = std::time::Instant::now();
 
-    let result = match &model_description.majorVersion {
-        MajorVersion::V2 => {
+    let result = if fmi_major_version == 2 {
+
+            let model_description: model_description::fmi2::ModelDescription = match model_description::fmi2::read_model_description(&xml_path) {
+                Ok(md) => md,
+                Err(e) => {
+                    eprintln!("Failed to parse modelDescription.xml: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            let output_variables: Vec<&model_description::fmi2::ScalarVariable> = if args.output_variable.is_empty() {
+                model_description
+                    .modelVariables
+                    .iter()
+                    .filter(|v| v.causality == model_description::fmi2::Causality::Output)
+                    .collect()
+            } else {
+                let variable_map: HashMap<&str, &model_description::fmi2::ScalarVariable> = model_description
+                    .modelVariables
+                    .iter()
+                    .map(|var| (var.name.as_str(), var))
+                    .collect();
+
+                let mut output_variables = vec![];
+
+                for variable_name in args.output_variable {
+                    if let Some(&variable) = variable_map.get(variable_name.as_str()) {
+                        output_variables.push(variable);
+                    } else {
+                        eprintln!("The requested output variable {variable_name:?} does not exist.");
+                        return ExitCode::FAILURE;
+                    }
+                }
+
+                output_variables
+            };
+
+            let (start_time, stop_time, _tolerance) =
+                if let Some(default_experiment) = &model_description.defaultExperiment {
+                    let start_time: f64 = if let Some(v) = &default_experiment.startTime {
+                        v.parse().unwrap()
+                    } else {
+                        0.0
+                    };
+                    let stop_time: f64 = if let Some(v) = &default_experiment.stopTime {
+                        v.parse().unwrap()
+                    } else {
+                        start_time + 1.0
+                    };
+                    let tolerance: Option<f64> = default_experiment
+                        .tolerance
+                        .as_ref()
+                        .map(|v| v.parse().unwrap());
+                    (start_time, stop_time, tolerance)
+                } else {
+                    (0.0, 1.0, None)
+                };
+
+            let internal_step_size: Option<f64> = model_description
+                .coSimulation
+                .as_ref()
+                .unwrap()
+                .fixedInternalStepSize
+                .as_ref()
+                .map(|v| v.parse().unwrap());
+
+            let start_time = args.start_time.unwrap_or(start_time);
+            let stop_time = args.stop_time.unwrap_or(stop_time);
+            let tolerance = args.tolerance;
+
+            let output_interval = if let Some(v) = args.output_interval {
+                v
+            } else {
+                if let Some(v) = internal_step_size {
+                    v
+                } else {
+                    (stop_time - start_time) / 500.0
+                }
+            };
+
+            let settings = sim::fmi2::SimulationSettings {
+                unzipdir: unzipdir.path(),
+                model_description: &model_description,
+                start_time,
+                stop_time,
+                set_stop_time: args.set_stop_time,
+                output_interval,
+                tolerance,
+                start_values: args.start_values.clone(),
+                log_fmi_calls: args.log_fmi_calls,
+                input_file: args.input_file.as_ref().map(|f| PathBuf::from(f)),
+                early_return_allowed: args.early_return_allowed,
+                event_mode_used: args.event_mode_used,
+                logging_on: args.logging_on,
+            };
+
+            let interface_type = match args.interface_type {
+                Some(t) => t,
+                None => {
+                    if let Some(_) = &model_description.coSimulation {
+                        InterfaceType::CoSimulation
+                    } else {
+                        InterfaceType::ModelExchange
+                    }
+                }
+            };
+
             let input = if let Some(path) = &args.input_file {
                 let file = File::open(&path).expect("Failed to open input file");
                 let trajectories = sim::fmi2::csv::read_csv(&file, &settings.model_description)
@@ -269,6 +278,8 @@ fn main() -> ExitCode {
             let mut simulation_result = sim::fmi2::SimulationResult::new(output_variables.clone());
 
             let mut recorder = sim::fmi2::recorder::Recorder::new(&mut simulation_result);
+
+            let fixes_step_size = args.fixed_step_size.unwrap_or(output_interval);
 
             let result = match interface_type {
                 InterfaceType::ModelExchange => match args.solver {
@@ -302,8 +313,114 @@ fn main() -> ExitCode {
             }
 
             result
-        }
-        MajorVersion::V3 => {
+
+        } else {
+
+            let model_description: model_description::fmi3::ModelDescription = match model_description::fmi3::read_model_description(&xml_path) {
+                Ok(md) => md,
+                Err(e) => {
+                    eprintln!("Failed to parse modelDescription.xml: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            let output_variables: Vec<&model_description::fmi3::ModelVariable> = if args.output_variable.is_empty() {
+                model_description
+                    .modelVariables
+                    .iter()
+                    .filter(|v| v.causality == model_description::fmi3::Causality::Output)
+                    .collect()
+            } else {
+                let variable_map: HashMap<&str, &model_description::fmi3::ModelVariable> = model_description
+                    .modelVariables
+                    .iter()
+                    .map(|var| (var.name.as_str(), var))
+                    .collect();
+
+                let mut output_variables = vec![];
+
+                for variable_name in args.output_variable {
+                    if let Some(&variable) = variable_map.get(variable_name.as_str()) {
+                        output_variables.push(variable);
+                    } else {
+                        eprintln!("The requested output variable {variable_name:?} does not exist.");
+                        return ExitCode::FAILURE;
+                    }
+                }
+
+                output_variables
+            };
+
+            let (start_time, stop_time, _tolerance) =
+                if let Some(default_experiment) = &model_description.defaultExperiment {
+                    let start_time: f64 = if let Some(v) = &default_experiment.startTime {
+                        v.parse().unwrap()
+                    } else {
+                        0.0
+                    };
+                    let stop_time: f64 = if let Some(v) = &default_experiment.stopTime {
+                        v.parse().unwrap()
+                    } else {
+                        start_time + 1.0
+                    };
+                    let tolerance: Option<f64> = default_experiment
+                        .tolerance
+                        .as_ref()
+                        .map(|v| v.parse().unwrap());
+                    (start_time, stop_time, tolerance)
+                } else {
+                    (0.0, 1.0, None)
+                };
+
+            let internal_step_size: Option<f64> = model_description
+                .coSimulation
+                .as_ref()
+                .unwrap()
+                .fixedInternalStepSize
+                .as_ref()
+                .map(|v| v.parse().unwrap());
+
+            let start_time = args.start_time.unwrap_or(start_time);
+            let stop_time = args.stop_time.unwrap_or(stop_time);
+            let tolerance = args.tolerance;
+
+            let output_interval = if let Some(v) = args.output_interval {
+                v
+            } else {
+                if let Some(v) = internal_step_size {
+                    v
+                } else {
+                    (stop_time - start_time) / 500.0
+                }
+            };
+
+            let settings = sim::fmi3::SimulationSettings {
+                unzipdir: unzipdir.path(),
+                model_description: &model_description,
+                start_time,
+                stop_time,
+                set_stop_time: args.set_stop_time,
+                output_interval,
+                tolerance,
+                start_values: args.start_values.clone(),
+                log_fmi_calls: args.log_fmi_calls,
+                input_file: args.input_file.as_ref().map(|f| PathBuf::from(f)),
+                early_return_allowed: args.early_return_allowed,
+                event_mode_used: args.event_mode_used,
+                logging_on: args.logging_on,
+            };
+
+            let interface_type = match args.interface_type {
+                Some(t) => t,
+                None => {
+                    if let Some(_) = &model_description.coSimulation {
+                        InterfaceType::CoSimulation
+                    } else {
+                        InterfaceType::ModelExchange
+                    }
+                }
+            };
+
             let input = if let Some(path) = &args.input_file {
                 let file = File::open(&path).expect("Failed to open input file");
                 let trajectories = sim::fmi3::csv::read_csv(&file, &settings.model_description)
@@ -316,6 +433,8 @@ fn main() -> ExitCode {
             let mut simulation_result = sim::fmi3::SimulationResult::new(output_variables.clone());
 
             let mut recorder = sim::fmi3::recorder::Recorder::new(&mut simulation_result);
+
+            let fixes_step_size = args.fixed_step_size.unwrap_or(output_interval);
 
             let result = match interface_type {
                 InterfaceType::ModelExchange => match args.solver {
@@ -349,7 +468,6 @@ fn main() -> ExitCode {
             }
 
             result
-        }
     };
 
     let elapsed_time = start_time.elapsed();

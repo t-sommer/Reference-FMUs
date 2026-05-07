@@ -1,4 +1,4 @@
-use crate::model_description::VariableType;
+use crate::model_description::fmi2::VariableType;
 use crate::sim::fmi2::SimulationResult;
 use plotly::{
     Configuration, Layout, Plot, Scatter,
@@ -45,7 +45,7 @@ pub fn plot_result(sim_result: &SimulationResult<'_>) -> Plot {
         let name = variable.name.clone();
         let row = i + 1;
 
-        if matches!(variable.variableType, VariableType::String) {
+        if matches!(variable.variableType, VariableType::String {..}) {
             continue;
         }
 

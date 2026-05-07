@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::{
     fmi2::FMU2,
-    model_description::Variability,
+    model_description::fmi2::Variability,
     sim::fmi2::{SimulationResult, VariableValue, set_variable_value},
     types::*,
 };
@@ -174,7 +174,8 @@ impl<'a> StaticInput<'a> {
 
                 match value {
                     VariableValue::Real(value) => {
-                        fmu.setReal(&[variable.valueReference], &[*value]);
+                        todo!()
+                        // fmu.setReal(&[variable.valueReference], &[*value]);
                     }
                     _ => panic!("Cannot set {value:?}!"),
                 }

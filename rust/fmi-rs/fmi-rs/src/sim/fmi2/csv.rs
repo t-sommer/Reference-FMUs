@@ -1,5 +1,5 @@
 use crate::{
-    model_description::{ModelDescription, ModelVariable},
+    model_description::fmi2::{ModelDescription, ScalarVariable},
     sim::fmi2::{SimulationResult, parse_variable_value},
 };
 use std::{collections::HashMap, io::Read, path::Path};
@@ -38,7 +38,7 @@ pub fn read_csv<'a, R: Read>(
     model_description: &'a ModelDescription,
 ) -> Result<SimulationResult<'a>, Box<dyn std::error::Error>> {
     // Create a map for quick lookup of variables by name
-    let variable_map: HashMap<&str, &ModelVariable> = model_description
+    let variable_map: HashMap<&str, &ScalarVariable> = model_description
         .modelVariables
         .iter()
         .map(|var| (var.name.as_str(), var))
@@ -53,7 +53,7 @@ pub fn read_csv<'a, R: Read>(
         }
     };
 
-    let mut variables: Vec<&ModelVariable> = vec![];
+    let mut variables: Vec<&ScalarVariable> = vec![];
 
     for name in headers.iter().skip(1) {
         if let Some(variable) = variable_map.get(name) {
@@ -76,7 +76,7 @@ pub fn read_csv<'a, R: Read>(
                 time.push(it.next().unwrap().parse().unwrap());
 
                 for (j, literal) in it.enumerate() {
-                    let variable: &ModelVariable = variables[j];
+                    let variable: &ScalarVariable = variables[j];
 
                     match parse_variable_value(&variable.variableType, literal) {
                         Ok(v) => row.push(v),

@@ -7,17 +7,35 @@ use std::{collections::HashMap, error::Error, fs::File};
 
 use crate::{
     fmi3::{FMU3, types::*},
-    model_description::{ModelVariable, VariableType},
+    model_description::fmi3::{ModelVariable, VariableType},
     sim::{
-        SimulationSettings, SolverFactory,
+        SolverFactory,
         fmi3::{csv::read_csv, input::StaticInput, recorder::Recorder},
     },
     types::*,
 };
 use crate::{
-    model_description::{Causality, ModelDescription},
+    model_description::fmi3::{Causality, ModelDescription},
     types::fmiStatus::{self, fmiOK, fmiWarning},
 };
+
+use std::path::{Path, PathBuf};
+
+pub struct SimulationSettings<'a> {
+    pub unzipdir: &'a Path,
+    pub model_description: &'a ModelDescription,
+    pub start_time: f64,
+    pub stop_time: f64,
+    pub logging_on: bool,
+    pub set_stop_time: bool,
+    pub output_interval: f64,
+    pub tolerance: Option<f64>,
+    pub start_values: Vec<(String, String)>,
+    pub log_fmi_calls: bool,
+    pub input_file: Option<PathBuf>,
+    pub early_return_allowed: bool,
+    pub event_mode_used: bool,
+}
 
 #[derive(Debug, PartialEq)]
 pub enum VariableValue {
@@ -157,17 +175,17 @@ pub fn parse_variable_value(
     literal: &str,
 ) -> Result<VariableValue, Box<dyn Error>> {
     match variable_type {
-        VariableType::Float32 => {
+        VariableType::Float32 {..}=> {
             let values: Result<Vec<fmiFloat32>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Float32(values?))
         }
-        VariableType::Float64 => {
+        VariableType::Float64 {..} => {
             let values: Result<Vec<fmiFloat64>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Float64(values?))
         }
-        VariableType::Int8 => {
+        VariableType::Int8 {..} => {
             let values: Result<Vec<fmiInt8>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Int8(values?))
@@ -660,16 +678,25 @@ pub fn simulate_me<S: SolverFactory>(
         .collect();
 
     // Get Continuous States and Derivatives dynamically to ensure correct order
-    let derivatives_vrs: Vec<u32> = settings
+    let derivative_vrs: Vec<u32> = settings
         .model_description
         .derivatives
         .iter()
         .map(|d| d.valueReference)
         .collect();
 
-    let states_vrs: Vec<u32> = derivatives_vrs
+
+
+    let state_vrs: Vec<u32> = derivative_vrs
         .iter()
-        .map(|s| variables_map[s].derivative.unwrap())
+        .map(|s| {
+            let derivative_variable = variables_map[s];
+            if let VariableType::Float64 {derivative: Some(vr), ..} | VariableType::Float32 {derivative: Some(vr), ..} = derivative_variable.variableType {
+                vr
+            } else {
+                panic!("Derivative variable with value reference {} is not of type Float32 or Float64", s);
+            }
+        })
         .collect();
 
     let mut solver = solver_factory.create(
@@ -677,8 +704,8 @@ pub fn simulate_me<S: SolverFactory>(
         settings.model_description.derivatives.len(),
         settings.model_description.eventIndicators.len(),
         settings.tolerance.unwrap_or(1e-6),
-        derivatives_vrs,
-        states_vrs,
+        derivative_vrs,
+        state_vrs,
         Box::new(|time| {
             fmu.setTime(time);
             Ok(())

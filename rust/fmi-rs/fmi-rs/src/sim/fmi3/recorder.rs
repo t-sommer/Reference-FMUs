@@ -2,7 +2,7 @@ use std::vec;
 
 use crate::{
     fmi3::FMU3,
-    model_description::{Dimension, VariableType},
+    model_description::fmi3::{Dimension, VariableType},
     sim::fmi3::{SimulationResult, VariableValue},
 };
 
@@ -20,16 +20,19 @@ impl<'res, 'md> Recorder<'res, 'md> {
     }
 
     pub fn update_sizes(&mut self, fmu: &FMU3) {
+        
         self.sizes.clear();
+        
         for variable in self.simulation_result.variables.iter() {
+
             let mut size = 1usize;
             for dimension in variable.dimensions.iter() {
                 size *= match dimension {
-                    Dimension::Fixed(value) => *value,
-                    Dimension::Variable(value_reference) => {
+                    Dimension::Fixed { size } => *size,
+                    Dimension::Variable { valueReference } => {
                         let mut values = [0u64];
                         // TODO: handle status
-                        fmu.getUInt64(&[*value_reference], &mut values);
+                        fmu.getUInt64(&[*valueReference], &mut values);
                         values[0] as usize
                     }
                 };
@@ -56,17 +59,17 @@ impl<'res, 'md> Recorder<'res, 'md> {
             let value_references = [variable.valueReference];
 
             let variable_value = match variable.variableType {
-                VariableType::Float32 => {
+                VariableType::Float32 {..} => {
                     let mut values = vec![0f32; *size];
                     fmu.getFloat32(&value_references, &mut values);
                     VariableValue::Float32(values)
                 }
-                VariableType::Float64 => {
+                VariableType::Float64 {..} => {
                     let mut values = vec![0f64; *size];
                     fmu.getFloat64(&value_references, &mut values);
                     VariableValue::Float64(values)
                 }
-                VariableType::Int8 => {
+                VariableType::Int8 {..} => {
                     let mut values = vec![0i8; *size];
                     fmu.getInt8(&value_references, &mut values);
                     VariableValue::Int8(values)

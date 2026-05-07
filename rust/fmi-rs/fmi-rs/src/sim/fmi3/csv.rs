@@ -1,5 +1,5 @@
 use crate::{
-    model_description::{ModelDescription, ModelVariable},
+    model_description::fmi3::{ModelDescription, ModelVariable},
     sim::fmi3::{SimulationResult, parse_variable_value},
 };
 use std::{collections::HashMap, io::Read, path::Path};

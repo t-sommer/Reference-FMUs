@@ -1,4 +1,4 @@
-use crate::{model_description::VariableType, sim::fmi3::SimulationResult};
+use crate::{model_description::fmi3::VariableType, sim::fmi3::SimulationResult};
 use plotly::{
     Configuration, Layout, Plot, Scatter,
     common::Line,

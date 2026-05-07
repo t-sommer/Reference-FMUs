@@ -10,9 +10,9 @@ use crate::{
         self, CS, FMU2, ME,
         types::{fmi2Boolean, fmi2False, fmi2Integer, fmi2Real, fmi2True},
     },
-    model_description::{self, Causality, ModelDescription, ModelVariable, VariableType},
+    model_description::fmi2::{Causality, ModelDescription, ScalarVariable, VariableType},
     sim::{
-        SimulationSettings, SolverFactory,
+        SolverFactory,
         fmi2::{input::StaticInput, recorder::Recorder},
     },
     types::{
@@ -22,6 +22,24 @@ use crate::{
 };
 
 use std::{collections::HashMap, error::Error};
+
+use std::path::{Path, PathBuf};
+
+pub struct SimulationSettings<'a> {
+    pub unzipdir: &'a Path,
+    pub model_description: &'a ModelDescription,
+    pub start_time: f64,
+    pub stop_time: f64,
+    pub logging_on: bool,
+    pub set_stop_time: bool,
+    pub output_interval: f64,
+    pub tolerance: Option<f64>,
+    pub start_values: Vec<(String, String)>,
+    pub log_fmi_calls: bool,
+    pub input_file: Option<PathBuf>,
+    pub early_return_allowed: bool,
+    pub event_mode_used: bool,
+}
 
 #[derive(Debug, PartialEq)]
 pub enum VariableValue {
@@ -52,13 +70,13 @@ impl VariableValue {
 
 #[derive(Debug)]
 pub struct SimulationResult<'a> {
-    pub variables: Vec<&'a ModelVariable>,
+    pub variables: Vec<&'a ScalarVariable>,
     pub time: Vec<f64>,
     pub rows: Vec<Vec<VariableValue>>,
 }
 
 impl<'a> SimulationResult<'a> {
-    pub fn new(variables: Vec<&'a ModelVariable>) -> Self {
+    pub fn new(variables: Vec<&'a ScalarVariable>) -> Self {
         SimulationResult {
             variables,
             time: vec![],
@@ -80,11 +98,11 @@ pub fn parse_variable_value(
     literal: &str,
 ) -> Result<VariableValue, Box<dyn Error>> {
     match variable_type {
-        VariableType::Float64 => Ok(VariableValue::Real(literal.parse()?)),
-        VariableType::Int32 | VariableType::Enumeration => {
+        VariableType::Real {..} => Ok(VariableValue::Real(literal.parse()?)),
+        VariableType::Integer {..} | VariableType::Enumeration {..} => {
             Ok(VariableValue::Integer(literal.parse()?))
         }
-        VariableType::Boolean => {
+        VariableType::Boolean {..} => {
             let value: bool = literal.parse()?;
             Ok(VariableValue::Boolean(if value {
                 fmi2True
@@ -92,7 +110,7 @@ pub fn parse_variable_value(
                 fmi2False
             }))
         }
-        VariableType::String => Ok(VariableValue::String(literal.to_string())),
+        VariableType::String {..} => Ok(VariableValue::String(literal.to_string())),
         _ => Err(format!("Unsupported variable type {variable_type:?}.").into()),
     }
 }
@@ -115,20 +133,14 @@ fn set_start_values<T>(
     model_description: &ModelDescription,
     fmu: &FMU2<T>,
 ) -> Result<fmiStatus, Box<dyn Error>> {
-    // Create a map for quick lookup of variables by name
-    let variable_map: HashMap<&str, &ModelVariable> = model_description
+    let variable_map: HashMap<&str, &ScalarVariable> = model_description
         .modelVariables
         .iter()
         .map(|var| (var.name.as_str(), var))
         .collect();
 
-    // then the remaining start values
     for (var_name, literal) in start_values {
         if let Some(variable) = variable_map.get(var_name.as_str()) {
-            if variable.causality == Causality::StructuralParameter {
-                continue;
-            }
-
             match parse_variable_value(&variable.variableType, literal) {
                 Ok(value) => {
                     set_variable_value(fmu, variable.valueReference, &value)?;
@@ -370,7 +382,12 @@ pub fn simulate_me<S: SolverFactory>(
     let state_vrs: Vec<u32> = derivative_indices
         .iter()
         .map(|i| {
-            let state_index = settings.model_description.modelVariables[(*i - 1) as usize].derivative.expect("Derivative variables must have a derivative element.");
+            let variable = &settings.model_description.modelVariables[(*i - 1) as usize];
+            let state_index = if let VariableType::Real { derivative: Some(index), .. } = variable.variableType {
+                index
+            } else {
+                panic!("Derivative variables must be of type Real and have a derivative element.");
+            };
             settings.model_description.modelVariables[(state_index - 1) as usize].valueReference
     })
         .collect();

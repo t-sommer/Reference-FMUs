@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::{
     fmi3::FMU3,
-    model_description::Variability,
+    model_description::fmi3::Variability,
     sim::fmi3::{SimulationResult, VariableValue, set_variable_value},
     types::*,
 };
@@ -194,10 +194,10 @@ impl<'a> StaticInput<'a> {
 
                 match value {
                     VariableValue::Float32(values) => {
-                        fmu.setFloat32(&[variable.valueReference], values);
+                        fmu.setFloat32(&[variable.valueReference], values.as_ref());
                     }
                     VariableValue::Float64(values) => {
-                        fmu.setFloat64(&[variable.valueReference], values);
+                        fmu.setFloat64(&[variable.valueReference], values.as_ref());
                     }
                     _ => panic!("Cannot set {value:?}!"),
                 }

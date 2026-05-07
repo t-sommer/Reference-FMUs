@@ -1,6 +1,6 @@
 use crate::{
     fmi2::FMU2,
-    model_description::VariableType,
+    model_description::fmi2::VariableType,
     sim::fmi2::{SimulationResult, VariableValue},
 };
 
@@ -26,27 +26,26 @@ impl<'res, 'md> Recorder<'res, 'md> {
             // TODO: handle status
 
             let variable_value = match variable.variableType {
-                VariableType::Float64 => {
+                VariableType::Real {..} => {
                     let mut values = [0.0];
                     fmu.getReal(&value_references, &mut values);
                     VariableValue::Real(values[0])
                 }
-                VariableType::Int32 | VariableType::Enumeration => {
+                VariableType::Integer {..} | VariableType::Enumeration {..} => {
                     let mut values = [0];
                     fmu.getInteger(&value_references, &mut values);
                     VariableValue::Integer(values[0])
                 }
-                VariableType::Boolean => {
+                VariableType::Boolean {..} => {
                     let mut values = [0];
                     fmu.getBoolean(&value_references, &mut values);
                     VariableValue::Boolean(values[0])
                 }
-                VariableType::String => {
+                VariableType::String {..} => {
                     let mut values = [String::new()];
                     fmu.getString(&value_references, &mut values);
                     VariableValue::String(values[0].clone())
                 }
-                _ => panic!("Unexpected variable type: {:?}", variable.variableType),
             };
 
             row.push(variable_value);

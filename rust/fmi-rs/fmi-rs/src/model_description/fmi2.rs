@@ -263,6 +263,9 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     {
         let name = child.required_attribute("name")?;
         let valueReference = child.required_attribute("valueReference")?.parse().unwrap();
+        let description = child.optional_attribute("description");
+        let canHandleMultipleSetPerTimeInstant = child
+            .bool_attribute("canHandleMultipleSetPerTimeInstant", false);
 
         let variableType = get_variable_type(&child)?;
 
@@ -296,15 +299,22 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             }
         };
 
+        let initial = match child.attribute("initial") {
+            Some("exact") => Initial::Exact,
+            Some("approx") => Initial::Approx,
+            Some("calculated") => Initial::Calculated,
+            _ => Initial::Exact,
+        };
+
         let variable = ScalarVariable {
             variableType,
             name,
             valueReference,
-            description: None,
+            description,
             causality,
             variability,
-            initial: Initial::Exact,
-            canHandleMultipleSetPerTimeInstant: false,
+            initial,
+            canHandleMultipleSetPerTimeInstant,
         };
 
         modelVariables.push(variable);

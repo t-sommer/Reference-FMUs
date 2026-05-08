@@ -80,6 +80,18 @@ pub enum VariableNamingConvention {
     Structured,
 }
 
+impl FromStr for VariableNamingConvention {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "flat" => Ok(VariableNamingConvention::Flat),
+            "structured" => Ok(VariableNamingConvention::Structured),
+            _ => Err(format!("Unknown variable naming convention: {}", s)),
+        }
+    }
+}
+
 impl FromStr for Initial {
     type Err = String;
 
@@ -392,7 +404,7 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         license: root.optional_attribute("license"),
         generationTool: root.optional_attribute("generationTool"),
         generationDateAndTime: root.optional_attribute("generationDateAndTime"),
-        variableNamingConvention: VariableNamingConvention::Flat,
+        variableNamingConvention: root.optional_attribute("variableNamingConvention").unwrap_or("flat".to_string()).parse()?,
         defaultExperiment,
         coSimulation,
         modelExchange,

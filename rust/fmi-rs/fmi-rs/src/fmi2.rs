@@ -377,7 +377,7 @@ impl<T> FMU2<T> {
 
     fn log_call(&self, status: fmi2Status, message: &str) {
         if self.printCalls {
-            let message = message.black();
+            let message = message.bright_black();
             eprintln!("{message}");
         } else {
             let call = Call {

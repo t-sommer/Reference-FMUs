@@ -502,7 +502,7 @@ impl FMU3 {
     fn log_call(&self, status: fmi3Status, message: &str) {
         if self.printCalls {
             let message = format!("{message} -> {status:?}");
-            let message = message.black();
+            let message = message.bright_black();
             eprintln!("{message}");
         } else {
             let call = Call {

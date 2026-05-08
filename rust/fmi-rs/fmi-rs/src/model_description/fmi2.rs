@@ -74,6 +74,12 @@ pub enum Initial {
     Calculated,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum VariableNamingConvention {
+    Flat,
+    Structured,
+}
+
 impl FromStr for Initial {
     type Err = String;
 
@@ -134,7 +140,15 @@ pub struct Unknown {
 #[derive(Debug)]
 pub struct ModelDescription {
     pub modelName: String,
-    pub instantiationToken: String,
+    pub guid: String,
+    pub description: Option<String>,
+    pub author: Option<String>,
+    pub version: Option<String>,
+    pub copyright: Option<String>,
+    pub license: Option<String>,
+    pub generationTool: Option<String>,
+    pub generationDateAndTime: Option<String>,
+    pub variableNamingConvention: VariableNamingConvention,
     pub defaultExperiment: Option<DefaultExperiment>,
     pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,
@@ -142,13 +156,10 @@ pub struct ModelDescription {
     pub numberOfEventIndicators: usize,
     pub outputs: Vec<Unknown>,
     pub derivatives: Vec<Unknown>,
-    pub clockedStates: Vec<Unknown>,
-    pub eventIndicators: Vec<Unknown>,
     pub initialUnknowns: Vec<Unknown>,
 }
 
 fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
-
     for child in node.children() {
         if child.has_tag_name("Real") {
             return Ok(VariableType::Real {
@@ -373,7 +384,15 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
 
     let model_description = ModelDescription {
         modelName: root.required_attribute("modelName")?,
-        instantiationToken: root.required_attribute("guid")?,
+        guid: root.required_attribute("guid")?,
+        description: root.optional_attribute("description"),
+        author: root.optional_attribute("author"),
+        version: root.optional_attribute("version"),
+        copyright: root.optional_attribute("copyright"),
+        license: root.optional_attribute("license"),
+        generationTool: root.optional_attribute("generationTool"),
+        generationDateAndTime: root.optional_attribute("generationDateAndTime"),
+        variableNamingConvention: VariableNamingConvention::Flat,
         defaultExperiment,
         coSimulation,
         modelExchange,
@@ -381,8 +400,6 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         numberOfEventIndicators,
         outputs,
         derivatives,
-        clockedStates: vec![],
-        eventIndicators: vec![],
         initialUnknowns,
     };
 

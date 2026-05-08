@@ -5,6 +5,11 @@ use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 
 use crate::types::fmiValueReference;
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum VariableNamingConvention {
+    Flat,
+    Structured,
+}
 
 #[derive(Debug)]
 pub enum VariableType {
@@ -290,6 +295,7 @@ pub struct ModelVariable {
     pub variableType: VariableType,
     pub name: String,
     pub valueReference: fmiValueReference,
+    pub description: Option<String>,
     pub causality: Causality,
     pub variability: Variability,
     pub dimensions: Vec<Dimension>,
@@ -304,13 +310,21 @@ pub struct Unknown {
 
 #[derive(Debug)]
 pub struct ModelDescription {
+    pub fmiVersion: String,
     pub modelName: String,
     pub instantiationToken: String,
+    pub description: Option<String>,
+    pub author: Option<String>,
+    pub version: Option<String>,
+    pub copyright: Option<String>,
+    pub license: Option<String>,
+    pub generationTool: Option<String>,
+    pub generationDateAndTime: Option<String>,
+    pub variableNamingConvention: VariableNamingConvention,
     pub defaultExperiment: Option<DefaultExperiment>,
     pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,
     pub modelVariables: Vec<ModelVariable>,
-    pub numberOfEventIndicators: usize,
     pub outputs: Vec<Unknown>,
     pub derivatives: Vec<Unknown>,
     pub clockedStates: Vec<Unknown>,
@@ -628,6 +642,7 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             variableType,
             name: name.to_string(),
             valueReference: valueReference,
+            description: child.optional_attribute("description"),
             causality,
             variability,
             dimensions: get_dimensions(&child)?,
@@ -683,13 +698,21 @@ fn read_fmi3_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     let eventIndicators = get_fmi3_unkonwns(root, "EventIndicator")?;
 
     let model_description = ModelDescription {
-        modelName: root.attribute("modelName").unwrap().to_string(),
-        instantiationToken: root.attribute("instantiationToken").unwrap().to_string(),
+        fmiVersion: root.required_attribute("fmiVersion")?,
+        modelName: root.required_attribute("modelName")?,
+        instantiationToken: root.required_attribute("instantiationToken")?,
+        description: root.optional_attribute("description"),
+        author: root.optional_attribute("author"),
+        version: root.optional_attribute("version"),
+        copyright: root.optional_attribute("copyright"),
+        license: root.optional_attribute("license"),
+        generationTool: root.optional_attribute("generationTool"),
+        generationDateAndTime: root.optional_attribute("generationDateAndTime"),
+        variableNamingConvention: VariableNamingConvention::Flat,
         defaultExperiment,
         modelExchange,
         coSimulation,
         modelVariables,
-        numberOfEventIndicators: 0,
         outputs,
         derivatives,
         clockedStates,

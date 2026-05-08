@@ -14,6 +14,7 @@ tempfile = "3.8"
 csv = "1.4.0"
 colored = "3.1.1"
 plotly = "0.14.1"
+term_size = "0.3"
 
 [dev-dependencies]
 rstest = "0.26.1"

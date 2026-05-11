@@ -523,10 +523,32 @@ fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
 }
 
 fn info_fmu(args: &InfoArgs) -> ExitCode {
-    let (_unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
+
+    let (unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
         Err(code) => return code,
     };
+
+    let entries = std::fs::read_dir(unzipdir.path().join("binaries")).unwrap();
+
+    let mut platform_dirs: Vec<String> = vec![];
+
+    if unzipdir.path().join("sources").is_dir() {
+        platform_dirs.push("c-code".to_string());
+    }
+
+    platform_dirs.extend(entries
+        .filter_map(|res| res.ok()) // Filter out entries that failed to read
+        .filter(|entry| {
+            // Use file_type() to check if the entry is a directory
+            entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false)
+        })
+        .filter_map(|entry| {
+            // Convert the OsString name into a String
+            // This returns None if the directory name is not valid UTF-8
+            entry.file_name().into_string().ok()
+        })
+    );
 
     if fmi_major_version == 2 {
         let model_description = match model_description::fmi2::read_model_description(&xml_path) {
@@ -541,6 +563,7 @@ fn info_fmu(args: &InfoArgs) -> ExitCode {
         println!();
         println!("FMI Version:       2.0");
         println!("Model Name:        {}", model_description.modelName);
+        println!("Platforms:         {}", platform_dirs.join(", "));
         println!("Continuous States: {}", model_description.derivatives.len());
         println!("Event Indicators:  {}", model_description.numberOfEventIndicators);
         println!("Model Variables:   {}", model_description.modelVariables.len());
@@ -591,6 +614,7 @@ fn info_fmu(args: &InfoArgs) -> ExitCode {
         println!();
         println!("FMI Version:       {}", model_description.fmiVersion);
         println!("Model Name:        {}", model_description.modelName);
+        println!("Platforms:         {}", platform_dirs.join(", "));
         println!("Continuous States: {}", model_description.derivatives.len());
         println!("Event Indicators:  {}", model_description.eventIndicators.len());
         println!("Model Variables:   {}", model_description.modelVariables.len());

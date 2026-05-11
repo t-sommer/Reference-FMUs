@@ -26,3 +26,24 @@ pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
         Err("Attribute fmiVersion is missing.".into())
     }
 }
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum FMIMajorVersion {
+    V2 = 2,
+    V3 = 3,
+}
+
+pub fn peak_fmi_major_version(path: &Path) -> Result<FMIMajorVersion, Box<dyn Error>> {
+    let fmi_version = peak_fmi_version(path)?;
+
+    if fmi_version == "1.0" {
+        Err("FMI 1.0 is not supported.".into())
+    } else if fmi_version == "2.0" {
+        Ok(FMIMajorVersion::V2)
+    } else if fmi_version.starts_with("3.") {
+        Ok(FMIMajorVersion::V3)
+    } else {
+        Err(format!("Unknown FMI version: {}", fmi_version).into())
+    }
+}
+

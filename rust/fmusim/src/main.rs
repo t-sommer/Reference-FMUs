@@ -4,7 +4,7 @@ mod cvode;
 use clap::{Parser, ValueEnum, Subcommand, Args};
 use colored::Colorize;
 use fmi::{
-    model_description::{self, peak_fmi_version}, sim::{self, euler::ForwardEulerFactory}, util::extract_fmu
+    model_description::{self, FMIMajorVersion, peak_fmi_major_version, peak_fmi_version}, sim::{self, euler::ForwardEulerFactory}, util::extract_fmu
 };
 use fmi_rs_xsd::validate_model_description_against_xsd;
 use std::{collections::HashMap, fs::File, path::PathBuf, process::ExitCode};
@@ -50,10 +50,24 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// Simulate an FMU
-    Simulate(SimulateArgs),
     /// Display information about an FMU
     Info(InfoArgs),
+    /// Validate an FMU
+    Validate(ValidateArgs),
+    /// Simulate an FMU
+    Simulate(SimulateArgs),
+}
+
+#[derive(Debug, Args)]
+struct InfoArgs {
+    /// Path to the FMU file
+    fmu_file: String,
+}
+
+#[derive(Debug, Args)]
+struct ValidateArgs {
+    /// Path to the FMU file
+    fmu_file: String,
 }
 
 #[derive(Debug, Args)]
@@ -134,25 +148,19 @@ struct SimulateArgs {
     solver: SolverType,
 }
 
-#[derive(Debug, Args)]
-struct InfoArgs {
-    /// Path to the FMU file
-    fmu_file: String,
-}
-
-
 fn main() -> ExitCode {
     // Parse command line arguments
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Simulate(args) => simulate_fmu(args),
         Commands::Info(args) => info_fmu(args),
+        Commands::Validate(args) => validate_fmu(args),
+        Commands::Simulate(args) => simulate_fmu(args),
     }
 }
 
 /// Common logic to extract, detect version, and validate an FMU
-fn prepare_fmu(fmu_path: &str) -> Result<(tempfile::TempDir, std::path::PathBuf, usize), ExitCode> {
+fn prepare_fmu(fmu_path: &str) -> Result<(tempfile::TempDir, std::path::PathBuf, FMIMajorVersion), ExitCode> {
     let unzipdir = match extract_fmu(fmu_path) {
         Ok(dir) => dir,
         Err(e) => {
@@ -162,30 +170,16 @@ fn prepare_fmu(fmu_path: &str) -> Result<(tempfile::TempDir, std::path::PathBuf,
     };
 
     let xml_path = unzipdir.path().join("modelDescription.xml");
-    let fmi_version = match peak_fmi_version(xml_path.as_path()) {
+
+    let fmi_major_version = match peak_fmi_major_version(&xml_path) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("Error: Failed to determine FMI version: {e}");
+            eprintln!("{}: Failed to determine FMI version: {e}", "error".red().bold());
             return Err(ExitCode::FAILURE);
         }
     };
 
-    let fmi_major_version = if fmi_version == "2.0" {
-        2
-    } else if fmi_version.starts_with("3.") {
-        3
-    } else {
-        eprintln!("Unsupported FMI version: {fmi_version}");
-        return Err(ExitCode::FAILURE);
-    };
-
-    if let Err(validation_errors) = validate_model_description_against_xsd(&xml_path, fmi_major_version) {
-        for error in validation_errors { eprintln!("Validation error: {}", error); }
-        eprintln!("modelDescription.xml failed XSD schema validation");
-        return Err(ExitCode::FAILURE);
-    }
-
-    Ok((unzipdir, xml_path, fmi_major_version as usize))
+    Ok((unzipdir, xml_path, fmi_major_version))
 }
 
 fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
@@ -196,7 +190,7 @@ fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
 
     let start_time = std::time::Instant::now();
 
-    let result = if fmi_major_version == 2 {
+    let result = if fmi_major_version == FMIMajorVersion::V2 {
 
             let model_description = match model_description::fmi2::read_model_description(&xml_path) {
                 Ok(md) => md,
@@ -550,106 +544,134 @@ fn info_fmu(args: &InfoArgs) -> ExitCode {
         })
     );
 
-    if fmi_major_version == 2 {
-        let model_description = match model_description::fmi2::read_model_description(&xml_path) {
-            Ok(md) => md,
-            Err(e) => {
-                eprintln!("Failed to parse modelDescription.xml: {e}");
-                return ExitCode::FAILURE;
+    match fmi_major_version {
+        FMIMajorVersion::V2 => {
+            let model_description = match model_description::fmi2::read_model_description(&xml_path) {
+                Ok(md) => md,
+                Err(e) => {
+                    eprintln!("Failed to parse modelDescription.xml: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            println!("{}", "Model Information".bold());
+            println!();
+            println!("FMI Version:       2.0");
+            println!("Model Name:        {}", model_description.modelName);
+            println!("Platforms:         {}", platform_dirs.join(", "));
+            println!("Continuous States: {}", model_description.derivatives.len());
+            println!("Event Indicators:  {}", model_description.numberOfEventIndicators);
+            println!("Model Variables:   {}", model_description.modelVariables.len());
+            println!("Generation Date:   {}", model_description.generationDateAndTime.unwrap_or_default());
+            println!("Generation Tool:   {}", model_description.generationTool.unwrap_or_default());
+            println!("Description:       {}", model_description.description.unwrap_or_default());
+            println!();
+            println!("{}", "Model Variables".bold());
+            println!();
+
+            let terminal_width = term_size::dimensions().map(|(w, _)| w).unwrap_or(120);
+
+            let name_width = model_description
+                .modelVariables
+                .iter()
+                .map(|v| v.name.len())
+                .max() // Get the maximum length
+                .unwrap_or(4); // Default to 4 if no variables or names are empty
+
+            let description_width = terminal_width.saturating_sub(name_width + 3);
+
+            let header = format!(
+                "{:<nw$} │ {:<dw$}",
+                "Name".bold(),
+                "Description".bold(),
+                nw = name_width,
+                dw = description_width
+            );
+            println!("{}", header);
+
+            println!("{}─┼─{}", "─".repeat(name_width), "─".repeat(description_width));
+
+            for variable in &model_description.modelVariables {
+                println!("{:<nw$} │ {:<dw$}", variable.name, variable.description.as_deref().unwrap_or_default(), nw = name_width, dw = description_width);
             }
-        };
 
-        println!("{}", "Model Information".bold());
-        println!();
-        println!("FMI Version:       2.0");
-        println!("Model Name:        {}", model_description.modelName);
-        println!("Platforms:         {}", platform_dirs.join(", "));
-        println!("Continuous States: {}", model_description.derivatives.len());
-        println!("Event Indicators:  {}", model_description.numberOfEventIndicators);
-        println!("Model Variables:   {}", model_description.modelVariables.len());
-        println!("Generation Date:   {}", model_description.generationDateAndTime.unwrap_or_default());
-        println!("Generation Tool:   {}", model_description.generationTool.unwrap_or_default());
-        println!("Description:       {}", model_description.description.unwrap_or_default());
-        println!();
-        println!("{}", "Model Variables".bold());
-        println!();
-
-        let terminal_width = term_size::dimensions().map(|(w, _)| w).unwrap_or(120);
-
-        let name_width = model_description
-            .modelVariables
-            .iter()
-            .map(|v| v.name.len())
-            .max() // Get the maximum length
-            .unwrap_or(4); // Default to 4 if no variables or names are empty
-
-        let description_width = terminal_width.saturating_sub(name_width + 3);
-
-        let header = format!(
-            "{:<nw$} │ {:<dw$}",
-            "Name".bold(),
-            "Description".bold(),
-            nw = name_width,
-            dw = description_width
-        );
-        println!("{}", header);
-
-        println!("{}─┼─{}", "─".repeat(name_width), "─".repeat(description_width));
-
-        for variable in &model_description.modelVariables {
-            println!("{:<nw$} │ {:<dw$}", variable.name, variable.description.as_deref().unwrap_or_default(), nw = name_width, dw = description_width);
         }
+        FMIMajorVersion::V3 => {
 
-    } else if fmi_major_version == 3 {
+            let model_description = match model_description::fmi3::read_model_description(&xml_path) {
+                Ok(md) => md,
+                Err(e) => {
+                    eprintln!("Failed to parse modelDescription.xml: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
 
-        let model_description = match model_description::fmi3::read_model_description(&xml_path) {
-            Ok(md) => md,
-            Err(e) => {
-                eprintln!("Failed to parse modelDescription.xml: {e}");
-                return ExitCode::FAILURE;
+            println!("{}", "Model Information".bold());
+            println!();
+            println!("FMI Version:       {}", model_description.fmiVersion);
+            println!("Model Name:        {}", model_description.modelName);
+            println!("Platforms:         {}", platform_dirs.join(", "));
+            println!("Continuous States: {}", model_description.derivatives.len());
+            println!("Event Indicators:  {}", model_description.eventIndicators.len());
+            println!("Model Variables:   {}", model_description.modelVariables.len());
+            println!("Generation Date:   {}", model_description.generationDateAndTime.unwrap_or_default());
+            println!("Generation Tool:   {}", model_description.generationTool.unwrap_or_default());
+            println!("Description:       {}", model_description.description.unwrap_or_default());
+            println!();
+            println!("{}", "Model Variables".bold());
+            println!();
+
+            let terminal_width = term_size::dimensions().map(|(w, _)| w).unwrap_or(120);
+
+            let name_width = model_description
+                .modelVariables
+                .iter()
+                .map(|v| v.name.len())
+                .max() // Get the maximum length
+                .unwrap_or(4); // Default to 4 if no variables or names are empty
+
+            let description_width = terminal_width.saturating_sub(name_width + 3);
+
+            let header = format!(
+                "{:<nw$} │ {:<dw$}",
+                "Name".bold(),
+                "Description".bold(),
+                nw = name_width,
+                dw = description_width
+            );
+            println!("{}", header);
+
+            println!("{}─┼─{}", "─".repeat(name_width), "─".repeat(description_width));
+
+            for variable in &model_description.modelVariables {
+                println!("{:<nw$} │ {:<dw$}", variable.name, variable.description.as_deref().unwrap_or_default(), nw = name_width, dw = description_width);
             }
-        };
-
-        println!("{}", "Model Information".bold());
-        println!();
-        println!("FMI Version:       {}", model_description.fmiVersion);
-        println!("Model Name:        {}", model_description.modelName);
-        println!("Platforms:         {}", platform_dirs.join(", "));
-        println!("Continuous States: {}", model_description.derivatives.len());
-        println!("Event Indicators:  {}", model_description.eventIndicators.len());
-        println!("Model Variables:   {}", model_description.modelVariables.len());
-        println!("Generation Date:   {}", model_description.generationDateAndTime.unwrap_or_default());
-        println!("Generation Tool:   {}", model_description.generationTool.unwrap_or_default());
-        println!("Description:       {}", model_description.description.unwrap_or_default());
-        println!();
-        println!("{}", "Model Variables".bold());
-        println!();
-
-        let terminal_width = term_size::dimensions().map(|(w, _)| w).unwrap_or(120);
-
-        let name_width = model_description
-            .modelVariables
-            .iter()
-            .map(|v| v.name.len())
-            .max() // Get the maximum length
-            .unwrap_or(4); // Default to 4 if no variables or names are empty
-
-        let description_width = terminal_width.saturating_sub(name_width + 3);
-
-        let header = format!(
-            "{:<nw$} │ {:<dw$}",
-            "Name".bold(),
-            "Description".bold(),
-            nw = name_width,
-            dw = description_width
-        );
-        println!("{}", header);
-
-        println!("{}─┼─{}", "─".repeat(name_width), "─".repeat(description_width));
-
-        for variable in &model_description.modelVariables {
-            println!("{:<nw$} │ {:<dw$}", variable.name, variable.description.as_deref().unwrap_or_default(), nw = name_width, dw = description_width);
         }
     }
+
     ExitCode::SUCCESS
+}
+
+fn validate_fmu(args: &ValidateArgs) -> ExitCode {
+    
+    println!("{} {}", "Validating".green().bold(), args.fmu_file);
+
+    let (_unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
+        Ok(val) => val,
+        Err(code) => return code,
+    };
+    
+    let problems = validate_model_description_against_xsd(&xml_path, fmi_major_version as i32);
+
+    for problem in problems.iter() {
+        println!("{}: {}", "error".red().bold(), problem);
+    }
+    
+    if problems.is_empty() {
+        println!("{}: No problems found.", "Validation successful".green().bold());
+        ExitCode::SUCCESS
+    } else {
+        println!("{}: {} problems have been found.", "Validation failed".red().bold(), problems.len());
+        ExitCode::FAILURE
+    }
 }

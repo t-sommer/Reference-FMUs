@@ -16,7 +16,7 @@ unsafe extern "C" {
 pub fn validate_model_description_against_xsd(
     model_description_path: &Path,
     fmi_major_version: i32,
-) -> Result<(), Vec<String>> {
+) -> Vec<String> {
     use std::ffi::CString;
 
     let path = model_description_path.to_str().unwrap();
@@ -31,7 +31,7 @@ pub fn validate_model_description_against_xsd(
 
     if n_messages > 0 && !messages.is_null() {
         let messages_slice = unsafe { std::slice::from_raw_parts(messages, n_messages as usize) };
-        let messages_vec = messages_slice
+        let messages_vec: Vec<String> = messages_slice
             .iter()
             .filter_map(|&msg_ptr| {
                 if !msg_ptr.is_null() {
@@ -42,9 +42,9 @@ pub fn validate_model_description_against_xsd(
                 }
             })
             .collect();
-        unsafe { free_messages(n_messages, messages) };
-        Err(messages_vec)
+        unsafe { free_messages(n_messages, messages) };        
+        messages_vec
     } else {
-        Ok(())
+        vec![]
     }
 }

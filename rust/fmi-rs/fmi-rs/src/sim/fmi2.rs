@@ -365,13 +365,11 @@ pub fn simulate_me<S: SolverFactory>(
 
     call(fmu.enterContinuousTimeMode())?;
 
-    // let mut recorder = Recorder::new(simulation_result);
-
     let derivative_indices: Vec<u32> = settings
         .model_description
         .derivatives
         .iter()
-        .map(|d| d.valueReference)
+        .map(|d| d.index)
         .collect();
 
     let derivative_vrs: Vec<u32> = derivative_indices

@@ -1,14 +1,14 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
 use roxmltree::Node;
-use std::{error::Error, path::Path, str::FromStr};
+use std::{collections::{HashMap}, error::Error, path::Path, str::FromStr};
 
 use crate::types::fmiValueReference;
 
 pub type VariableIndex = u32;
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum VariableType {
     Real {
         declaredType: Option<String>,
@@ -72,6 +72,16 @@ pub enum Initial {
     Exact,
     Approx,
     Calculated,
+}
+
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum DependencyKind {
+    Dependent,
+    Constant,
+    Fixed,
+    Tunable,
+    Discrete,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -144,9 +154,9 @@ pub struct ScalarVariable {
 
 #[derive(Debug)]
 pub struct Unknown {
-    pub valueReference: fmiValueReference,
+    pub index: u32,
     pub dependencies: Option<Vec<u32>>,
-    pub dependenciesKind: Option<Vec<u32>>,
+    pub dependenciesKind: Option<Vec<DependencyKind>>,
 }
 
 #[derive(Debug)]
@@ -169,6 +179,12 @@ pub struct ModelDescription {
     pub outputs: Vec<Unknown>,
     pub derivatives: Vec<Unknown>,
     pub initialUnknowns: Vec<Unknown>,
+}
+
+impl ModelDescription {
+    fn is_valid_variable_index(&self, index: u32) -> bool {
+        index > 0 && index <= self.modelVariables.len() as u32
+    }
 }
 
 fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
@@ -243,10 +259,41 @@ fn get_fmi2_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Er
             .parse()
             .unwrap();
 
+        let dependencies: Option<Vec<u32>> = match child.attribute("dependencies") {
+            Some(dependencies) => {
+                if dependencies.is_empty() {
+                    Some(Vec::new())
+                } else {
+                    Some(dependencies.split(" ").map(|s| s.parse::<u32>().unwrap()).collect())
+                }
+            }
+            None => None,
+        };
+
+        let dependenciesKind: Option<Vec<DependencyKind>> = match child.attribute("dependenciesKind") {
+            Some(dependenciesKind) => {
+                if dependenciesKind.is_empty() {
+                    Some(Vec::new())
+                } else {
+                    Some(dependenciesKind.split(" ").map(|s| {
+                        match s {
+                            "dependent" => DependencyKind::Dependent,
+                            "constant" => DependencyKind::Constant,
+                            "fixed" => DependencyKind::Fixed,
+                            "tunable" => DependencyKind::Tunable,
+                            "discrete" => DependencyKind::Discrete,
+                            _ => panic!("Unknown dependenciesKind: {}", s),
+                        }
+                    }).collect())
+                }
+            }
+            None => None,
+        };
+
         unkonwns.push(Unknown {
-            valueReference: index,
-            dependencies: None,
-            dependenciesKind: None,
+            index,
+            dependencies,
+            dependenciesKind,
         });
     }
 
@@ -254,6 +301,7 @@ fn get_fmi2_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Er
 }
 
 pub fn read_model_description(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
+
     let text = match std::fs::read_to_string(path) {
         Ok(content) => content,
         Err(e) => return Err(format!("Failed to read XML file: {}", e).into()),
@@ -266,27 +314,26 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, Box<dyn E
 
     let doc = roxmltree::Document::parse_with_options(&text, opt).unwrap();
 
-    let root = doc.root_element();
+    let root = &doc.root_element();
 
-    read_fmi2_model_description(&root)
-}
-
-fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
     let ModelVariables = root
         .descendants()
         .find(|n| n.has_tag_name("ModelVariables"))
         .unwrap();
-
+    
     let mut modelVariables = vec![];
-
+    
     for (_i, child) in ModelVariables
         .children()
         .filter(|n| n.has_tag_name("ScalarVariable"))
         .enumerate()
     {
         let name = child.required_attribute("name")?;
+        
         let valueReference = child.required_attribute("valueReference")?.parse().unwrap();
+
         let description = child.optional_attribute("description");
+        
         let canHandleMultipleSetPerTimeInstant = child
             .bool_attribute("canHandleMultipleSetPerTimeInstant", false);
 
@@ -342,7 +389,6 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
 
         modelVariables.push(variable);
     }
-
     let defaultExperiment = root
         .descendants()
         .find(|n| n.has_tag_name("DefaultExperiment"))
@@ -352,7 +398,6 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
             tolerance: e.optional_attribute("tolerance"),
             stepSize: e.optional_attribute("stepSize"),
         });
-
     let coSimulation = if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation"))
     {
         Some(CoSimulation {
@@ -368,7 +413,6 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     } else {
         None
     };
-
     let modelExchange =
         if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
             Some(ModelExchange {
@@ -383,17 +427,14 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
         } else {
             None
         };
-
     let numberOfEventIndicators = if let Some(n) = root.attribute("numberOfEventIndicators") {
         n.parse().unwrap_or(0)
     } else {
         0
     };
-
     let outputs = get_fmi2_unkonwns(root, "Outputs")?;
     let derivatives = get_fmi2_unkonwns(root, "Derivatives").unwrap_or_default();
     let initialUnknowns = get_fmi2_unkonwns(root, "InitialUnknowns")?;
-
     let model_description = ModelDescription {
         modelName: root.required_attribute("modelName")?,
         guid: root.required_attribute("guid")?,
@@ -416,6 +457,101 @@ fn read_fmi2_model_description(root: &Node) -> Result<ModelDescription, Box<dyn 
     };
 
     Ok(model_description)
+}
+
+fn validate_unknown(unknown: &Unknown, model_description: &ModelDescription) -> Vec<String> {
+    
+    let mut problems = vec![];
+
+    if !model_description.is_valid_variable_index(unknown.index) {
+        problems.push(format!("Illegal variable index: {}", unknown.index));
+    }
+
+    if let Some(dependencies) = &unknown.dependencies {
+            
+        for dependency_index in dependencies {
+            if !model_description.is_valid_variable_index(*dependency_index) {
+                problems.push(format!("Illegal variable index in dependencies of unkonwn with index {}: {}", unknown.index, dependency_index));
+            }
+        }
+
+        if let Some(dependencies_kind) = &unknown.dependenciesKind {
+            if dependencies.len() != dependencies_kind.len() {
+                problems.push(format!("The number of elements in dependenciesKind does not match the number of elements in dependencies of unkonwn with index {}.", unknown.index));
+            }
+        }
+    }
+
+    problems
+}
+
+pub fn validate_model_description(model_description: &ModelDescription) -> Vec<String> {
+    
+    let mut problems = vec![];
+
+    // check outputs
+    for unknown in &model_description.outputs {
+        problems.extend_from_slice(&validate_unknown(unknown, model_description));
+    }
+
+    // check derivatives
+    for unknown in &model_description.derivatives {
+        problems.extend_from_slice(&validate_unknown(unknown, model_description));
+    }
+
+    // check continuous states
+    for unknown in &model_description.derivatives {
+        
+        let derivative_variable = match model_description.modelVariables.get((unknown.index - 1) as usize) {
+            Some(variable) => variable,
+            None => {
+                problems.push(format!("Illegal variable index: {}", unknown.index));
+                continue;
+            }
+        };
+
+        if let VariableType::Real {derivative, ..} = &derivative_variable.variableType {
+            if let Some(derivative_index) = derivative {
+                match model_description.modelVariables.get((derivative_index - 1) as usize) {
+                    Some(state_variable) => {
+                        if !matches!(state_variable.variableType, VariableType::Real {..}) {
+                            problems.push(format!("The continuous state variable {} referenced by the derivative {} not a Real variable.", state_variable.name, derivative_variable.name));
+                        }
+                    }
+                    None => {
+                        problems.push(format!("Attribute derivative of variable {} is not a valid variable index", derivative_variable.name));
+                        continue;
+                    }
+                };
+            } else {
+                problems.push(format!("Variable {} is not a derivative.", derivative_variable.name));
+            }
+        } else {
+            problems.push(format!("Variable {} is not a real variable.", derivative_variable.name));
+        }
+
+        if let Some(dependencies) = &unknown.dependencies {
+            
+            for dependency_index in dependencies {
+                if dependency_index - 1 >= model_description.modelVariables.len() as u32 {
+                    problems.push(format!("Illegal variable index in dependencies of unkonwn with index {}: {}", unknown.index, dependency_index));
+                }
+            }
+
+            if let Some(dependencies_kind) = &unknown.dependenciesKind {
+                if dependencies.len() != dependencies_kind.len() {
+                    problems.push(format!("The number of elements in dependenciesKind does not match the number of elements in dependencies of unkonwn with index {}.", unknown.index));
+                }
+            }
+        }
+    }
+    
+    // check initial unknowns
+    for unknown in &model_description.initialUnknowns {
+        problems.extend_from_slice(&validate_unknown(unknown, model_description));
+    }
+
+    problems
 }
 
 trait StringAttribute {

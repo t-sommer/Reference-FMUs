@@ -4,7 +4,7 @@ mod cvode;
 use clap::{Parser, ValueEnum, Subcommand, Args};
 use colored::Colorize;
 use fmi::{
-    model_description::{self, FMIMajorVersion, peak_fmi_major_version, peak_fmi_version}, sim::{self, euler::ForwardEulerFactory}, util::extract_fmu
+    model_description::{self, FMIMajorVersion, fmi2::{read_model_description, validate_model_description}, peak_fmi_major_version, peak_fmi_version}, sim::{self, euler::ForwardEulerFactory}, util::extract_fmu
 };
 use fmi_rs_xsd::validate_model_description_against_xsd;
 use std::{collections::HashMap, fs::File, path::PathBuf, process::ExitCode};
@@ -661,12 +661,22 @@ fn validate_fmu(args: &ValidateArgs) -> ExitCode {
         Err(code) => return code,
     };
     
-    let problems = validate_model_description_against_xsd(&xml_path, fmi_major_version as i32);
+    let mut problems = validate_model_description_against_xsd(&xml_path, fmi_major_version as i32);
 
+    let model_description = match read_model_description(&xml_path) {
+        Ok(md) => md,
+        Err(e) => {
+            eprintln!("{}: Failed to parse modelDescription.xml: {e}", "error".red().bold());
+            return ExitCode::FAILURE;
+        }
+    };
+
+    problems.extend_from_slice(validate_model_description(&model_description).as_slice());
+        
     for problem in problems.iter() {
         println!("{}: {}", "error".red().bold(), problem);
     }
-    
+        
     if problems.is_empty() {
         println!("{}: No problems found.", "Validation successful".green().bold());
         ExitCode::SUCCESS

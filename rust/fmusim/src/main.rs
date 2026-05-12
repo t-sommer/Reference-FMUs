@@ -356,7 +356,7 @@ fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
 
         result
     } else {
-        let model_description = match model_description::fmi3::read_model_description(&xml_path) {
+        let model_description = match model_description::fmi3::ModelDescription::read_from_file(&xml_path) {
             Ok(md) => md,
             Err(e) => {
                 eprintln!("Failed to parse modelDescription.xml: {e}");
@@ -635,7 +635,7 @@ fn info_fmu(args: &InfoArgs) -> ExitCode {
             }
         }
         FMIMajorVersion::V3 => {
-            let model_description = match model_description::fmi3::read_model_description(&xml_path)
+            let model_description = match model_description::fmi3::ModelDescription::read_from_file(&xml_path)
             {
                 Ok(md) => md,
                 Err(e) => {

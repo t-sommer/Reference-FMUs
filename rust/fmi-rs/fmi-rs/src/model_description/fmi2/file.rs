@@ -94,6 +94,7 @@ impl ModelDescription {
 
             modelVariables.push(variable);
         }
+
         let defaultExperiment = root
             .descendants()
             .find(|n| n.has_tag_name("DefaultExperiment"))
@@ -103,6 +104,7 @@ impl ModelDescription {
                 tolerance: e.optional_attribute("tolerance"),
                 stepSize: e.optional_attribute("stepSize"),
             });
+
         let coSimulation =
             if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation")) {
                 Some(CoSimulation {
@@ -118,6 +120,7 @@ impl ModelDescription {
             } else {
                 None
             };
+
         let modelExchange =
             if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
                 Some(ModelExchange {
@@ -132,6 +135,7 @@ impl ModelDescription {
             } else {
                 None
             };
+            
         let numberOfEventIndicators = if let Some(n) = root.attribute("numberOfEventIndicators") {
             n.parse().unwrap_or(0)
         } else {

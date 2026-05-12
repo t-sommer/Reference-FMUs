@@ -1,7 +1,45 @@
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
+
+mod file;
 pub mod fmi2;
 pub mod fmi3;
 
 use std::{error::Error, path::Path};
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum FMIMajorVersion {
+    V2 = 2,
+    V3 = 3,
+}
+
+#[derive(Debug)]
+pub struct Unit {
+    pub name: String,
+    pub baseUnit: Option<BaseUnit>,
+    pub displayUnits: Vec<DisplayUnit>,
+}
+
+#[derive(Debug)]
+pub struct DisplayUnit {
+    pub name: String,
+    pub factor: f64,
+    pub offset: f64,
+    pub inverse: bool,
+}
+
+#[derive(Debug)]
+pub struct BaseUnit {
+    pub kg: i32,
+    pub m: i32,
+    pub s: i32,
+    pub A: i32,
+    pub K: i32,
+    pub mol: i32,
+    pub cd: i32,
+    pub rad: i32,
+    pub factor: f64,
+    pub offset: f64,
+}
 
 pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
     let text = match std::fs::read_to_string(path) {
@@ -23,12 +61,6 @@ pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
     } else {
         Err("Attribute fmiVersion is missing.".into())
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub enum FMIMajorVersion {
-    V2 = 2,
-    V3 = 3,
 }
 
 pub fn peak_fmi_major_version(path: &Path) -> Result<FMIMajorVersion, Box<dyn Error>> {

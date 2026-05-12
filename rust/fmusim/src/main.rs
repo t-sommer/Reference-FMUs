@@ -4,7 +4,7 @@ mod cvode;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 use fmi::{
-    model_description::{self, FMIMajorVersion, fmi2::ModelDescription, peak_fmi_major_version},
+    model_description::{self, FMIMajorVersion, peak_fmi_major_version},
     sim::{self, euler::ForwardEulerFactory},
     util::extract_fmu,
 };
@@ -726,18 +726,34 @@ fn validate_fmu(args: &ValidateArgs) -> ExitCode {
 
     let mut problems = validate_model_description_against_xsd(&xml_path, fmi_major_version as i32);
 
-    let model_description = match ModelDescription::read_from_file(&xml_path) {
-        Ok(md) => md,
-        Err(e) => {
-            eprintln!(
-                "{}: Failed to parse modelDescription.xml: {e}",
-                "error".red().bold()
-            );
-            return ExitCode::FAILURE;
+    match &fmi_major_version {
+        FMIMajorVersion::V2 => {
+            let model_description = match model_description::fmi2::ModelDescription::read_from_file(&xml_path) {
+                Ok(md) => md,
+                Err(e) => {
+                    eprintln!(
+                        "{}: Failed to parse modelDescription.xml: {e}",
+                        "error".red().bold()
+                    );
+                    return ExitCode::FAILURE;
+                }
+            };
+            problems.extend(model_description.validate());
+        }
+        FMIMajorVersion::V3 => {
+            let model_description = match model_description::fmi3::ModelDescription::read_from_file(&xml_path) {
+                Ok(md) => md,
+                Err(e) => {
+                    eprintln!(
+                        "{}: Failed to parse modelDescription.xml: {e}",
+                        "error".red().bold()
+                    );
+                    return ExitCode::FAILURE;
+                }
+            };            
+            problems.extend(model_description.validate());
         }
     };
-
-    problems.extend(model_description.validate());
 
     for problem in problems.iter() {
         println!("{}: {}", "error".red().bold(), problem);
@@ -745,7 +761,7 @@ fn validate_fmu(args: &ValidateArgs) -> ExitCode {
 
     if problems.is_empty() {
         println!(
-            "{}: No problems found.",
+            "{}",
             "Validation successful".green().bold()
         );
         ExitCode::SUCCESS

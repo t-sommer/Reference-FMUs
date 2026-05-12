@@ -5,7 +5,7 @@ pub mod validation;
 use roxmltree::Node;
 use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 
-use crate::types::fmiValueReference;
+use crate::{model_description::Unit, types::fmiValueReference};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum VariableNamingConvention {
@@ -273,6 +273,30 @@ impl FromStr for Initial {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum DependencyKind {
+    Dependent,
+    Constant,
+    Fixed,
+    Tunable,
+    Discrete,
+}
+
+impl FromStr for DependencyKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "dependent" => Ok(DependencyKind::Dependent),
+            "constant" => Ok(DependencyKind::Constant),
+            "fixed" => Ok(DependencyKind::Fixed),
+            "tunable" => Ok(DependencyKind::Tunable),
+            "discrete" => Ok(DependencyKind::Discrete),
+            _ => Err(format!("Unknown dependency kind: {}", s)),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct DefaultExperiment {
     pub startTime: Option<String>,
@@ -319,7 +343,7 @@ pub struct ModelVariable {
 pub struct Unknown {
     pub valueReference: fmiValueReference,
     pub dependencies: Option<Vec<fmiValueReference>>,
-    pub dependenciesKind: Option<Vec<fmiValueReference>>,
+    pub dependenciesKind: Option<Vec<DependencyKind>>,
 }
 
 #[derive(Debug)]
@@ -338,6 +362,7 @@ pub struct ModelDescription {
     pub defaultExperiment: Option<DefaultExperiment>,
     pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,
+    pub unitDefintions: Vec<Unit>,
     pub modelVariables: Vec<ModelVariable>,
     pub outputs: Vec<Unknown>,
     pub derivatives: Vec<Unknown>,

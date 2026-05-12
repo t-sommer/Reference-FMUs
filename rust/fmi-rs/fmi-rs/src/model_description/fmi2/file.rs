@@ -1,5 +1,7 @@
 use roxmltree::Node;
 use std::{error::Error, path::Path};
+use crate::model_description::Unit;
+use crate::model_description::file::StringAttribute;
 
 use crate::model_description::fmi2::{
     Causality, CoSimulation, DefaultExperiment, DependencyKind, Initial, ModelDescription,
@@ -136,6 +138,17 @@ impl ModelDescription {
                 None
             };
 
+        let unitDefintions = root
+            .descendants()
+            .find(|n| n.has_tag_name("UnitDefinitions"))
+            .map(|u| u.descendants())
+            .into_iter()
+            .flatten()
+            .filter(|n| n.has_tag_name("Unit"))
+            .into_iter()
+            .map(|u| Unit::from_node(&u))
+            .collect();
+
         let numberOfEventIndicators = if let Some(n) = root.attribute("numberOfEventIndicators") {
             n.parse().unwrap_or(0)
         } else {
@@ -161,6 +174,7 @@ impl ModelDescription {
             defaultExperiment,
             coSimulation,
             modelExchange,
+            unitDefintions,
             modelVariables,
             numberOfEventIndicators,
             outputs,
@@ -305,28 +319,3 @@ impl ModelDescription {
     }
 }
 
-trait StringAttribute {
-    fn optional_attribute(&self, name: &str) -> Option<String>;
-    fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>>;
-    fn bool_attribute(&self, name: &str, default: bool) -> bool;
-}
-
-impl<'a, 'input> StringAttribute for Node<'a, 'input> {
-    fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>> {
-        self.attribute(name)
-            .ok_or_else(|| format!("Missing required attribute '{}'", name).into())
-            .map(|s| s.to_string())
-    }
-
-    fn optional_attribute(&self, name: &str) -> Option<String> {
-        self.attribute(name).map(|v| v.to_string())
-    }
-
-    fn bool_attribute(&self, name: &str, default: bool) -> bool {
-        if let Some(value) = self.attribute(name) {
-            value.parse().unwrap_or(default)
-        } else {
-            default
-        }
-    }
-}

@@ -2,13 +2,15 @@ use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 
 use roxmltree::Node;
 
+use crate::model_description::Unit;
+use crate::model_description::file::StringAttribute;
+
 use crate::model_description::fmi3::{
-    Causality, CoSimulation, DefaultExperiment, Dimension, ModelDescription, ModelExchange,
-    ModelVariable, Unknown, Variability, VariableType,
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, ModelDescription, ModelExchange, ModelVariable, Unknown, Variability, VariableType
 };
 
 impl ModelDescription {
-    fn get_fmi3_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Error>> {
+    fn get_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Error>> {
         let modelStructure = root
             .descendants()
             .find(|n| n.has_tag_name("ModelStructure"))
@@ -23,10 +25,43 @@ impl ModelDescription {
                 .parse()
                 .unwrap();
 
+            let dependencies: Option<Vec<u32>> = match child.attribute("dependencies") {
+                Some(dependencies) => {
+                    if dependencies.is_empty() {
+                        Some(Vec::new())
+                    } else {
+                        Some(
+                            dependencies
+                                .split(" ")
+                                .map(|s| s.parse::<u32>().unwrap())
+                                .collect(),
+                        )
+                    }
+                }
+                None => None,
+            };
+
+            let dependenciesKind: Option<Vec<DependencyKind>> =
+                match child.attribute("dependenciesKind") {
+                    Some(dependenciesKind) => {
+                        if dependenciesKind.is_empty() {
+                            Some(Vec::new())
+                        } else {
+                            Some(
+                                dependenciesKind
+                                    .split(" ")
+                                    .map(|s| DependencyKind::from_str(s).unwrap())
+                                    .collect(),
+                            )
+                        }
+                    }
+                    None => None,
+                };
+
             unkonwns.push(Unknown {
                 valueReference,
-                dependencies: None,
-                dependenciesKind: None,
+                dependencies,
+                dependenciesKind,
             });
         }
 
@@ -360,11 +395,22 @@ impl ModelDescription {
                 None
             };
 
-        let outputs = Self::get_fmi3_unkonwns(root, "Output")?;
-        let derivatives = Self::get_fmi3_unkonwns(root, "ContinuousStateDerivative")?;
-        let clockedStates = Self::get_fmi3_unkonwns(root, "ClockedState")?;
-        let initialUnknowns = Self::get_fmi3_unkonwns(root, "InitialUnknown")?;
-        let eventIndicators = Self::get_fmi3_unkonwns(root, "EventIndicator")?;
+        let unitDefintions = root
+            .descendants()
+            .find(|n| n.has_tag_name("UnitDefinitions"))
+            .map(|u| u.descendants())
+            .into_iter()
+            .flatten()
+            .filter(|n| n.has_tag_name("Unit"))
+            .into_iter()
+            .map(|u| Unit::from_node(&u))
+            .collect();
+
+        let outputs = Self::get_unkonwns(root, "Output")?;
+        let derivatives = Self::get_unkonwns(root, "ContinuousStateDerivative")?;
+        let clockedStates = Self::get_unkonwns(root, "ClockedState")?;
+        let initialUnknowns = Self::get_unkonwns(root, "InitialUnknown")?;
+        let eventIndicators = Self::get_unkonwns(root, "EventIndicator")?;
 
         let model_description = ModelDescription {
             fmiVersion: root.required_attribute("fmiVersion")?,
@@ -384,6 +430,7 @@ impl ModelDescription {
             defaultExperiment,
             modelExchange,
             coSimulation,
+            unitDefintions,
             modelVariables,
             outputs,
             derivatives,
@@ -393,36 +440,5 @@ impl ModelDescription {
         };
 
         Ok(model_description)
-    }
-}
-
-trait StringAttribute {
-    fn optional_attribute(&self, name: &str) -> Option<String>;
-    fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>>;
-    fn bool_attribute(&self, name: &str, default: bool) -> bool;
-    fn optional_attribute_as<T: FromStr>(&self, name: &str) -> Option<T>;
-}
-
-impl<'a, 'input> StringAttribute for Node<'a, 'input> {
-    fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>> {
-        self.attribute(name)
-            .ok_or_else(|| format!("Missing required attribute '{}'", name).into())
-            .map(|s| s.to_string())
-    }
-
-    fn optional_attribute(&self, name: &str) -> Option<String> {
-        self.attribute(name).map(|v| v.to_string())
-    }
-
-    fn bool_attribute(&self, name: &str, default: bool) -> bool {
-        if let Some(value) = self.attribute(name) {
-            value.parse().unwrap_or(default)
-        } else {
-            default
-        }
-    }
-
-    fn optional_attribute_as<T: FromStr>(&self, name: &str) -> Option<T> {
-        self.attribute(name).and_then(|v| v.parse().ok())
     }
 }

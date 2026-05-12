@@ -2,9 +2,9 @@
 pub mod file;
 pub mod validation;
 
-use std::{error::Error, path::Path, str::FromStr};
+use std::str::FromStr;
 
-use crate::types::fmiValueReference;
+use crate::{model_description::Unit, types::fmiValueReference};
 
 pub type VariableIndex = u32;
 
@@ -173,6 +173,7 @@ pub struct ModelDescription {
     pub defaultExperiment: Option<DefaultExperiment>,
     pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,
+    pub unitDefintions: Vec<Unit>,
     pub modelVariables: Vec<ScalarVariable>,
     pub numberOfEventIndicators: usize,
     pub outputs: Vec<Unknown>,

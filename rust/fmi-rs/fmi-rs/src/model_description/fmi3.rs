@@ -1,12 +1,11 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
-pub mod validation;
 pub mod file;
+pub mod validation;
 
 use roxmltree::Node;
 use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
 
 use crate::types::fmiValueReference;
-
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum VariableNamingConvention {

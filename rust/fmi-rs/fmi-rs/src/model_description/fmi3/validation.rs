@@ -1,7 +1,9 @@
-use crate::{model_description::fmi3::{ModelDescription, Unknown}, types::fmiValueReference};
+use crate::{
+    model_description::fmi3::{ModelDescription, Unknown},
+    types::fmiValueReference,
+};
 
 impl ModelDescription {
-
     pub fn validate(&self) -> Vec<String> {
         let mut problems: Vec<String> = vec![];
 

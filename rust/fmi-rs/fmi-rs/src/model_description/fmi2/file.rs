@@ -135,7 +135,7 @@ impl ModelDescription {
             } else {
                 None
             };
-            
+
         let numberOfEventIndicators = if let Some(n) = root.attribute("numberOfEventIndicators") {
             n.parse().unwrap_or(0)
         } else {

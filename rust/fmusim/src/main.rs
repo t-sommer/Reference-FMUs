@@ -4,7 +4,7 @@ mod cvode;
 use clap::{Parser, ValueEnum, Subcommand, Args};
 use colored::Colorize;
 use fmi::{
-    model_description::{self, FMIMajorVersion, fmi2::{read_model_description, validate_model_description}, peak_fmi_major_version, peak_fmi_version}, sim::{self, euler::ForwardEulerFactory}, util::extract_fmu
+    model_description::{self, FMIMajorVersion, fmi2::ModelDescription, peak_fmi_major_version}, sim::{self, euler::ForwardEulerFactory}, util::extract_fmu
 };
 use fmi_rs_xsd::validate_model_description_against_xsd;
 use std::{collections::HashMap, fs::File, path::PathBuf, process::ExitCode};
@@ -192,7 +192,7 @@ fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
 
     let result = if fmi_major_version == FMIMajorVersion::V2 {
 
-            let model_description = match model_description::fmi2::read_model_description(&xml_path) {
+            let model_description = match model_description::fmi2::ModelDescription::read_from_file(&xml_path) {
                 Ok(md) => md,
                 Err(e) => {
                     eprintln!("Failed to parse modelDescription.xml: {e}");
@@ -546,7 +546,7 @@ fn info_fmu(args: &InfoArgs) -> ExitCode {
 
     match fmi_major_version {
         FMIMajorVersion::V2 => {
-            let model_description = match model_description::fmi2::read_model_description(&xml_path) {
+            let model_description = match model_description::fmi2::ModelDescription::read_from_file(&xml_path) {
                 Ok(md) => md,
                 Err(e) => {
                     eprintln!("Failed to parse modelDescription.xml: {e}");
@@ -663,7 +663,7 @@ fn validate_fmu(args: &ValidateArgs) -> ExitCode {
     
     let mut problems = validate_model_description_against_xsd(&xml_path, fmi_major_version as i32);
 
-    let model_description = match read_model_description(&xml_path) {
+    let model_description = match ModelDescription::read_from_file(&xml_path) {
         Ok(md) => md,
         Err(e) => {
             eprintln!("{}: Failed to parse modelDescription.xml: {e}", "error".red().bold());
@@ -671,7 +671,7 @@ fn validate_fmu(args: &ValidateArgs) -> ExitCode {
         }
     };
 
-    problems.extend_from_slice(validate_model_description(&model_description).as_slice());
+    problems.extend(model_description.validate());
         
     for problem in problems.iter() {
         println!("{}: {}", "error".red().bold(), problem);

@@ -1,12 +1,13 @@
-use std::{error::Error, path::Path};
 use roxmltree::Node;
+use std::{error::Error, path::Path};
 
-use crate::model_description::fmi2::{Causality, CoSimulation, DefaultExperiment, DependencyKind, Initial, ModelDescription, ModelExchange, ScalarVariable, Unknown, Variability, VariableType};
+use crate::model_description::fmi2::{
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Initial, ModelDescription,
+    ModelExchange, ScalarVariable, Unknown, Variability, VariableType,
+};
 
 impl ModelDescription {
-
     pub fn read_from_file(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
-
         let text = match std::fs::read_to_string(path) {
             Ok(content) => content,
             Err(e) => return Err(format!("Failed to read XML file: {}", e).into()),
@@ -34,13 +35,13 @@ impl ModelDescription {
             .enumerate()
         {
             let name = child.required_attribute("name")?;
-    
+
             let valueReference = child.required_attribute("valueReference")?.parse().unwrap();
 
             let description = child.optional_attribute("description");
-    
-            let canHandleMultipleSetPerTimeInstant = child
-                .bool_attribute("canHandleMultipleSetPerTimeInstant", false);
+
+            let canHandleMultipleSetPerTimeInstant =
+                child.bool_attribute("canHandleMultipleSetPerTimeInstant", false);
 
             let variableType = Self::get_variable_type(&child)?;
 
@@ -60,11 +61,10 @@ impl ModelDescription {
                 Some("discrete") => Variability::Discrete,
                 Some("continuous") => Variability::Continuous,
                 _ => {
-                    if matches!(variableType, VariableType::Real {..})
+                    if matches!(variableType, VariableType::Real { .. })
                         && !matches!(
                             causality,
-                            Causality::Parameter
-                                | Causality::CalculatedParameter
+                            Causality::Parameter | Causality::CalculatedParameter
                         )
                     {
                         Variability::Continuous
@@ -103,21 +103,21 @@ impl ModelDescription {
                 tolerance: e.optional_attribute("tolerance"),
                 stepSize: e.optional_attribute("stepSize"),
             });
-        let coSimulation = if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation"))
-        {
-            Some(CoSimulation {
-                modelIdentifier: cs.required_attribute("modelIdentifier")?,
-                providesDirectionalDerivatives: cs
-                    .bool_attribute("providesDirectionalDerivative", false),
-                fixedInternalStepSize: cs.optional_attribute("fixedInternalStepSize"),
-                canHandleVariableCommunicationStepSize: cs
-                    .bool_attribute("canHandleVariableCommunicationStepSize", false),
-                canNotUseMemoryManagementFunctions: cs
-                    .bool_attribute("canNotUseMemoryManagementFunctions", false),
-            })
-        } else {
-            None
-        };
+        let coSimulation =
+            if let Some(cs) = root.descendants().find(|n| n.has_tag_name("CoSimulation")) {
+                Some(CoSimulation {
+                    modelIdentifier: cs.required_attribute("modelIdentifier")?,
+                    providesDirectionalDerivatives: cs
+                        .bool_attribute("providesDirectionalDerivative", false),
+                    fixedInternalStepSize: cs.optional_attribute("fixedInternalStepSize"),
+                    canHandleVariableCommunicationStepSize: cs
+                        .bool_attribute("canHandleVariableCommunicationStepSize", false),
+                    canNotUseMemoryManagementFunctions: cs
+                        .bool_attribute("canNotUseMemoryManagementFunctions", false),
+                })
+            } else {
+                None
+            };
         let modelExchange =
             if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
                 Some(ModelExchange {
@@ -150,7 +150,10 @@ impl ModelDescription {
             license: root.optional_attribute("license"),
             generationTool: root.optional_attribute("generationTool"),
             generationDateAndTime: root.optional_attribute("generationDateAndTime"),
-            variableNamingConvention: root.optional_attribute("variableNamingConvention").unwrap_or("flat".to_string()).parse()?,
+            variableNamingConvention: root
+                .optional_attribute("variableNamingConvention")
+                .unwrap_or("flat".to_string())
+                .parse()?,
             defaultExperiment,
             coSimulation,
             modelExchange,
@@ -172,14 +175,25 @@ impl ModelDescription {
                     quantity: child.optional_attribute("quantity"),
                     unit: child.optional_attribute("unit"),
                     displayUnit: child.optional_attribute("displayUnit"),
-                    relativeQuantity: child.attribute("relativeQuantity").map(|s| s == "true").unwrap_or(false),
+                    relativeQuantity: child
+                        .attribute("relativeQuantity")
+                        .map(|s| s == "true")
+                        .unwrap_or(false),
                     min: child.optional_attribute("min"),
                     max: child.optional_attribute("max"),
                     nominal: child.optional_attribute("nominal"),
-                    unbounded: child.attribute("unbounded").map(|s| s == "true").unwrap_or(false),
+                    unbounded: child
+                        .attribute("unbounded")
+                        .map(|s| s == "true")
+                        .unwrap_or(false),
                     start: child.optional_attribute("start"),
-                    derivative: child.optional_attribute("derivative").map(|s| s.parse().unwrap()),
-                    reinit: child.attribute("reinit").map(|s| s == "true").unwrap_or(false),
+                    derivative: child
+                        .optional_attribute("derivative")
+                        .map(|s| s.parse().unwrap()),
+                    reinit: child
+                        .attribute("reinit")
+                        .map(|s| s == "true")
+                        .unwrap_or(false),
                 });
             } else if child.has_tag_name("Integer") {
                 return Ok(VariableType::Integer {
@@ -241,31 +255,40 @@ impl ModelDescription {
                     if dependencies.is_empty() {
                         Some(Vec::new())
                     } else {
-                        Some(dependencies.split(" ").map(|s| s.parse::<u32>().unwrap()).collect())
+                        Some(
+                            dependencies
+                                .split(" ")
+                                .map(|s| s.parse::<u32>().unwrap())
+                                .collect(),
+                        )
                     }
                 }
                 None => None,
             };
 
-            let dependenciesKind: Option<Vec<DependencyKind>> = match child.attribute("dependenciesKind") {
-                Some(dependenciesKind) => {
-                    if dependenciesKind.is_empty() {
-                        Some(Vec::new())
-                    } else {
-                        Some(dependenciesKind.split(" ").map(|s| {
-                            match s {
-                                "dependent" => DependencyKind::Dependent,
-                                "constant" => DependencyKind::Constant,
-                                "fixed" => DependencyKind::Fixed,
-                                "tunable" => DependencyKind::Tunable,
-                                "discrete" => DependencyKind::Discrete,
-                                _ => panic!("Unknown dependenciesKind: {}", s),
-                            }
-                        }).collect())
+            let dependenciesKind: Option<Vec<DependencyKind>> =
+                match child.attribute("dependenciesKind") {
+                    Some(dependenciesKind) => {
+                        if dependenciesKind.is_empty() {
+                            Some(Vec::new())
+                        } else {
+                            Some(
+                                dependenciesKind
+                                    .split(" ")
+                                    .map(|s| match s {
+                                        "dependent" => DependencyKind::Dependent,
+                                        "constant" => DependencyKind::Constant,
+                                        "fixed" => DependencyKind::Fixed,
+                                        "tunable" => DependencyKind::Tunable,
+                                        "discrete" => DependencyKind::Discrete,
+                                        _ => panic!("Unknown dependenciesKind: {}", s),
+                                    })
+                                    .collect(),
+                            )
+                        }
                     }
-                }
-                None => None,
-            };
+                    None => None,
+                };
 
             unkonwns.push(Unknown {
                 index,
@@ -276,7 +299,6 @@ impl ModelDescription {
 
         Ok(unkonwns)
     }
-
 }
 
 trait StringAttribute {

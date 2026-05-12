@@ -8,7 +8,6 @@ use crate::types::fmiValueReference;
 
 pub type VariableIndex = u32;
 
-
 #[derive(Debug, PartialEq)]
 pub enum VariableType {
     Real {
@@ -74,7 +73,6 @@ pub enum Initial {
     Approx,
     Calculated,
 }
-
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DependencyKind {
@@ -183,10 +181,8 @@ pub struct ModelDescription {
 }
 
 impl ModelDescription {
-
     /// Returns the first variable found with the given value reference.
     pub fn get_variable(&self, vr: fmiValueReference) -> Option<&ScalarVariable> {
         self.modelVariables.iter().find(|v| v.valueReference == vr)
     }
-
 }

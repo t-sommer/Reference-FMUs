@@ -370,13 +370,19 @@ impl ModelDescription {
         let mut problems = vec![];
 
         if !self.is_valid_value_reference(unknown.valueReference) {
-            problems.push(format!("Illegal value reference: {}", unknown.valueReference));
+            problems.push(format!(
+                "Illegal value reference: {}",
+                unknown.valueReference
+            ));
         }
 
         if let Some(dependencies) = &unknown.dependencies {
             for dependency_vr in dependencies {
                 if !self.is_valid_value_reference(*dependency_vr) {
-                    problems.push(format!("Illegal value reference in dependencies of unknown: {}", dependency_vr));
+                    problems.push(format!(
+                        "Illegal value reference in dependencies of unknown: {}",
+                        dependency_vr
+                    ));
                 }
             }
 
@@ -391,7 +397,9 @@ impl ModelDescription {
     }
 
     fn is_valid_value_reference(&self, valueReference: fmiValueReference) -> bool {
-        self.modelVariables.iter().any(|v| v.valueReference == valueReference)
+        self.modelVariables
+            .iter()
+            .any(|v| v.valueReference == valueReference)
     }
 }
 
@@ -461,14 +469,23 @@ fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
             quantity: node.optional_attribute("quantity"),
             unit: node.optional_attribute("unit"),
             displayUnit: node.optional_attribute("displayUnit"),
-            relativeQuantity: node.attribute("relativeQuantity").map(|s| s == "true").unwrap_or(false),
-            unbounded: node.attribute("unbounded").map(|s| s == "true").unwrap_or(false),
+            relativeQuantity: node
+                .attribute("relativeQuantity")
+                .map(|s| s == "true")
+                .unwrap_or(false),
+            unbounded: node
+                .attribute("unbounded")
+                .map(|s| s == "true")
+                .unwrap_or(false),
             min: node.optional_attribute_as("min"),
             max: node.optional_attribute_as("max"),
             nominal: node.optional_attribute_as("nominal"),
             start: node.optional_attribute_as("start"),
             derivative: node.optional_attribute_as("derivative"),
-            reinit: node.attribute("reinit").map(|s| s == "true").unwrap_or(false),
+            reinit: node
+                .attribute("reinit")
+                .map(|s| s == "true")
+                .unwrap_or(false),
         });
     } else if node.has_tag_name("Float64") {
         return Ok(VariableType::Float64 {
@@ -479,14 +496,23 @@ fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
             quantity: node.optional_attribute("quantity"),
             unit: node.optional_attribute("unit"),
             displayUnit: node.optional_attribute("displayUnit"),
-            relativeQuantity: node.attribute("relativeQuantity").map(|s| s == "true").unwrap_or(false),
-            unbounded: node.attribute("unbounded").map(|s| s == "true").unwrap_or(false),
+            relativeQuantity: node
+                .attribute("relativeQuantity")
+                .map(|s| s == "true")
+                .unwrap_or(false),
+            unbounded: node
+                .attribute("unbounded")
+                .map(|s| s == "true")
+                .unwrap_or(false),
             min: node.optional_attribute_as("min"),
             max: node.optional_attribute_as("max"),
             nominal: node.optional_attribute_as("nominal"),
             start: node.optional_attribute_as("start"),
             derivative: node.optional_attribute_as("derivative"),
-            reinit: node.attribute("reinit").map(|s| s == "true").unwrap_or(false),
+            reinit: node
+                .attribute("reinit")
+                .map(|s| s == "true")
+                .unwrap_or(false),
         });
     } else if node.has_tag_name("Int8") {
         return Ok(VariableType::Int8 {
@@ -624,7 +650,7 @@ fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
     }
 
     Err("Missing variable type element".into())
-}      
+}
 
 fn get_dimensions(node: &Node) -> Result<Vec<Dimension>, Box<dyn Error>> {
     let mut dimensions = vec![];
@@ -679,19 +705,25 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, Box<dyn E
 
         let variableType = get_variable_type(&child)?;
 
-        let causality = child.attribute("causality")
+        let causality = child
+            .attribute("causality")
             .map(|s| Causality::from_str(s).unwrap())
             .unwrap_or(Causality::Local);
 
-        let variability = child.attribute("variability")
+        let variability = child
+            .attribute("variability")
             .map(|s| Variability::from_str(s).unwrap())
             .unwrap_or_else(|| {
-                if matches!(variableType, VariableType::Float32 { .. } | VariableType::Float64 { .. })
-                    && matches!(
-                        causality,
-                        Causality::Input | Causality::Output | Causality::Independent | Causality::Local
-                    )
-                {
+                if matches!(
+                    variableType,
+                    VariableType::Float32 { .. } | VariableType::Float64 { .. }
+                ) && matches!(
+                    causality,
+                    Causality::Input
+                        | Causality::Output
+                        | Causality::Independent
+                        | Causality::Local
+                ) {
                     Variability::Continuous
                 } else {
                     Variability::Discrete
@@ -768,7 +800,10 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, Box<dyn E
         license: root.optional_attribute("license"),
         generationTool: root.optional_attribute("generationTool"),
         generationDateAndTime: root.optional_attribute("generationDateAndTime"),
-        variableNamingConvention: root.optional_attribute("variableNamingConvention").unwrap_or("flat".to_string()).parse()?,
+        variableNamingConvention: root
+            .optional_attribute("variableNamingConvention")
+            .unwrap_or("flat".to_string())
+            .parse()?,
         defaultExperiment,
         modelExchange,
         coSimulation,
@@ -784,18 +819,22 @@ pub fn read_model_description(path: &Path) -> Result<ModelDescription, Box<dyn E
 }
 
 fn validate_unknown(unknown: &Unknown, model_description: &ModelDescription) -> Vec<String> {
-    
     let mut problems = vec![];
 
     if !model_description.is_valid_value_reference(unknown.valueReference) {
-        problems.push(format!("Illegal value reference: {}", unknown.valueReference));
+        problems.push(format!(
+            "Illegal value reference: {}",
+            unknown.valueReference
+        ));
     }
 
     if let Some(dependencies) = &unknown.dependencies {
-            
         for dependency_value_reference in dependencies {
             if !model_description.is_valid_value_reference(*dependency_value_reference) {
-                problems.push(format!("Illegal value reference in dependencies of unkonwn with index {}: {}", unknown.valueReference, dependency_value_reference));
+                problems.push(format!(
+                    "Illegal value reference in dependencies of unkonwn with index {}: {}",
+                    unknown.valueReference, dependency_value_reference
+                ));
             }
         }
 

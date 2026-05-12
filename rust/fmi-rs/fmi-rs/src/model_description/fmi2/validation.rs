@@ -1,7 +1,6 @@
 use crate::model_description::fmi2::{ModelDescription, Unknown, VariableType};
 
 impl ModelDescription {
-    
     /// Checks if the model description is valid according to the FMI 2.0 spec.
     pub fn validate(&self) -> Vec<String> {
         let mut problems: Vec<String> = vec![];
@@ -26,10 +25,7 @@ impl ModelDescription {
                 }
             };
 
-            if let VariableType::Real {
-                derivative, ..
-            } = &derivative_variable.variableType
-            {
+            if let VariableType::Real { derivative, .. } = &derivative_variable.variableType {
                 if let Some(derivative_index) = derivative {
                     match self.modelVariables.get((derivative_index - 1) as usize) {
                         Some(state_variable) => {
@@ -38,15 +34,24 @@ impl ModelDescription {
                             }
                         }
                         None => {
-                            problems.push(format!("Attribute derivative of variable {} is not a valid variable index", derivative_variable.name));
+                            problems.push(format!(
+                                "Attribute derivative of variable {} is not a valid variable index",
+                                derivative_variable.name
+                            ));
                             continue;
                         }
                     };
                 } else {
-                    problems.push(format!("Variable {} is not a derivative.", derivative_variable.name));
+                    problems.push(format!(
+                        "Variable {} is not a derivative.",
+                        derivative_variable.name
+                    ));
                 }
             } else {
-                problems.push(format!("Variable {} is not a real variable.", derivative_variable.name));
+                problems.push(format!(
+                    "Variable {} is not a real variable.",
+                    derivative_variable.name
+                ));
             }
         }
 
@@ -68,7 +73,10 @@ impl ModelDescription {
         if let Some(dependencies) = &unknown.dependencies {
             for dependency_index in dependencies {
                 if !self.is_valid_variable_index(*dependency_index) {
-                    problems.push(format!("Illegal variable index in dependencies of unknown with index {}: {}", unknown.index, dependency_index));
+                    problems.push(format!(
+                        "Illegal variable index in dependencies of unknown with index {}: {}",
+                        unknown.index, dependency_index
+                    ));
                 }
             }
 
@@ -85,5 +93,4 @@ impl ModelDescription {
     fn is_valid_variable_index(&self, index: u32) -> bool {
         index > 0 && index <= self.modelVariables.len() as u32
     }
-
 }

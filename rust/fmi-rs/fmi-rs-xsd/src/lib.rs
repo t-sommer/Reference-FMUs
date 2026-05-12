@@ -42,7 +42,7 @@ pub fn validate_model_description_against_xsd(
                 }
             })
             .collect();
-        unsafe { free_messages(n_messages, messages) };        
+        unsafe { free_messages(n_messages, messages) };
         messages_vec
     } else {
         vec![]

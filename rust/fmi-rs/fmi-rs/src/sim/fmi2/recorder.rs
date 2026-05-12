@@ -10,9 +10,7 @@ pub struct Recorder<'res, 'md> {
 
 impl<'res, 'md> Recorder<'res, 'md> {
     pub fn new(simulation_result: &'res mut SimulationResult<'md>) -> Self {
-        Recorder {
-            simulation_result,
-        }
+        Recorder { simulation_result }
     }
 
     pub fn sample<I>(&mut self, time: f64, fmu: &FMU2<I>) -> std::io::Result<()> {
@@ -26,22 +24,22 @@ impl<'res, 'md> Recorder<'res, 'md> {
             // TODO: handle status
 
             let variable_value = match variable.variableType {
-                VariableType::Real {..} => {
+                VariableType::Real { .. } => {
                     let mut values = [0.0];
                     fmu.getReal(&value_references, &mut values);
                     VariableValue::Real(values[0])
                 }
-                VariableType::Integer {..} | VariableType::Enumeration {..} => {
+                VariableType::Integer { .. } | VariableType::Enumeration { .. } => {
                     let mut values = [0];
                     fmu.getInteger(&value_references, &mut values);
                     VariableValue::Integer(values[0])
                 }
-                VariableType::Boolean {..} => {
+                VariableType::Boolean { .. } => {
                     let mut values = [0];
                     fmu.getBoolean(&value_references, &mut values);
                     VariableValue::Boolean(values[0])
                 }
-                VariableType::String {..} => {
+                VariableType::String { .. } => {
                     let mut values = [String::new()];
                     fmu.getString(&value_references, &mut values);
                     VariableValue::String(values[0].clone())

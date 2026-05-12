@@ -98,11 +98,11 @@ pub fn parse_variable_value(
     literal: &str,
 ) -> Result<VariableValue, Box<dyn Error>> {
     match variable_type {
-        VariableType::Real {..} => Ok(VariableValue::Real(literal.parse()?)),
-        VariableType::Integer {..} | VariableType::Enumeration {..} => {
+        VariableType::Real { .. } => Ok(VariableValue::Real(literal.parse()?)),
+        VariableType::Integer { .. } | VariableType::Enumeration { .. } => {
             Ok(VariableValue::Integer(literal.parse()?))
         }
-        VariableType::Boolean {..} => {
+        VariableType::Boolean { .. } => {
             let value: bool = literal.parse()?;
             Ok(VariableValue::Boolean(if value {
                 fmi2True
@@ -110,7 +110,7 @@ pub fn parse_variable_value(
                 fmi2False
             }))
         }
-        VariableType::String {..} => Ok(VariableValue::String(literal.to_string())),
+        VariableType::String { .. } => Ok(VariableValue::String(literal.to_string())),
         _ => Err(format!("Unsupported variable type {variable_type:?}.").into()),
     }
 }
@@ -381,13 +381,17 @@ pub fn simulate_me<S: SolverFactory>(
         .iter()
         .map(|i| {
             let variable = &settings.model_description.modelVariables[(*i - 1) as usize];
-            let state_index = if let VariableType::Real { derivative: Some(index), .. } = variable.variableType {
+            let state_index = if let VariableType::Real {
+                derivative: Some(index),
+                ..
+            } = variable.variableType
+            {
                 index
             } else {
                 panic!("Derivative variables must be of type Real and have a derivative element.");
             };
             settings.model_description.modelVariables[(state_index - 1) as usize].valueReference
-    })
+        })
         .collect();
 
     let mut solver = solver_factory.create(

@@ -1,11 +1,9 @@
 pub mod fmi2;
 pub mod fmi3;
 
-
 use std::{error::Error, path::Path};
 
 pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
-
     let text = match std::fs::read_to_string(path) {
         Ok(content) => content,
         Err(e) => return Err(format!("Failed to read XML file: {}", e).into()),
@@ -46,4 +44,3 @@ pub fn peak_fmi_major_version(path: &Path) -> Result<FMIMajorVersion, Box<dyn Er
         Err(format!("Unknown FMI version: {}", fmi_version).into())
     }
 }
-

@@ -42,19 +42,17 @@ impl Unit {
         let baseUnit = node
             .descendants()
             .find(|n| n.has_tag_name("BaseUnit"))
-            .map(|n| {
-                BaseUnit {
-                    kg: n.optional_attribute_as("kg").unwrap_or(0),
-                    m: n.optional_attribute_as("m").unwrap_or(0),
-                    s: n.optional_attribute_as("s").unwrap_or(0),
-                    A: n.optional_attribute_as("A").unwrap_or(0),
-                    K: n.optional_attribute_as("K").unwrap_or(0),
-                    mol: n.optional_attribute_as("mol").unwrap_or(0),
-                    cd: n.optional_attribute_as("cd").unwrap_or(0),
-                    rad: n.optional_attribute_as("rad").unwrap_or(0),
-                    factor: n.optional_attribute_as("factor").unwrap_or(1.0),
-                    offset: n.optional_attribute_as("offset").unwrap_or(0.0),
-                }
+            .map(|n| BaseUnit {
+                kg: n.optional_attribute_as("kg").unwrap_or(0),
+                m: n.optional_attribute_as("m").unwrap_or(0),
+                s: n.optional_attribute_as("s").unwrap_or(0),
+                A: n.optional_attribute_as("A").unwrap_or(0),
+                K: n.optional_attribute_as("K").unwrap_or(0),
+                mol: n.optional_attribute_as("mol").unwrap_or(0),
+                cd: n.optional_attribute_as("cd").unwrap_or(0),
+                rad: n.optional_attribute_as("rad").unwrap_or(0),
+                factor: n.optional_attribute_as("factor").unwrap_or(1.0),
+                offset: n.optional_attribute_as("offset").unwrap_or(0.0),
             });
 
         let displayUnits = node
@@ -68,6 +66,10 @@ impl Unit {
             })
             .collect();
 
-        Unit { name, baseUnit, displayUnits }
+        Unit {
+            name,
+            baseUnit,
+            displayUnits,
+        }
     }
 }

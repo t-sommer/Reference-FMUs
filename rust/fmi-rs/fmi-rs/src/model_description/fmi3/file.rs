@@ -6,15 +6,16 @@ use crate::model_description::Unit;
 use crate::model_description::file::StringAttribute;
 
 use crate::model_description::fmi3::{
-    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, ModelDescription, ModelExchange, ModelVariable, Unknown, Variability, VariableType
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, ModelDescription,
+    ModelExchange, ModelVariable, Unknown, Variability, VariableType,
 };
 
 impl ModelDescription {
-    fn get_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Error>> {
+    fn get_unknowns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Error>> {
         let modelStructure = root
             .descendants()
             .find(|n| n.has_tag_name("ModelStructure"))
-            .ok_or("Missing ModelStructure element.")?;
+            .ok_or("Missing <ModelStructure> element.")?;
 
         let mut unkonwns = vec![];
 
@@ -283,7 +284,7 @@ impl ModelDescription {
         Ok(dimensions)
     }
 
-    pub fn read_from_file(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
+    pub fn read(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
         let text = match std::fs::read_to_string(path) {
             Ok(content) => content,
             Err(e) => return Err(format!("Failed to read XML file: {}", e).into()),
@@ -298,62 +299,49 @@ impl ModelDescription {
 
         let root = &doc.root_element();
 
-        let ModelVariables = root
+        let model_variables_node = root
             .descendants()
             .find(|n| n.has_tag_name("ModelVariables"))
             .unwrap();
 
-        let mut variables_for_vr = HashMap::new();
-        let mut modelVariables = vec![];
-
-        for (i, child) in ModelVariables
+        let modelVariables: Vec<ModelVariable> = model_variables_node
             .children()
             .filter(|n| n.is_element())
-            .enumerate()
-        {
-            let name = child.attribute("name").unwrap();
-            let valueReference = child.attribute("valueReference").unwrap().parse().unwrap();
+            .map(|child| {
+                let variable_type = Self::get_variable_type(&child)?;
+                let causality = child
+                    .optional_attribute_as("causality")
+                    .unwrap_or(Causality::Local);
+                let variability = child
+                    .optional_attribute_as("variability")
+                    .unwrap_or_else(|| {
+                        if matches!(
+                            variable_type,
+                            VariableType::Float32 { .. } | VariableType::Float64 { .. }
+                        ) && matches!(
+                            causality,
+                            Causality::Input
+                                | Causality::Output
+                                | Causality::Independent
+                                | Causality::Local
+                        ) {
+                            Variability::Continuous
+                        } else {
+                            Variability::Discrete
+                        }
+                    });
 
-            let variableType = Self::get_variable_type(&child)?;
-
-            let causality = child
-                .attribute("causality")
-                .map(|s| Causality::from_str(s).unwrap())
-                .unwrap_or(Causality::Local);
-
-            let variability = child
-                .attribute("variability")
-                .map(|s| Variability::from_str(s).unwrap())
-                .unwrap_or_else(|| {
-                    if matches!(
-                        variableType,
-                        VariableType::Float32 { .. } | VariableType::Float64 { .. }
-                    ) && matches!(
-                        causality,
-                        Causality::Input
-                            | Causality::Output
-                            | Causality::Independent
-                            | Causality::Local
-                    ) {
-                        Variability::Continuous
-                    } else {
-                        Variability::Discrete
-                    }
-                });
-
-            let variable = ModelVariable {
-                variableType,
-                name: name.to_string(),
-                valueReference: valueReference,
-                description: child.optional_attribute("description"),
-                causality,
-                variability,
-                dimensions: Self::get_dimensions(&child)?,
-            };
-
-            variables_for_vr.insert(valueReference, i);
-            modelVariables.push(variable);
-        }
+                Ok(ModelVariable {
+                    variableType: variable_type,
+                    name: child.required_attribute("name")?,
+                    valueReference: child.required_attribute("valueReference")?.parse()?,
+                    description: child.optional_attribute("description"),
+                    causality,
+                    variability,
+                    dimensions: Self::get_dimensions(&child)?,
+                })
+            })
+            .collect::<Result<Vec<_>, Box<dyn Error>>>()?;
 
         let defaultExperiment = root
             .descendants()
@@ -406,11 +394,11 @@ impl ModelDescription {
             .map(|u| Unit::from_node(&u))
             .collect();
 
-        let outputs = Self::get_unkonwns(root, "Output")?;
-        let derivatives = Self::get_unkonwns(root, "ContinuousStateDerivative")?;
-        let clockedStates = Self::get_unkonwns(root, "ClockedState")?;
-        let initialUnknowns = Self::get_unkonwns(root, "InitialUnknown")?;
-        let eventIndicators = Self::get_unkonwns(root, "EventIndicator")?;
+        let outputs = Self::get_unknowns(root, "Output")?;
+        let derivatives = Self::get_unknowns(root, "ContinuousStateDerivative")?;
+        let clockedStates = Self::get_unknowns(root, "ClockedState")?;
+        let initialUnknowns = Self::get_unknowns(root, "InitialUnknown")?;
+        let eventIndicators = Self::get_unknowns(root, "EventIndicator")?;
 
         let model_description = ModelDescription {
             fmiVersion: root.required_attribute("fmiVersion")?,

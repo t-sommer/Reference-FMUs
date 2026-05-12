@@ -1,7 +1,7 @@
-use roxmltree::Node;
-use std::{error::Error, path::Path};
 use crate::model_description::Unit;
 use crate::model_description::file::StringAttribute;
+use roxmltree::Node;
+use std::{error::Error, path::Path};
 
 use crate::model_description::fmi2::{
     Causality, CoSimulation, DefaultExperiment, DependencyKind, Initial, ModelDescription,
@@ -9,7 +9,7 @@ use crate::model_description::fmi2::{
 };
 
 impl ModelDescription {
-    pub fn read_from_file(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
+    pub fn read(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
         let text = match std::fs::read_to_string(path) {
             Ok(content) => content,
             Err(e) => return Err(format!("Failed to read XML file: {}", e).into()),
@@ -318,4 +318,3 @@ impl ModelDescription {
         Ok(unkonwns)
     }
 }
-

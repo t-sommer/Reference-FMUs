@@ -115,6 +115,50 @@ impl FromStr for Initial {
 }
 
 #[derive(Debug)]
+pub struct Item {
+    pub name: String,
+    pub value: i32,
+    pub description: Option<String>,
+}
+
+#[derive(Debug)]
+pub enum SimpleType {
+    Real {
+        name: String,
+        description: Option<String>,
+        quantity: Option<String>,
+        unit: Option<String>,
+        displayUnit: Option<String>,
+        relativeQuantity: bool,
+        min: Option<f32>,
+        max: Option<f32>,
+        nominal: Option<f32>,
+        unbounded: bool,
+    },
+    Integer {
+        name: String,
+        description: Option<String>,
+        quantity: Option<String>,
+        min: Option<i32>,
+        max: Option<i32>,
+    },
+    Boolean {
+        name: String,
+        description: Option<String>,
+    },
+    String {
+        name: String,
+        description: Option<String>,
+    },
+    Enumeration {
+        name: String,
+        description: Option<String>,
+        items: Vec<Item>,
+        quantity: Option<String>,
+    },
+}
+
+#[derive(Debug)]
 pub struct DefaultExperiment {
     pub startTime: Option<String>,
     pub stopTime: Option<String>,
@@ -174,6 +218,7 @@ pub struct ModelDescription {
     pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,
     pub unitDefintions: Vec<Unit>,
+    pub typeDefinitions: Vec<SimpleType>,
     pub modelVariables: Vec<ScalarVariable>,
     pub numberOfEventIndicators: usize,
     pub outputs: Vec<Unknown>,

@@ -27,7 +27,7 @@ impl FromStr for VariableNamingConvention {
 #[derive(Debug)]
 pub struct Item {
     pub name: String,
-    pub value: i64,
+    pub value: i32,
     pub description: Option<String>,
 }
 

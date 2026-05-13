@@ -1,10 +1,10 @@
-use crate::model_description::Unit;
 use crate::model_description::file::StringAttribute;
+use crate::model_description::{Unit, fmi2::SimpleType};
 use roxmltree::Node;
 use std::{error::Error, path::Path};
 
 use crate::model_description::fmi2::{
-    Causality, CoSimulation, DefaultExperiment, DependencyKind, Initial, ModelDescription,
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Initial, Item, ModelDescription,
     ModelExchange, ScalarVariable, Unknown, Variability, VariableType,
 };
 
@@ -149,6 +149,17 @@ impl ModelDescription {
             .map(|u| Unit::from_node(&u).unwrap())
             .collect();
 
+        let typeDefinitions = root
+            .descendants()
+            .find(|n| n.has_tag_name("TypeDefinitions"))
+            .map(|u| u.descendants())
+            .into_iter()
+            .flatten()
+            .filter(|n| n.has_tag_name("SimpleType"))
+            .into_iter()
+            .map(|u| SimpleType::from_node(&u).unwrap())
+            .collect();
+
         let numberOfEventIndicators = if let Some(n) = root.attribute("numberOfEventIndicators") {
             n.parse().unwrap_or(0)
         } else {
@@ -175,6 +186,7 @@ impl ModelDescription {
             coSimulation,
             modelExchange,
             unitDefintions,
+            typeDefinitions,
             modelVariables,
             numberOfEventIndicators,
             outputs,
@@ -316,5 +328,60 @@ impl ModelDescription {
         }
 
         Ok(unkonwns)
+    }
+}
+
+impl SimpleType {
+    fn from_node(node: &Node) -> Result<Self, Box<dyn Error>> {
+        let name = node.required_attribute("name")?;
+        let description = node.optional_attribute("description");
+
+        for child in node.children() {
+            if child.has_tag_name("Real") {
+                return Ok(SimpleType::Real {
+                    name,
+                    description,
+                    quantity: child.optional_attribute("quantity"),
+                    unit: child.optional_attribute("unit"),
+                    displayUnit: child.optional_attribute("displayUnit"),
+                    relativeQuantity: child.bool_attribute("relativeQuantity", false),
+                    unbounded: child.bool_attribute("unbounded", false),
+                    min: child.optional_attribute_as("min"),
+                    max: child.optional_attribute_as("max"),
+                    nominal: child.optional_attribute_as("nominal"),
+                });
+            } else if child.has_tag_name("Integer") {
+                return Ok(SimpleType::Integer {
+                    name,
+                    description,
+                    quantity: child.optional_attribute("quantity"),
+                    min: child.optional_attribute_as("min"),
+                    max: child.optional_attribute_as("max"),
+                });
+            } else if child.has_tag_name("Boolean") {
+                return Ok(SimpleType::Boolean { name, description });
+            } else if child.has_tag_name("String") {
+                return Ok(SimpleType::String { name, description });
+            } else if child.has_tag_name("Enumeration") {
+                let mut items = vec![];
+                for grand_child in child.children() {
+                    if grand_child.has_tag_name("Item") {
+                        items.push(Item {
+                            name: grand_child.required_attribute("name")?,
+                            description: grand_child.optional_attribute("description"),
+                            value: grand_child.required_attribute("value")?.parse()?,
+                        });
+                    }
+                }
+                return Ok(SimpleType::Enumeration {
+                    name,
+                    description,
+                    items,
+                    quantity: child.optional_attribute("quantity"),
+                });
+            }
+        }
+
+        Err("Missing variable type element".into())
     }
 }

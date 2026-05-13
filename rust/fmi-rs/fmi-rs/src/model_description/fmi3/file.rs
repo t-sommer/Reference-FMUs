@@ -6,8 +6,9 @@ use crate::model_description::Unit;
 use crate::model_description::file::StringAttribute;
 
 use crate::model_description::fmi3::{
-    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, ModelDescription,
-    ModelExchange, ModelVariable, Unknown, Variability, VariableType,
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability,
+    ModelDescription, ModelExchange, ModelVariable, TypeDefinition, Unknown, Variability,
+    VariableType,
 };
 
 impl ModelDescription {
@@ -248,6 +249,17 @@ impl ModelDescription {
                 declaredType: node.optional_attribute("declaredType"),
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
                 previous: node.optional_attribute_as("previous"),
+                canBeDeactivated: node.bool_attribute("canBeDeactivated", false),
+                priority: node.optional_attribute_as("priority"),
+                intervalVariability: IntervalVariability::from_str(
+                    node.required_attribute("intervalVariability")?.as_str(),
+                )?,
+                intervalDecimal: node.optional_attribute_as("intervalDecimal"),
+                shiftDecimal: node.required_attribute("shiftDecimal")?.parse()?,
+                supportsFraction: node.bool_attribute("supportsFraction", false),
+                resolution: node.optional_attribute_as("resolution"),
+                intervalCounter: node.optional_attribute_as("intervalCounter"),
+                shiftCounter: node.required_attribute("shiftDecimal")?.parse()?,
             });
         } else if node.has_tag_name("Enumeration") {
             return Ok(VariableType::Enumeration {
@@ -386,12 +398,23 @@ impl ModelDescription {
         let unitDefintions = root
             .descendants()
             .find(|n| n.has_tag_name("UnitDefinitions"))
-            .map(|u| u.descendants())
+            .map(|n| n.descendants())
             .into_iter()
             .flatten()
             .filter(|n| n.has_tag_name("Unit"))
             .into_iter()
-            .map(|u| Unit::from_node(&u))
+            .map(|n| Unit::from_node(&n).unwrap())
+            .collect();
+
+        let typeDefinitions = root
+            .descendants()
+            .find(|n| n.has_tag_name("TypeDefinitions"))
+            .map(|n| n.descendants())
+            .into_iter()
+            .flatten()
+            .filter(|n| n.tag_name().name().ends_with("Type"))
+            .into_iter()
+            .map(|n| TypeDefinition::from_node(&n).unwrap())
             .collect();
 
         let outputs = Self::get_unknowns(root, "Output")?;
@@ -419,6 +442,7 @@ impl ModelDescription {
             modelExchange,
             coSimulation,
             unitDefintions,
+            typeDefinitions,
             modelVariables,
             outputs,
             derivatives,
@@ -428,5 +452,50 @@ impl ModelDescription {
         };
 
         Ok(model_description)
+    }
+}
+
+impl TypeDefinition {
+    fn from_node(node: &Node) -> Result<Self, Box<dyn Error>> {
+        let name = node.required_attribute("name")?;
+        let description = node.optional_attribute("description");
+
+        if node.has_tag_name("Float32Type") {
+            return Ok(TypeDefinition::Float32 {
+                name,
+                description,
+                quantity: node.optional_attribute("quantity"),
+                unit: node.optional_attribute("unit"),
+                displayUnit: node.optional_attribute("displayUnit"),
+                relativeQuantity: node.bool_attribute("relativeQuantity", false),
+                unbounded: node.bool_attribute("unbounded", false),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+                nominal: node.optional_attribute_as("nominal"),
+            });
+        } else if node.has_tag_name("Float64Type") {
+            return Ok(TypeDefinition::Float64 {
+                name,
+                description,
+                quantity: node.optional_attribute("quantity"),
+                unit: node.optional_attribute("unit"),
+                displayUnit: node.optional_attribute("displayUnit"),
+                relativeQuantity: node.bool_attribute("relativeQuantity", false),
+                unbounded: node.bool_attribute("unbounded", false),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+                nominal: node.optional_attribute_as("nominal"),
+            });
+        } else if node.has_tag_name("Int8Type") {
+            return Ok(TypeDefinition::Int8 {
+                name,
+                description,
+                quantity: node.optional_attribute("quantity"),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+            });
+        } else {
+            todo!("Unknown type definition: {}", node.tag_name().name())
+        }
     }
 }

@@ -36,8 +36,8 @@ impl<'a, 'input> StringAttribute for Node<'a, 'input> {
 }
 
 impl Unit {
-    pub(crate) fn from_node(node: &roxmltree::Node) -> Self {
-        let name = node.required_attribute("name").unwrap();
+    pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
+        let name = node.required_attribute("name")?;
 
         let baseUnit = node
             .descendants()
@@ -66,10 +66,10 @@ impl Unit {
             })
             .collect();
 
-        Unit {
+        Ok(Unit {
             name,
             baseUnit,
             displayUnits,
-        }
+        })
     }
 }

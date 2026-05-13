@@ -146,7 +146,7 @@ impl ModelDescription {
             .flatten()
             .filter(|n| n.has_tag_name("Unit"))
             .into_iter()
-            .map(|u| Unit::from_node(&u))
+            .map(|u| Unit::from_node(&u).unwrap())
             .collect();
 
         let numberOfEventIndicators = if let Some(n) = root.attribute("numberOfEventIndicators") {

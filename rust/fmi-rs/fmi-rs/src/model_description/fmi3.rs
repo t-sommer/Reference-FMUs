@@ -2,8 +2,7 @@
 pub mod file;
 pub mod validation;
 
-use roxmltree::Node;
-use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
+use std::str::FromStr;
 
 use crate::{model_description::Unit, types::fmiValueReference};
 
@@ -23,6 +22,164 @@ impl FromStr for VariableNamingConvention {
             _ => Err(format!("Unknown variable naming convention: {}", s)),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct Item {
+    pub name: String,
+    pub value: i64,
+    pub description: Option<String>,
+}
+
+#[derive(Debug)]
+pub enum IntervalVariability {
+    Constant,
+    Fixed,
+    Tunable,
+    Changing,
+    Countdown,
+    Triggered,
+}
+
+impl FromStr for IntervalVariability {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "constant" => Ok(IntervalVariability::Constant),
+            "fixed" => Ok(IntervalVariability::Fixed),
+            "tunable" => Ok(IntervalVariability::Tunable),
+            "changing" => Ok(IntervalVariability::Changing),
+            "countdown" => Ok(IntervalVariability::Countdown),
+            "triggered" => Ok(IntervalVariability::Triggered),
+            _ => Err(format!("Unknown interval variability: {}", s)),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum TypeDefinition {
+    Float32 {
+        // fmi3TypeDefinitionBase
+        name: String,
+        description: Option<String>,
+        // fmi3RealBaseAttributes
+        quantity: Option<String>,
+        unit: Option<String>,
+        displayUnit: Option<String>,
+        relativeQuantity: bool,
+        unbounded: bool,
+        // fmi3Float32Attributes
+        min: Option<f32>,
+        max: Option<f32>,
+        nominal: Option<f32>,
+    },
+    Float64 {
+        // fmi3TypeDefinitionBase
+        name: String,
+        description: Option<String>,
+        // fmi3RealBaseAttributes
+        quantity: Option<String>,
+        unit: Option<String>,
+        displayUnit: Option<String>,
+        relativeQuantity: bool,
+        unbounded: bool,
+        // fmi3Float64Attributes
+        min: Option<f64>,
+        max: Option<f64>,
+        nominal: Option<f64>,
+    },
+    Int8 {
+        name: String,
+        description: Option<String>,
+        quantity: Option<String>,
+        min: Option<i8>,
+        max: Option<i8>,
+    },
+    UInt8 {
+        name: String,
+        description: Option<String>,
+        quantity: Option<String>,
+        min: Option<u8>,
+        max: Option<u8>,
+    },
+    Int16 {
+        name: String,
+        description: Option<String>,
+        quantity: Option<String>,
+        min: Option<i16>,
+        max: Option<i16>,
+    },
+    UInt16 {
+        name: String,
+        description: Option<String>,
+        quantity: Option<String>,
+        min: Option<u16>,
+        max: Option<u16>,
+    },
+    Int32 {
+        name: String,
+        description: Option<String>,
+        quantity: Option<String>,
+        min: Option<i32>,
+        max: Option<i32>,
+    },
+    UInt32 {
+        name: String,
+        description: Option<String>,
+        quantity: Option<String>,
+        min: Option<u32>,
+        max: Option<u32>,
+    },
+    Int64 {
+        name: String,
+        description: Option<String>,
+        quantity: Option<String>,
+        min: Option<i64>,
+        max: Option<i64>,
+    },
+    UInt64 {
+        name: String,
+        description: Option<String>,
+        quantity: Option<String>,
+        min: Option<u64>,
+        max: Option<u64>,
+    },
+    Boolean {
+        name: String,
+        description: Option<String>,
+    },
+    String {
+        name: String,
+        description: Option<String>,
+    },
+    Binary {
+        name: String,
+        description: Option<String>,
+        mimeType: Option<String>,
+        maxSize: Option<u64>,
+    },
+    Enumeration {
+        name: String,
+        description: Option<String>,
+        items: Vec<Item>,
+        quantity: Option<String>,
+        min: Option<i64>,
+        max: Option<i64>,
+    },
+    Clock {
+        name: String,
+        description: Option<String>,
+        canBeDeactivated: bool,
+        priority: Option<u32>,
+        intervalVariability: IntervalVariability,
+        intervalDecimal: Option<f64>,
+        shiftDecimal: f64,
+        supportsFraction: bool,
+        resolution: Option<u64>,
+        intervalCounter: Option<u64>,
+        shiftCounter: u64,
+    },
 }
 
 #[derive(Debug)]
@@ -191,6 +348,15 @@ pub enum VariableType {
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
+        canBeDeactivated: bool,
+        priority: Option<u32>,
+        intervalVariability: IntervalVariability,
+        intervalDecimal: Option<f64>,
+        shiftDecimal: f64,
+        supportsFraction: bool,
+        resolution: Option<u64>,
+        intervalCounter: Option<u64>,
+        shiftCounter: u64,
     },
     Enumeration {
         start: Option<i64>,
@@ -363,6 +529,7 @@ pub struct ModelDescription {
     pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,
     pub unitDefintions: Vec<Unit>,
+    pub typeDefinitions: Vec<TypeDefinition>,
     pub modelVariables: Vec<ModelVariable>,
     pub outputs: Vec<Unknown>,
     pub derivatives: Vec<Unknown>,

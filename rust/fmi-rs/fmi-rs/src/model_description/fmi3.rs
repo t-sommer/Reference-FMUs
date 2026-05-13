@@ -27,7 +27,7 @@ impl FromStr for VariableNamingConvention {
 #[derive(Debug)]
 pub struct Item {
     pub name: String,
-    pub value: i32,
+    pub value: i64,
     pub description: Option<String>,
 }
 
@@ -156,7 +156,7 @@ pub enum TypeDefinition {
     Binary {
         name: String,
         description: Option<String>,
-        mimeType: Option<String>,
+        mimeType: String,
         maxSize: Option<u64>,
     },
     Enumeration {

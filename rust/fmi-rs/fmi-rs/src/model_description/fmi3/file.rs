@@ -6,9 +6,7 @@ use crate::model_description::Unit;
 use crate::model_description::file::StringAttribute;
 
 use crate::model_description::fmi3::{
-    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability,
-    ModelDescription, ModelExchange, ModelVariable, TypeDefinition, Unknown, Variability,
-    VariableType,
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability, Item, ModelDescription, ModelExchange, ModelVariable, TypeDefinition, Unknown, Variability, VariableType
 };
 
 impl ModelDescription {
@@ -494,8 +492,108 @@ impl TypeDefinition {
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
             });
+        } else if node.has_tag_name("UInt8Type") {
+            return Ok(TypeDefinition::UInt8 {
+                name,
+                description,
+                quantity: node.optional_attribute("quantity"),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+            });
+        } else if node.has_tag_name("Int16Type") {
+            return Ok(TypeDefinition::Int16 {
+                name,
+                description,
+                quantity: node.optional_attribute("quantity"),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+            });
+        } else if node.has_tag_name("UInt16Type") {
+            return Ok(TypeDefinition::UInt16 {
+                name,
+                description,
+                quantity: node.optional_attribute("quantity"),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+            });
+        } else if node.has_tag_name("Int32Type") {
+            return Ok(TypeDefinition::Int32 {
+                name,
+                description,
+                quantity: node.optional_attribute("quantity"),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+            });
+        } else if node.has_tag_name("UInt32Type") {
+            return Ok(TypeDefinition::UInt32 {
+                name,
+                description,
+                quantity: node.optional_attribute("quantity"),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+            });
+        } else if node.has_tag_name("Int64Type") {
+            return Ok(TypeDefinition::Int64 {
+                name,
+                description,
+                quantity: node.optional_attribute("quantity"),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+            });
+        } else if node.has_tag_name("UInt64Type") {
+            return Ok(TypeDefinition::UInt64 {
+                name,
+                description,
+                quantity: node.optional_attribute("quantity"),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+            });
+        } else if node.has_tag_name("BooleanType") {
+            return Ok(TypeDefinition::Boolean {
+                name,
+                description,
+            });
+        } else if node.has_tag_name("StringType") {
+            return Ok(TypeDefinition::String {
+                name,
+                description,
+            });
+        } else if node.has_tag_name("BinaryType") {
+            return Ok(TypeDefinition::Binary {
+                name,
+                description,
+                mimeType: node.attribute("mimeType").unwrap_or("application/octet-stream").to_string(),
+                maxSize: node.optional_attribute_as("maxSize"),
+            });
+        } else if node.has_tag_name("EnumerationType") {
+
+            let mut items = vec![];
+                for child in node.children() {
+                    if child.has_tag_name("Item") {
+                        items.push(Item::from_node(&child)?);
+                    }
+                }
+
+            return Ok(TypeDefinition::Enumeration {
+                name,
+                description,
+                items,
+                quantity: node.optional_attribute("quantity"),
+                min: node.optional_attribute_as("min"),
+                max: node.optional_attribute_as("max"),
+            });
         } else {
-            todo!("Unknown type definition: {}", node.tag_name().name())
+            return Err(format!("Unknown type definition: {}", node.tag_name().name()).into());
         }
+    }
+}
+
+impl Item {
+    pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
+        Ok(Item {
+            name: node.required_attribute("name")?,
+            description: node.optional_attribute("description"),
+            value: node.required_attribute("value")?.parse()?,
+        })
     }
 }

@@ -366,11 +366,7 @@ impl SimpleType {
                 let mut items = vec![];
                 for grand_child in child.children() {
                     if grand_child.has_tag_name("Item") {
-                        items.push(Item {
-                            name: grand_child.required_attribute("name")?,
-                            description: grand_child.optional_attribute("description"),
-                            value: grand_child.required_attribute("value")?.parse()?,
-                        });
+                        items.push(Item::from_node(&grand_child)?);
                     }
                 }
                 return Ok(SimpleType::Enumeration {
@@ -383,5 +379,15 @@ impl SimpleType {
         }
 
         Err("Missing variable type element".into())
+    }
+}
+
+impl Item {
+    pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
+        Ok(Item {
+            name: node.required_attribute("name")?,
+            description: node.optional_attribute("description"),
+            value: node.required_attribute("value")?.parse()?,
+        })
     }
 }

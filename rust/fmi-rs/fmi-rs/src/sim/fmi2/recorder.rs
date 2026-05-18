@@ -1,15 +1,15 @@
 use crate::{
     fmi2::FMU2,
     model_description::fmi2::VariableType,
-    sim::fmi2::{SimulationResult, VariableValue},
+    sim::fmi2::{Trajectories, VariableValue},
 };
 
 pub struct Recorder<'res, 'md> {
-    pub simulation_result: &'res mut SimulationResult<'md>,
+    pub simulation_result: &'res mut Trajectories<'md>,
 }
 
 impl<'res, 'md> Recorder<'res, 'md> {
-    pub fn new(simulation_result: &'res mut SimulationResult<'md>) -> Self {
+    pub fn new(simulation_result: &'res mut Trajectories<'md>) -> Self {
         Recorder { simulation_result }
     }
 

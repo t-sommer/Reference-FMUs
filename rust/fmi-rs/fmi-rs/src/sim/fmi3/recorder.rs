@@ -3,16 +3,16 @@ use std::vec;
 use crate::{
     fmi3::FMU3,
     model_description::fmi3::{Dimension, VariableType},
-    sim::fmi3::{SimulationResult, VariableValue},
+    sim::fmi3::{Trajectories, VariableValue},
 };
 
 pub struct Recorder<'res, 'md> {
-    pub simulation_result: &'res mut SimulationResult<'md>,
+    pub simulation_result: &'res mut Trajectories<'md>,
     pub sizes: Vec<usize>,
 }
 
 impl<'res, 'md> Recorder<'res, 'md> {
-    pub fn new(simulation_result: &'res mut SimulationResult<'md>) -> Self {
+    pub fn new(simulation_result: &'res mut Trajectories<'md>) -> Self {
         Recorder {
             simulation_result,
             sizes: vec![],

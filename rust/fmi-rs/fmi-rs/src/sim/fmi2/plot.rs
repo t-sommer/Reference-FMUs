@@ -1,4 +1,4 @@
-use crate::sim::fmi2::SimulationResult;
+use crate::sim::fmi2::Trajectories;
 use crate::{model_description::fmi2::VariableType, sim};
 use plotly::{
     Configuration, Layout, Plot, Scatter,
@@ -6,16 +6,16 @@ use plotly::{
     layout::{Axis, GridPattern, LayoutGrid, Margin},
 };
 
-pub fn plot_result(sim_result: &SimulationResult<'_>) -> Plot {
+pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
     let mut plot = Plot::new();
 
-    let plot_height = 250 * sim_result.variables.len().max(1);
+    let plot_height = 250 * trajectories.variables.len().max(1);
 
     let mut layout = Layout::new()
         .x_axis(Axis::new().title("time"))
         .grid(
             LayoutGrid::new()
-                .rows(sim_result.variables.len())
+                .rows(trajectories.variables.len())
                 .columns(1)
                 .pattern(GridPattern::Coupled), // Link X axes in the same column
         )
@@ -24,10 +24,10 @@ pub fn plot_result(sim_result: &SimulationResult<'_>) -> Plot {
         .show_legend(false)
         .margin(Margin::new().top(30).bottom(40).left(65).right(30));
 
-    for (i, variable) in sim_result.variables.iter().enumerate() {
+    for (i, variable) in trajectories.variables.iter().enumerate() {
         let mut axis_title = variable.name.clone();
 
-        if let Some(unit) = sim_result.model_description.get_unit(variable) {
+        if let Some(unit) = trajectories.model_description.get_unit(variable) {
             axis_title.push_str(format!(" [{unit}]").as_str());
         }
 
@@ -46,7 +46,7 @@ pub fn plot_result(sim_result: &SimulationResult<'_>) -> Plot {
             _ => layout, // The plotly crate typed API typically supports up to y_axis8
         };
 
-        let time = sim_result.time.clone();
+        let time = trajectories.time.clone();
         let name = variable.name.clone();
         let row = i + 1;
 
@@ -54,7 +54,7 @@ pub fn plot_result(sim_result: &SimulationResult<'_>) -> Plot {
             continue;
         }
 
-        let values: Vec<f64> = sim_result.rows.iter().map(|row| row[i].to_f64()).collect();
+        let values: Vec<f64> = trajectories.rows.iter().map(|row| row[i].to_f64()).collect();
 
         let mut trace = Scatter::new(time, values).name(name);
         // Use the shared x-axis ("x") for all subplots

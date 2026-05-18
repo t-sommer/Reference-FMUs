@@ -1,21 +1,21 @@
-use crate::{model_description::fmi3::VariableType, sim::fmi3::SimulationResult};
+use crate::{model_description::fmi3::VariableType, sim::fmi3::Trajectories};
 use plotly::{
     Configuration, Layout, Plot, Scatter,
     common::Line,
     layout::{Axis, GridPattern, LayoutGrid, Margin},
 };
 
-pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
+pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
     let mut plot = Plot::new();
 
-    let plot_height = 250 * sim_results.variables.len().max(1);
+    let plot_height = 250 * trajectories.variables.len().max(1);
 
     let mut layout = Layout::new()
         // .title("Simulation Result".to_owned())
         .x_axis(Axis::new().title("time"))
         .grid(
             LayoutGrid::new()
-                .rows(sim_results.variables.len())
+                .rows(trajectories.variables.len())
                 .columns(1)
                 .pattern(GridPattern::Coupled), // Link X axes in the same column
         )
@@ -24,10 +24,10 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
         .show_legend(false)
         .margin(Margin::new().top(30).bottom(40).left(65).right(30));
 
-    for (i, variable) in sim_results.variables.iter().enumerate() {
+    for (i, variable) in trajectories.variables.iter().enumerate() {
         let mut axis_title = variable.name.clone();
 
-        if let Some(unit) = sim_results.model_description.get_unit(variable) {
+        if let Some(unit) = trajectories.model_description.get_unit(variable) {
             axis_title.push_str(format!(" [{unit}]").as_str());
         }
         let y_axis = Axis::new().title(axis_title.as_str());
@@ -45,7 +45,7 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
             _ => layout, // The plotly crate typed API typically supports up to y_axis8
         };
 
-        let time = sim_results.time.clone();
+        let time = trajectories.time.clone();
         let name = variable.name.clone();
         let row = i + 1;
 
@@ -56,10 +56,10 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
             continue;
         }
 
-        let size = sim_results.rows[0][i].len();
+        let size = trajectories.rows[0][i].len();
 
         for j in 0..size {
-            let scalar_values: Vec<f64> = sim_results
+            let scalar_values: Vec<f64> = trajectories
                 .rows
                 .iter()
                 .map(|row| row[i].as_f64()[j])

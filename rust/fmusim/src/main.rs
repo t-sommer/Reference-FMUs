@@ -317,7 +317,7 @@ fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
         };
 
         let mut simulation_result =
-            sim::fmi2::SimulationResult::new(&model_description, output_variables.clone());
+            sim::fmi2::Trajectories::new(&model_description, output_variables.clone());
 
         let mut recorder = sim::fmi2::recorder::Recorder::new(&mut simulation_result);
 
@@ -475,7 +475,7 @@ fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
         };
 
         let mut simulation_result =
-            sim::fmi3::SimulationResult::new(&model_description, output_variables.clone());
+            sim::fmi3::Trajectories::new(&model_description, output_variables.clone());
 
         let mut recorder = sim::fmi3::recorder::Recorder::new(&mut simulation_result);
 

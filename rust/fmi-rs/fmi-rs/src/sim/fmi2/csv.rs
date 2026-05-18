@@ -1,27 +1,27 @@
 use crate::{
     model_description::fmi2::{ModelDescription, ScalarVariable},
-    sim::fmi2::{SimulationResult, parse_variable_value},
+    sim::fmi2::{Trajectories, parse_variable_value},
 };
 use std::{collections::HashMap, io::Read, path::Path};
 
 pub fn write_csv<P: AsRef<Path>>(
-    sim_results: &SimulationResult<'_>,
+    trajectories: &Trajectories<'_>,
     output_file: P,
 ) -> std::io::Result<()> {
     let mut writer = csv::Writer::from_path(output_file)?;
 
     let mut header = vec!["time".to_string()];
 
-    for variable in sim_results.variables.iter() {
+    for variable in trajectories.variables.iter() {
         header.push(variable.name.clone());
     }
 
     writer.write_record(&header)?;
 
-    for i in 0..sim_results.time.len() {
-        let mut record = vec![sim_results.time[i].to_string()];
+    for i in 0..trajectories.time.len() {
+        let mut record = vec![trajectories.time[i].to_string()];
 
-        for variable_value in (&sim_results.rows[i]).iter() {
+        for variable_value in (&trajectories.rows[i]).iter() {
             record.push(variable_value.to_literal());
         }
 
@@ -36,7 +36,7 @@ pub fn write_csv<P: AsRef<Path>>(
 pub fn read_csv<'a, R: Read>(
     reader: R,
     model_description: &'a ModelDescription,
-) -> Result<SimulationResult<'a>, Box<dyn std::error::Error>> {
+) -> Result<Trajectories<'a>, Box<dyn std::error::Error>> {
     // Create a map for quick lookup of variables by name
     let variable_map: HashMap<&str, &ScalarVariable> = model_description
         .modelVariables
@@ -98,7 +98,7 @@ pub fn read_csv<'a, R: Read>(
         }
     }
 
-    Ok(SimulationResult {
+    Ok(Trajectories {
         model_description,
         time,
         variables,

@@ -154,16 +154,16 @@ impl VariableValue {
 }
 
 #[derive(Debug)]
-pub struct SimulationResult<'a> {
+pub struct Trajectories<'a> {
     pub model_description: &'a ModelDescription,
     pub variables: Vec<&'a ModelVariable>,
     pub time: Vec<f64>,
     pub rows: Vec<Vec<VariableValue>>,
 }
 
-impl<'a> SimulationResult<'a> {
+impl<'a> Trajectories<'a> {
     pub fn new(model_description: &'a ModelDescription, variables: Vec<&'a ModelVariable>) -> Self {
-        SimulationResult {
+        Trajectories {
             model_description,
             variables,
             time: vec![],

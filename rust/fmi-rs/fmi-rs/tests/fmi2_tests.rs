@@ -3,7 +3,7 @@
 use fmi::fmi2::*;
 use fmi::model_description::{Causality, read_model_description};
 use fmi::sim::SimulationSettings;
-use fmi::sim::fmi2::SimulationResult;
+use fmi::sim::fmi2::Trajectories;
 use fmi::{fmi2::types::*, sim::fmi2::simulate_cs};
 use std::vec;
 use std::{env, path::PathBuf};
@@ -80,7 +80,7 @@ fn test_csv_input() {
         .filter(|var| var.causality == Causality::Output)
         .collect();
 
-    let mut simulation_result = SimulationResult::new(output_variables);
+    let mut simulation_result = Trajectories::new(output_variables);
 
     simulate_cs(&settings, &mut simulation_result).unwrap();
 }

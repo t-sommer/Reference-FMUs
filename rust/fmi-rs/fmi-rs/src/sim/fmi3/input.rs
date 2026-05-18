@@ -3,7 +3,7 @@ use std::error::Error;
 use crate::{
     fmi3::FMU3,
     model_description::fmi3::Variability,
-    sim::fmi3::{SimulationResult, VariableValue, set_variable_value},
+    sim::fmi3::{Trajectories, VariableValue, set_variable_value},
     types::*,
 };
 
@@ -17,7 +17,7 @@ fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
 
 #[derive(Debug)]
 pub struct StaticInput<'a> {
-    trajectories: SimulationResult<'a>,
+    trajectories: Trajectories<'a>,
 }
 
 fn approx_eq(a: f64, b: f64) -> bool {
@@ -44,7 +44,7 @@ fn approx_eq(a: f64, b: f64) -> bool {
 }
 
 impl<'a> StaticInput<'a> {
-    pub fn new(trajectories: SimulationResult<'a>) -> Self {
+    pub fn new(trajectories: Trajectories<'a>) -> Self {
         StaticInput { trajectories }
     }
 

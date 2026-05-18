@@ -1,10 +1,172 @@
+use std::collections::HashMap;
+use std::fs::File;
+use std::path::PathBuf;
+
+use fmi::model_description::fmi2::VariableType;
+use fmi::sim::euler::ForwardEulerFactory;
 use fmi::sim::fmi2::Trajectories;
-use fmi::{model_description::fmi2::VariableType};
 use plotly::{
     Configuration, Layout, Plot, Scatter,
     common::Line,
     layout::{Axis, GridPattern, LayoutGrid, Margin},
 };
+
+use crate::{InterfaceType, SimulateArgs, SolverType, cvode};
+
+pub fn simulate_fmu(
+    args: &SimulateArgs,
+    unzipdir: &tempfile::TempDir,
+    xml_path: &PathBuf,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let model_description = fmi::model_description::fmi2::ModelDescription::read(&xml_path)?;
+
+    let output_variables: Vec<&fmi::model_description::fmi2::ScalarVariable> =
+        if args.output_variable.is_empty() {
+            model_description
+                .modelVariables
+                .iter()
+                .filter(|v| v.causality == fmi::model_description::fmi2::Causality::Output)
+                .collect()
+        } else {
+            let variable_map: HashMap<&str, &fmi::model_description::fmi2::ScalarVariable> =
+                model_description
+                    .modelVariables
+                    .iter()
+                    .map(|var| (var.name.as_str(), var))
+                    .collect();
+
+            let mut output_variables = vec![];
+
+            for variable_name in &args.output_variable {
+                if let Some(&variable) = variable_map.get(variable_name.as_str()) {
+                    output_variables.push(variable);
+                } else {
+                    return Err(format!(
+                        "The requested output variable {variable_name:?} does not exist."
+                    )
+                    .into());
+                }
+            }
+
+            output_variables
+        };
+
+    let (start_time, stop_time, _tolerance) =
+        if let Some(default_experiment) = &model_description.defaultExperiment {
+            let start_time: f64 = if let Some(v) = &default_experiment.startTime {
+                v.parse().unwrap()
+            } else {
+                0.0
+            };
+            let stop_time: f64 = if let Some(v) = &default_experiment.stopTime {
+                v.parse().unwrap()
+            } else {
+                start_time + 1.0
+            };
+            let tolerance: Option<f64> = default_experiment
+                .tolerance
+                .as_ref()
+                .map(|v| v.parse().unwrap());
+            (start_time, stop_time, tolerance)
+        } else {
+            (0.0, 1.0, None)
+        };
+
+    let internal_step_size: Option<f64> = model_description
+        .coSimulation
+        .as_ref()
+        .unwrap()
+        .fixedInternalStepSize
+        .as_ref()
+        .map(|v| v.parse().unwrap());
+
+    let start_time = args.start_time.unwrap_or(start_time);
+    let stop_time = args.stop_time.unwrap_or(stop_time);
+    let tolerance = args.tolerance;
+
+    let output_interval = if let Some(v) = args.output_interval {
+        v
+    } else {
+        if let Some(v) = internal_step_size {
+            v
+        } else {
+            (stop_time - start_time) / 500.0
+        }
+    };
+
+    let settings = fmi::sim::fmi2::SimulationSettings {
+        unzipdir: unzipdir.path(),
+        model_description: &model_description,
+        start_time,
+        stop_time,
+        set_stop_time: args.set_stop_time,
+        output_interval,
+        tolerance,
+        start_values: args.start_values.clone(),
+        log_fmi_calls: args.log_fmi_calls,
+        input_file: args.input_file.as_ref().map(|f| PathBuf::from(f)),
+        early_return_allowed: args.early_return_allowed,
+        event_mode_used: args.event_mode_used,
+        logging_on: args.logging_on,
+    };
+
+    let interface_type = match &args.interface_type {
+        Some(t) => t.clone(),
+        None => {
+            if let Some(_) = &model_description.coSimulation {
+                InterfaceType::CoSimulation
+            } else {
+                InterfaceType::ModelExchange
+            }
+        }
+    };
+
+    let input = if let Some(path) = &args.input_file {
+        let file = File::open(&path).expect("Failed to open input file");
+        let trajectories = fmi::sim::fmi2::csv::read_csv(&file, &settings.model_description)
+            .expect("Failed to read CSV");
+        Some(fmi::sim::fmi2::input::StaticInput::new(trajectories))
+    } else {
+        None
+    };
+
+    let mut simulation_result =
+        fmi::sim::fmi2::Trajectories::new(&model_description, output_variables.clone());
+
+    let mut recorder = fmi::sim::fmi2::recorder::Recorder::new(&mut simulation_result);
+
+    let fixes_step_size = args.fixed_step_size.unwrap_or(output_interval);
+
+    let result = match interface_type {
+        InterfaceType::ModelExchange => match args.solver {
+            SolverType::Euler => fmi::sim::fmi2::simulate_me(
+                &settings,
+                &ForwardEulerFactory { fixes_step_size },
+                input.as_ref(),
+                &mut recorder,
+            ),
+            SolverType::Cvode => fmi::sim::fmi2::simulate_me(
+                &settings,
+                &cvode::CVodeSolverFactory,
+                input.as_ref(),
+                &mut recorder,
+            ),
+        },
+        InterfaceType::CoSimulation => {
+            fmi::sim::fmi2::simulate_cs(&settings, input.as_ref(), &mut recorder)
+        }
+    };
+
+    if let Some(output_file) = args.output_file.as_ref() {
+        fmi::sim::fmi2::csv::write_csv(&simulation_result, output_file)?;
+    }
+
+    if args.show_plot {
+        crate::simulate::fmi2::plot_result(&simulation_result).show();
+    }
+
+    result
+}
 
 pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
     let mut plot = Plot::new();

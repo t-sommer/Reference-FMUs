@@ -25,20 +25,25 @@ fn main() {
 fn fetch_and_build_cvode(install_dir: &std::path::Path) {
     use std::process::Command;
 
-    let version = "7.7.0"; 
+    let version = "7.7.0";
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR not set");
     let out_path = std::path::Path::new(&out_dir);
 
-    println!("cargo:warning=sundials_core_static.lib not found. Downloading and building cvode v{version}...");
+    println!(
+        "cargo:warning=sundials_core_static.lib not found. Downloading and building cvode v{version}..."
+    );
 
     // 1. Download source using curl (standard on modern Windows)
-    let url = format!("https://github.com/llnl/sundials/releases/download/v7.7.0/cvode-{version}.tar.gz");
+    let url =
+        format!("https://github.com/llnl/sundials/releases/download/v7.7.0/cvode-{version}.tar.gz");
     let tar_path = out_path.join("cvode.tar.gz");
     let status = Command::new("curl")
         .args(["-L", "-o", tar_path.to_str().unwrap(), &url])
         .status()
         .expect("Failed to execute curl. Ensure it is installed and in your PATH.");
-    if !status.success() { panic!("Failed to download cvode from {}", url); }
+    if !status.success() {
+        panic!("Failed to download cvode from {}", url);
+    }
 
     // 2. Extract source using cmake -E tar
     let status = Command::new("cmake")
@@ -46,7 +51,9 @@ fn fetch_and_build_cvode(install_dir: &std::path::Path) {
         .current_dir(out_path)
         .status()
         .expect("Failed to execute cmake -E tar.");
-    if !status.success() { panic!("Failed to extract cvode source."); }
+    if !status.success() {
+        panic!("Failed to extract cvode source.");
+    }
 
     let src_dir = out_path.join(format!("cvode-{version}"));
     let build_dir = out_path.join("cvode-build");
@@ -54,19 +61,32 @@ fn fetch_and_build_cvode(install_dir: &std::path::Path) {
     // 3. Configure with CMake
     let status = Command::new("cmake")
         .args([
-            "-S", src_dir.to_str().unwrap(),
-            "-B", build_dir.to_str().unwrap(),
+            "-S",
+            src_dir.to_str().unwrap(),
+            "-B",
+            build_dir.to_str().unwrap(),
             &format!("-DCMAKE_INSTALL_PREFIX={}", install_dir.display()),
             "-DBUILD_SHARED_LIBS=OFF",
         ])
         .status()
         .expect("Failed to execute cmake. Ensure it is installed and in your PATH.");
-    if !status.success() { panic!("Failed to configure cvode."); }
+    if !status.success() {
+        panic!("Failed to configure cvode.");
+    }
 
     // 4. Build and Install
     let status = Command::new("cmake")
-        .args(["--build", build_dir.to_str().unwrap(), "--config", "Release", "--target", "install"])
+        .args([
+            "--build",
+            build_dir.to_str().unwrap(),
+            "--config",
+            "Release",
+            "--target",
+            "install",
+        ])
         .status()
         .expect("Failed to build cvode.");
-    if !status.success() { panic!("Failed to install cvode."); }
+    if !status.success() {
+        panic!("Failed to install cvode.");
+    }
 }

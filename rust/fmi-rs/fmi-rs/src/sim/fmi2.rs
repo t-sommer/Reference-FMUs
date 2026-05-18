@@ -77,7 +77,10 @@ pub struct SimulationResult<'a> {
 }
 
 impl<'a> SimulationResult<'a> {
-    pub fn new(model_description: &'a ModelDescription, variables: Vec<&'a ScalarVariable>) -> Self {
+    pub fn new(
+        model_description: &'a ModelDescription,
+        variables: Vec<&'a ScalarVariable>,
+    ) -> Self {
         SimulationResult {
             model_description,
             variables,

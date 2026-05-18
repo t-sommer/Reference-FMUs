@@ -1,5 +1,5 @@
-use crate::{model_description::fmi2::VariableType, sim};
 use crate::sim::fmi2::SimulationResult;
+use crate::{model_description::fmi2::VariableType, sim};
 use plotly::{
     Configuration, Layout, Plot, Scatter,
     common::Line,
@@ -29,7 +29,7 @@ pub fn plot_result(sim_result: &SimulationResult<'_>) -> Plot {
 
         if let Some(unit) = sim_result.model_description.get_unit(variable) {
             axis_title.push_str(format!(" [{unit}]").as_str());
-        } 
+        }
 
         let y_axis = Axis::new().title(axis_title.as_str());
 

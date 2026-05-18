@@ -1,23 +1,25 @@
 use std::path::Path;
 
 unsafe extern "C" {
-    
+
     fn xmlInitParser();
-    
+
     fn validate_model_description(
         model_description_path: *const i8,
         fmi_major_version: i32,
         messages: *mut *mut *const i8,
     ) -> i32;
-    
+
     fn free_messages(len: i32, messages: *mut *const i8);
-    
+
 }
 
-/// Call this once to ensure the linker pulls in libxml2 symbols 
+/// Call this once to ensure the linker pulls in libxml2 symbols
 /// and the library is initialized.
 pub fn init_libxml() {
-    unsafe { xmlInitParser(); }
+    unsafe {
+        xmlInitParser();
+    }
 }
 
 /// Validates the modelDescription.xml against the XSD schema for the given FMI version.
@@ -25,7 +27,6 @@ pub fn validate_model_description_against_xsd(
     model_description_path: &Path,
     fmi_major_version: i32,
 ) -> Vec<String> {
-
     use std::ffi::CString;
 
     init_libxml();

@@ -545,14 +545,22 @@ impl ModelDescription {
     }
 
     pub fn get_unit<'a>(&'a self, variable: &'a ModelVariable) -> Option<&'a str> {
-        if let VariableType::Float32 { unit, declaredType, .. } | VariableType::Float64 { unit, declaredType, .. } = &variable.variableType {
+        if let VariableType::Float32 {
+            unit, declaredType, ..
+        }
+        | VariableType::Float64 {
+            unit, declaredType, ..
+        } = &variable.variableType
+        {
             if let Some(unit) = unit {
-                return Some(unit)
+                return Some(unit);
             } else if let Some(declaredType) = declaredType {
                 for type_definition in &self.typeDefinitions {
-                    if let TypeDefinition::Float32 {name, unit, ..} | TypeDefinition::Float64 {name, unit, ..} = type_definition { 
+                    if let TypeDefinition::Float32 { name, unit, .. }
+                    | TypeDefinition::Float64 { name, unit, .. } = type_definition
+                    {
                         if name == declaredType {
-                            return unit.as_deref()
+                            return unit.as_deref();
                         }
                     }
                 }

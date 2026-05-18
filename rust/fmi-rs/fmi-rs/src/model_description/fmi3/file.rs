@@ -6,7 +6,9 @@ use crate::model_description::Unit;
 use crate::model_description::file::StringAttribute;
 
 use crate::model_description::fmi3::{
-    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability, Item, ModelDescription, ModelExchange, ModelVariable, TypeDefinition, Unknown, Variability, VariableType
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability,
+    Item, ModelDescription, ModelExchange, ModelVariable, TypeDefinition, Unknown, Variability,
+    VariableType,
 };
 
 impl ModelDescription {
@@ -549,30 +551,26 @@ impl TypeDefinition {
                 max: node.optional_attribute_as("max"),
             });
         } else if node.has_tag_name("BooleanType") {
-            return Ok(TypeDefinition::Boolean {
-                name,
-                description,
-            });
+            return Ok(TypeDefinition::Boolean { name, description });
         } else if node.has_tag_name("StringType") {
-            return Ok(TypeDefinition::String {
-                name,
-                description,
-            });
+            return Ok(TypeDefinition::String { name, description });
         } else if node.has_tag_name("BinaryType") {
             return Ok(TypeDefinition::Binary {
                 name,
                 description,
-                mimeType: node.attribute("mimeType").unwrap_or("application/octet-stream").to_string(),
+                mimeType: node
+                    .attribute("mimeType")
+                    .unwrap_or("application/octet-stream")
+                    .to_string(),
                 maxSize: node.optional_attribute_as("maxSize"),
             });
         } else if node.has_tag_name("EnumerationType") {
-
             let mut items = vec![];
-                for child in node.children() {
-                    if child.has_tag_name("Item") {
-                        items.push(Item::from_node(&child)?);
-                    }
+            for child in node.children() {
+                if child.has_tag_name("Item") {
+                    items.push(Item::from_node(&child)?);
                 }
+            }
 
             return Ok(TypeDefinition::Enumeration {
                 name,

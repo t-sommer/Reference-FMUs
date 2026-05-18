@@ -31,20 +31,28 @@ fn main() {
 fn fetch_and_build_libxml2(install_dir: &std::path::Path) {
     use std::process::Command;
 
-    let version = "2.15.3"; 
+    let version = "2.15.3";
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR not set");
     let out_path = std::path::Path::new(&out_dir);
 
-    println!("cargo:warning=libxml2s.lib not found. Downloading and building libxml2 v{}...", version);
+    println!(
+        "cargo:warning=libxml2s.lib not found. Downloading and building libxml2 v{}...",
+        version
+    );
 
     // 1. Download source using curl (standard on modern Windows)
-    let url = format!("https://github.com/GNOME/libxml2/archive/refs/tags/v{}.tar.gz", version);
+    let url = format!(
+        "https://github.com/GNOME/libxml2/archive/refs/tags/v{}.tar.gz",
+        version
+    );
     let tar_path = out_path.join("libxml2.tar.gz");
     let status = Command::new("curl")
         .args(["-L", "-o", tar_path.to_str().unwrap(), &url])
         .status()
         .expect("Failed to execute curl. Ensure it is installed and in your PATH.");
-    if !status.success() { panic!("Failed to download libxml2 from {}", url); }
+    if !status.success() {
+        panic!("Failed to download libxml2 from {}", url);
+    }
 
     // 2. Extract source using cmake -E tar
     let status = Command::new("cmake")
@@ -52,7 +60,9 @@ fn fetch_and_build_libxml2(install_dir: &std::path::Path) {
         .current_dir(out_path)
         .status()
         .expect("Failed to execute cmake -E tar.");
-    if !status.success() { panic!("Failed to extract libxml2 source."); }
+    if !status.success() {
+        panic!("Failed to extract libxml2 source.");
+    }
 
     let src_dir = out_path.join(format!("libxml2-{}", version));
     let build_dir = out_path.join("libxml2-build");
@@ -60,8 +70,10 @@ fn fetch_and_build_libxml2(install_dir: &std::path::Path) {
     // 3. Configure with CMake
     let status = Command::new("cmake")
         .args([
-            "-S", src_dir.to_str().unwrap(),
-            "-B", build_dir.to_str().unwrap(),
+            "-S",
+            src_dir.to_str().unwrap(),
+            "-B",
+            build_dir.to_str().unwrap(),
             &format!("-DCMAKE_INSTALL_PREFIX={}", install_dir.display()),
             "-DBUILD_SHARED_LIBS=OFF",
             "-DLIBXML2_WITH_PYTHON=OFF",
@@ -71,14 +83,25 @@ fn fetch_and_build_libxml2(install_dir: &std::path::Path) {
         ])
         .status()
         .expect("Failed to execute cmake. Ensure it is installed and in your PATH.");
-    if !status.success() { panic!("Failed to configure libxml2."); }
+    if !status.success() {
+        panic!("Failed to configure libxml2.");
+    }
 
     // 4. Build and Install
     let status = Command::new("cmake")
-        .args(["--build", build_dir.to_str().unwrap(), "--config", "Release", "--target", "install"])
+        .args([
+            "--build",
+            build_dir.to_str().unwrap(),
+            "--config",
+            "Release",
+            "--target",
+            "install",
+        ])
         .status()
         .expect("Failed to build libxml2.");
-    if !status.success() { panic!("Failed to install libxml2."); }
+    if !status.success() {
+        panic!("Failed to install libxml2.");
+    }
 
     // 5. Ensure the static library is named libxml2s.lib (the expected name for static libxml2 on MSVC)
     let lib_file = install_dir.join("lib/libxml2.lib");

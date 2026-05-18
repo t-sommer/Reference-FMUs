@@ -29,7 +29,8 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
 
         if let Some(unit) = sim_results.model_description.get_unit(variable) {
             axis_title.push_str(format!(" [{unit}]").as_str());
-        }         let y_axis = Axis::new().title(axis_title.as_str());
+        }
+        let y_axis = Axis::new().title(axis_title.as_str());
 
         // Set y-axis titles for subplots (Plotly uses y1, y2, y3... internally)
         layout = match i {

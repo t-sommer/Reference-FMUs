@@ -12,7 +12,7 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
 
     let mut layout = Layout::new()
         .title(trajectories.model_description.modelName.clone())
-        .x_axis(Axis::new().title("time"))
+        .x_axis(Axis::new().title("time [s]"))
         .grid(
             LayoutGrid::new()
                 .rows(trajectories.variables.len())

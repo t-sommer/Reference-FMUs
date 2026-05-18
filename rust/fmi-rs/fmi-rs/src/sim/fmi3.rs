@@ -1,6 +1,5 @@
 pub mod csv;
 pub mod input;
-pub mod plot;
 pub mod recorder;
 
 use std::{collections::HashMap, error::Error, fs::File};

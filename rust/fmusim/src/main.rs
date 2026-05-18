@@ -1,5 +1,6 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 mod cvode;
+mod simulate;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
@@ -351,7 +352,7 @@ fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
         }
 
         if args.show_plot {
-            sim::fmi2::plot::plot_result(&simulation_result).show();
+            crate::simulate::fmi2::plot_result(&simulation_result).show();
         }
 
         result
@@ -509,7 +510,7 @@ fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
         }
 
         if args.show_plot {
-            sim::fmi3::plot::plot_result(&simulation_result).show();
+            crate::simulate::fmi3::plot_result(&simulation_result).show();
         }
 
         result

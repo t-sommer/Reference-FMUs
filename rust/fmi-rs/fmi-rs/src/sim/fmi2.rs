@@ -2,7 +2,6 @@
 
 pub mod csv;
 pub mod input;
-pub mod plot;
 pub mod recorder;
 
 use crate::{

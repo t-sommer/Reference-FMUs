@@ -70,14 +70,16 @@ impl VariableValue {
 
 #[derive(Debug)]
 pub struct SimulationResult<'a> {
+    pub model_description: &'a ModelDescription,
     pub variables: Vec<&'a ScalarVariable>,
     pub time: Vec<f64>,
     pub rows: Vec<Vec<VariableValue>>,
 }
 
 impl<'a> SimulationResult<'a> {
-    pub fn new(variables: Vec<&'a ScalarVariable>) -> Self {
+    pub fn new(model_description: &'a ModelDescription, variables: Vec<&'a ScalarVariable>) -> Self {
         SimulationResult {
+            model_description,
             variables,
             time: vec![],
             rows: vec![],

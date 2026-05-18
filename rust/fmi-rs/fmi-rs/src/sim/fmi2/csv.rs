@@ -99,6 +99,7 @@ pub fn read_csv<'a, R: Read>(
     }
 
     Ok(SimulationResult {
+        model_description,
         time,
         variables,
         rows,

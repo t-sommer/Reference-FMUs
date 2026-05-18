@@ -25,8 +25,11 @@ pub fn plot_result(sim_results: &SimulationResult<'_>) -> Plot {
         .margin(Margin::new().top(30).bottom(40).left(65).right(30));
 
     for (i, variable) in sim_results.variables.iter().enumerate() {
-        let axis_title = variable.name.clone();
-        let y_axis = Axis::new().title(axis_title.as_str());
+        let mut axis_title = variable.name.clone();
+
+        if let Some(unit) = sim_results.model_description.get_unit(variable) {
+            axis_title.push_str(format!(" [{unit}]").as_str());
+        }         let y_axis = Axis::new().title(axis_title.as_str());
 
         // Set y-axis titles for subplots (Plotly uses y1, y2, y3... internally)
         layout = match i {

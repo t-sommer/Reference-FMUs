@@ -245,18 +245,16 @@ impl ModelDescription {
         self.modelVariables.iter().find(|v| v.valueReference == vr)
     }
 
-    pub fn get_declared_type_by_name(&self, name: &str) -> Option<&SimpleType> {
-        self.typeDefinitions.iter().find(|t| t.name() == name)
-    }
-
     pub fn get_unit<'a>(&'a self, variable: &'a ScalarVariable) -> Option<&'a str> {
         if let VariableType::Real { unit, declaredType, .. } = &variable.variableType {
             if let Some(unit) = unit {
                 return Some(unit)
             } else if let Some(declaredType) = declaredType {
-                if let Some(declaredType) = self.get_declared_type_by_name(declaredType) {
-                    if let SimpleType::Real { unit, .. } = declaredType {
-                        return unit.as_deref()
+                for simple_type in &self.typeDefinitions {
+                    if let SimpleType::Real {name, unit, ..} = simple_type { 
+                        if name == declaredType {
+                            return unit.as_deref()
+                        }
                     }
                 }
             }

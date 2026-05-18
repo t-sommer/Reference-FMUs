@@ -473,7 +473,7 @@ fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
             None
         };
 
-        let mut simulation_result = sim::fmi3::SimulationResult::new(output_variables.clone());
+        let mut simulation_result = sim::fmi3::SimulationResult::new(&model_description, output_variables.clone());
 
         let mut recorder = sim::fmi3::recorder::Recorder::new(&mut simulation_result);
 

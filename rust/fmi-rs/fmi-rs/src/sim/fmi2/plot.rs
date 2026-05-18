@@ -12,6 +12,7 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
     let plot_height = 250 * trajectories.variables.len().max(1);
 
     let mut layout = Layout::new()
+        .title(trajectories.model_description.modelName.clone())
         .x_axis(Axis::new().title("time"))
         .grid(
             LayoutGrid::new()
@@ -54,7 +55,11 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
             continue;
         }
 
-        let values: Vec<f64> = trajectories.rows.iter().map(|row| row[i].to_f64()).collect();
+        let values: Vec<f64> = trajectories
+            .rows
+            .iter()
+            .map(|row| row[i].to_f64())
+            .collect();
 
         let mut trace = Scatter::new(time, values).name(name);
         // Use the shared x-axis ("x") for all subplots

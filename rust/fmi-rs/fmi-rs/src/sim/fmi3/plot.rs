@@ -11,7 +11,7 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
     let plot_height = 250 * trajectories.variables.len().max(1);
 
     let mut layout = Layout::new()
-        // .title("Simulation Result".to_owned())
+        .title(trajectories.model_description.modelName.clone())
         .x_axis(Axis::new().title("time"))
         .grid(
             LayoutGrid::new()

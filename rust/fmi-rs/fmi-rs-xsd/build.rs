@@ -13,10 +13,7 @@ fn main() {
         "cargo:rustc-link-search=native={}",
         library_dir.join("lib").display()
     );
-    println!(
-        "cargo:rustc-link-arg=/WHOLEARCHIVE:{}",
-        library_dir.join("lib/libxml2s.lib").display()
-    );
+    println!("cargo:rustc-link-lib=static=libxml2s");
 
     // Windows system libraries required by libxml2
     println!("cargo:rustc-link-lib=dylib=ws2_32");

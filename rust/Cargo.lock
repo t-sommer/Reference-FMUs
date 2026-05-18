@@ -568,6 +568,9 @@ version = "0.1.0"
 [[package]]
 name = "fmi-rs-xsd"
 version = "0.1.0"
+dependencies = [
+ "cc",
+]
 
 [[package]]
 name = "fmusim"

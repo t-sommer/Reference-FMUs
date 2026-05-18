@@ -738,7 +738,6 @@ fn validate_fmu(args: &ValidateArgs) -> ExitCode {
                 }
             };
             problems.extend(model_description.validate());
-            println!("{:#?}", model_description.typeDefinitions);
         }
         FMIMajorVersion::V3 => {
             let model_description = match model_description::fmi3::ModelDescription::read(&xml_path)
@@ -753,7 +752,6 @@ fn validate_fmu(args: &ValidateArgs) -> ExitCode {
                 }
             };
             problems.extend(model_description.validate());
-            println!("{:#?}", model_description.typeDefinitions);
         }
     };
 

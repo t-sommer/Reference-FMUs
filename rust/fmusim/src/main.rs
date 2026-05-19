@@ -7,12 +7,11 @@ mod validate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 use fmi::{
-    model_description::{self, FMIMajorVersion, peak_fmi_major_version},
-    sim::{self, euler::ForwardEulerFactory},
+    model_description::{FMIMajorVersion, peak_fmi_major_version},
+    sim::{self},
     util::extract_fmu,
 };
-use fmi_rs_xsd::validate_model_description_against_xsd;
-use std::{collections::HashMap, fs::File, path::PathBuf, process::ExitCode};
+use std::{process::ExitCode};
 
 #[derive(ValueEnum, Clone, Debug)]
 enum InterfaceType {
@@ -158,13 +157,13 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Info(args) => info::info_fmu(args),
+        Commands::Info(args) => info::show_fmu_info(args),
         Commands::Validate(args) => validate::validate_fmu(args),
         Commands::Simulate(args) => simulate::simulate_fmu(args),
     }
 }
 
-/// Common logic to extract, detect version, and validate an FMU
+/// Common logic to extract an FMU and the detect its FMI major version
 fn prepare_fmu(
     fmu_path: &str,
 ) -> Result<(tempfile::TempDir, std::path::PathBuf, FMIMajorVersion), ExitCode> {

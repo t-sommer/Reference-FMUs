@@ -5,7 +5,7 @@ use fmi::model_description::FMIMajorVersion;
 
 use crate::{InfoArgs, prepare_fmu};
 
-pub fn info_fmu(args: &InfoArgs) -> ExitCode {
+pub fn show_fmu_info(args: &InfoArgs) -> ExitCode {
     let (unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
         Err(code) => return code,
@@ -21,14 +21,11 @@ pub fn info_fmu(args: &InfoArgs) -> ExitCode {
 
     platform_dirs.extend(
         entries
-            .filter_map(|res| res.ok()) // Filter out entries that failed to read
+            .filter_map(|res| res.ok())
             .filter(|entry| {
-                // Use file_type() to check if the entry is a directory
                 entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false)
             })
             .filter_map(|entry| {
-                // Convert the OsString name into a String
-                // This returns None if the directory name is not valid UTF-8
                 entry.file_name().into_string().ok()
             }),
     );

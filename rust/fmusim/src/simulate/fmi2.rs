@@ -159,7 +159,7 @@ pub fn simulate_fmu(
     }
 
     if args.show_plot {
-        let mut plot = crate::simulate::fmi2::plot_result(&trajectories, args.show_markers, args.show_events);
+        let plot = crate::simulate::fmi2::plot_result(&trajectories, args.show_markers, args.show_events);
 
         // Generate a unique path in the temp directory starting with the model name
         let temp_path = tempfile::Builder::new()

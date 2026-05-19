@@ -5,7 +5,7 @@ use fmi::{
     sim::{euler::ForwardEulerFactory, fmi3::Trajectories},
 };
 use plotly::{
-    Configuration, Layout, Plot, Scatter, color::{Color, NamedColor}, common::Line, layout::{Axis, GridPattern, LayoutGrid, Margin}
+    Configuration, Layout, Plot, Scatter, color::{Color, NamedColor}, common::{Fill, Line, Mode}, layout::{Axis, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType}
 };
 
 use crate::{InterfaceType, SimulateArgs, SolverType, cvode};
@@ -127,10 +127,10 @@ pub fn simulate_fmu(
         None
     };
 
-    let mut simulation_result =
+    let mut trajectories =
         fmi::sim::fmi3::Trajectories::new(&model_description, output_variables.clone());
 
-    let mut recorder = fmi::sim::fmi3::recorder::Recorder::new(&mut simulation_result);
+    let mut recorder = fmi::sim::fmi3::recorder::Recorder::new(&mut trajectories);
 
     let fixes_step_size = args.fixed_step_size.unwrap_or(output_interval);
 
@@ -155,13 +155,13 @@ pub fn simulate_fmu(
     };
 
     if let Some(output_file) = args.output_file.as_ref() {
-        if let Err(e) = fmi::sim::fmi3::csv::write_csv(&simulation_result, output_file) {
+        if let Err(e) = fmi::sim::fmi3::csv::write_csv(&trajectories, output_file) {
             return Err(format!("Failed to write output CSV file: {e}").into());
         }
     }
 
     if args.show_plot {
-        let plot = crate::simulate::fmi3::plot_result(&simulation_result);
+        let plot = crate::simulate::fmi3::plot_result(&trajectories, args.show_markers, args.show_events);
 
         // Generate a unique path in the temp directory starting with the model name
         let temp_path = tempfile::Builder::new()
@@ -180,7 +180,7 @@ pub fn simulate_fmu(
     result
 }
 
-pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
+pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_events: bool) -> Plot {
     let mut plot = Plot::new();
 
     const COLORS: [&str; 8] = [
@@ -273,8 +273,35 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
                 .x_axis("x")
                 .y_axis(format!("y{row}"))
                 .line(Line::new().width(1.5).color(*current_color));
+
+            if show_markers {
+                trace = trace.mode(Mode::LinesMarkers);
+            }
+
+            if matches!(variable.variableType, VariableType::Boolean { .. }) {
+                trace = trace.fill(Fill::ToZeroY).fill_color(NamedColor::AliceBlue);
+            }
+
             plot.add_trace(trace);
         }
+    }
+
+    if show_events {
+        let mut shapes = Vec::new();
+        for event_time in trajectories.events() {
+            let shape = Shape::new()
+                .shape_type(ShapeType::Line)
+                .x0(event_time)
+                .x1(event_time)
+                .y0(0.0) // Start from bottom of plot in paper coordinates
+                .y1(1.0) // End at top of plot in paper coordinates
+                .x_ref("x") // Reference the x-axis for horizontal position
+                .y_ref("paper") // Reference paper coordinates for vertical position
+                .layer(ShapeLayer::Below) // Draw the shape behind the traces
+                .line(ShapeLine::new().color(NamedColor::Gold).width(1.0));
+            shapes.push(shape);
+        }
+        layout = layout.shapes(shapes);
     }
 
     plot.set_layout(layout);

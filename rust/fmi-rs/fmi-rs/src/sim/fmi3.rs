@@ -169,6 +169,19 @@ impl<'a> Trajectories<'a> {
             rows: vec![],
         }
     }
+
+    /// Return a list of all event times
+    pub fn events(&self) -> Vec<f64> {
+        let mut events = vec![];
+
+        for t in self.time.windows(2).filter(|t| t[0] == t[1]) {
+            if events.last() != Some(&t[0]) {
+                events.push(t[0]);
+            }
+        }
+        
+        events
+    }
 }
 
 pub fn parse_variable_value(

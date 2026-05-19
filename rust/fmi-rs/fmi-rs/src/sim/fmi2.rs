@@ -50,26 +50,11 @@ pub enum VariableValue {
 
 impl VariableValue {
     pub fn to_f64(&self) -> f64 {
-        if let VariableValue::Real(value) = self {
-            *value
-        } else {
-            panic!("Expected a Real variable value, but got {:?}", self);
-        }
-    }
-
-    pub fn to_i32(&self) -> i32 {
-        if let VariableValue::Integer(value) = self {
-            *value
-        } else {
-            panic!("Expected a Integer variable value, but got {:?}", self);
-        }
-    }
-
-    pub fn to_bool(&self) -> i32 {
-        if let VariableValue::Boolean(value) = self {
-            *value
-        } else {
-            panic!("Expected a Integer variable value, but got {:?}", self);
+        match self {
+            VariableValue::Real(value) => *value,
+            VariableValue::Integer(value) => *value as f64,
+            VariableValue::Boolean(value) => if *value != 1 { 1.0 } else { 0.0 },
+            VariableValue::String(_) => panic!("String value cannot be converted to f64."),
         }
     }
 
@@ -102,6 +87,19 @@ impl<'a> Trajectories<'a> {
             time: vec![],
             rows: vec![],
         }
+    }
+
+    /// Return a list of all event times
+    pub fn events(&self) -> Vec<f64> {
+        let mut events = vec![];
+
+        for t in self.time.windows(2).filter(|t| t[0] == t[1]) {
+            if events.last() != Some(&t[0]) {
+                events.push(t[0]);
+            }
+        }
+        
+        events
     }
 }
 

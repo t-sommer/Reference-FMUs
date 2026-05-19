@@ -115,6 +115,14 @@ struct SimulateArgs {
     #[arg(long)]
     show_plot: bool,
 
+    /// Show markers in the plot
+    #[arg(long)]
+    show_markers: bool,
+
+    /// Show events in the plot
+    #[arg(long)]
+    show_events: bool,
+
     /// Set start values for variables (format: variable_name=value)
     #[arg(long = "start-value", value_parser = parse_start_value)]
     start_values: Vec<(String, String)>,

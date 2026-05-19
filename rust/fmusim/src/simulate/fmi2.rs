@@ -2,11 +2,10 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 
-use fmi::model_description::fmi2::VariableType;
+use fmi::model_description::fmi2::{Variability, VariableType};
 use fmi::sim::euler::ForwardEulerFactory;
-use fmi::sim::fmi2::Trajectories;
-use plotly::{
-    Configuration, Layout, Plot, Scatter, Trace, color::NamedColor, common::{Line, LineShape}, layout::{Axis, GridPattern, LayoutGrid, Margin}
+use fmi::sim::fmi2::{Trajectories, VariableValue};
+use plotly::{color::NamedColor, common::{Fill, Line, LineShape, Mode}, layout::{Axis, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType}, Configuration, Layout, Plot, Scatter, Trace
 };
 
 use crate::{InterfaceType, SimulateArgs, SolverType, cvode};
@@ -128,10 +127,10 @@ pub fn simulate_fmu(
         None
     };
 
-    let mut simulation_result =
+    let mut trajectories =
         fmi::sim::fmi2::Trajectories::new(&model_description, output_variables.clone());
 
-    let mut recorder = fmi::sim::fmi2::recorder::Recorder::new(&mut simulation_result);
+    let mut recorder = fmi::sim::fmi2::recorder::Recorder::new(&mut trajectories);
 
     let fixes_step_size = args.fixed_step_size.unwrap_or(output_interval);
 
@@ -156,11 +155,11 @@ pub fn simulate_fmu(
     };
 
     if let Some(output_file) = args.output_file.as_ref() {
-        fmi::sim::fmi2::csv::write_csv(&simulation_result, output_file)?;
+        fmi::sim::fmi2::csv::write_csv(&trajectories, output_file)?;
     }
 
     if args.show_plot {
-        let plot = crate::simulate::fmi2::plot_result(&simulation_result);
+        let mut plot = crate::simulate::fmi2::plot_result(&trajectories, args.show_markers, args.show_events);
 
         // Generate a unique path in the temp directory starting with the model name
         let temp_path = tempfile::Builder::new()
@@ -179,7 +178,7 @@ pub fn simulate_fmu(
     result
 }
 
-pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
+pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_events: bool) -> Plot {
     let mut plot = Plot::new();
 
     let plot_height = 250 * trajectories.variables.len().max(1);
@@ -236,73 +235,52 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
             continue;
         }
 
-        let trace: Box<dyn Trace> = match variable.variableType {
-            VariableType::Real { .. } => {
-                let values: Vec<f64> = trajectories
-                    .rows
-                    .iter()
-                    .map(|row| row[i].to_f64())
-                    .collect();
-                let mut trace = Scatter::new(time, values).name(name);
-                // Use the shared x-axis ("x") for all subplots
-                trace = trace
-                    .x_axis("x")
-                    .y_axis(format!("y{row}"))
-                    .line(Line::new().width(1.5).color("#229AEB"));
-                trace
-            }
-            VariableType::Integer { .. } => {
-                let values: Vec<i32> = trajectories
-                    .rows
-                    .iter()
-                    .map(|row| row[i].to_i32())
-                    .collect();
-                let mut trace = Scatter::new(time, values).name(name);
-                // Use the shared x-axis ("x") for all subplots
-                trace = trace
-                    .x_axis("x")
-                    .y_axis(format!("y{row}"))
-                    .line(Line::new().width(1.5).color("#229AEB").shape(LineShape::Hv));
-                trace
-            }
-            VariableType::Boolean { .. } => {
-                let values: Vec<i32> = trajectories
-                    .rows
-                    .iter()
-                    .map(|row| row[i].to_bool())
-                    .collect();
-                let mut trace = Scatter::new(time, values).name(name);
-                // Use the shared x-axis ("x") for all subplots
-                trace = trace
-                    .x_axis("x")
-                    .y_axis(format!("y{row}"))
-                    .line(Line::new().width(1.5).color("#229AEB").shape(LineShape::Hv));
-                trace
-            }
-            VariableType::Enumeration { .. } => {
-                todo!()
-            }
-            VariableType::String { .. } => {
-                continue
-            }
-        };
+        let values: Vec<f64> = trajectories
+            .rows
+            .iter()
+            .map(|row| row[i].to_f64())
+            .collect();
 
+        let mut line = Line::new().width(1.5).color("#229AEB");
 
-        // let values: Vec<f64> = trajectories
-        //     .rows
-        //     .iter()
-        //     .map(|row| row[i].to_f64())
-        //     .collect();
+        if variable.variability == Variability::Discrete {
+            line = line.shape(LineShape::Hv);
+        }
 
-        // let mut trace = Scatter::new(time, values).name(name);
+        let mut trace = Scatter::new(time, values).name(name);
+            // Use the shared x-axis ("x") for all subplots
+            trace = trace
+            .x_axis("x")
+            .y_axis(format!("y{row}"))
+            .line(line);
 
-        // // Use the shared x-axis ("x") for all subplots
-        // trace = trace
-        //     .x_axis("x")
-        //     .y_axis(format!("y{row}"))
-        //     .line(Line::new().width(1.5).color("#229AEB"));
+        if show_markers {
+            trace = trace.mode(Mode::LinesMarkers);
+        }
+
+        if matches!(variable.variableType, VariableType::Boolean { .. }) {
+            trace = trace.fill(Fill::ToZeroY).fill_color(NamedColor::AliceBlue);
+        }
         
         plot.add_trace(trace);
+    }
+    
+    if show_events {
+        let mut shapes = Vec::new();
+        for event_time in trajectories.events() {
+            let shape = Shape::new()
+                .shape_type(ShapeType::Line)
+                .x0(event_time)
+                .x1(event_time)
+                .y0(0.0) // Start from bottom of plot in paper coordinates
+                .y1(1.0) // End at top of plot in paper coordinates
+                .x_ref("x") // Reference the x-axis for horizontal position
+                .y_ref("paper") // Reference paper coordinates for vertical position
+                .layer(ShapeLayer::Below) // Draw the shape behind the traces
+                .line(ShapeLine::new().color(NamedColor::Gold).width(1.0));
+            shapes.push(shape);
+        }
+        layout = layout.shapes(shapes);
     }
 
     plot.set_layout(layout);

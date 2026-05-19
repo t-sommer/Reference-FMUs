@@ -8,8 +8,8 @@
             "program": "${workspaceFolder}/target/debug/fmusim.exe",
             "preLaunchTask": "rust: cargo build fmusim",
             "args": [
-                // "simulate",
-                "info",
+                "simulate",
+                // "info",
                 // "validate",
                 // "E:\\WS\\dymola-fmi-compatibility\\2026x Refresh 1, 2026-04-08\\CoupledClutches_fmi3_Cvode.fmu",
                 "C:\\Users\\tsr2\\Documents\\Dymola\\Rectifier3.fmu",
@@ -25,7 +25,7 @@
                 // "--output-file=Feedthrough_out.csv",
                 // "--show-stats",
                 // "--output-variable=J2_w"
-                // "--show-plot",
+                "--show-plot",
             ],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"

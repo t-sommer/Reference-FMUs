@@ -185,6 +185,17 @@ pub fn simulate_fmu(
 pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
     let mut plot = Plot::new();
 
+    const COLORS: [&str; 8] = [
+        "#229AEB", // Muted Blue
+        "#FFA02C", // Orange
+        "#33CC33", // Green
+        "#CC3333", // Red
+        "#9933CC", // Purple
+        "#996633", // Brown
+        "#FF66B2", // Pink
+        "#999999", // Gray
+    ];
+
     let plot_height = 250 * trajectories.variables.len().max(1);
 
     let mut layout = Layout::new()
@@ -233,6 +244,8 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
             continue;
         }
 
+        let mut color_iter = COLORS.iter().cycle();
+
         let size = trajectories.rows[0][i].len();
 
         for j in 0..size {
@@ -246,12 +259,14 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
             } else {
                 name.clone()
             };
+            let current_color = color_iter.next().unwrap_or(&COLORS[0]);
+
             let mut trace = Scatter::new(time.clone(), scalar_values).name(name);
             // Use the shared x-axis ("x") for all subplots
             trace = trace
                 .x_axis("x")
                 .y_axis(format!("y{row}"))
-                .line(Line::new().width(1.5).color("#229AEB"));
+                .line(Line::new().width(1.5).color(*current_color));
             plot.add_trace(trace);
         }
     }

@@ -163,7 +163,20 @@ pub fn simulate_fmu(
     }
 
     if args.show_plot {
-        crate::simulate::fmi3::plot_result(&simulation_result).show();
+        let plot = crate::simulate::fmi3::plot_result(&simulation_result);
+
+        // Generate a unique path in the temp directory starting with the model name
+        let temp_path = tempfile::Builder::new()
+            .prefix(&format!("{}_", model_description.modelName))
+            .suffix(".html")
+            .tempfile()?
+            .into_temp_path();
+
+        let path = temp_path.to_path_buf();
+        // Prevent the file from being deleted immediately so the browser can read it
+        let _ = temp_path.persist(&path);
+
+        plot.show_html(path);
     }
 
     result

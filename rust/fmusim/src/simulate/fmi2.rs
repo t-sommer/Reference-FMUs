@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 
-use fmi::model_description::fmi2::{Variability, VariableType};
+use fmi::model_description::fmi2::{SimpleType, Variability, VariableType};
 use fmi::sim::euler::ForwardEulerFactory;
 use fmi::sim::fmi2::{Trajectories, VariableValue};
 use plotly::{color::NamedColor, common::{Fill, Line, LineShape, Mode}, layout::{Axis, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType}, Configuration, Layout, Plot, Scatter, Trace
@@ -212,6 +212,22 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
             y_axis = y_axis
                 .tick_values(vec![0.0, 1.0])
                 .tick_text(vec!["false", "true"]);
+        }
+
+        if let VariableType::Enumeration { declaredType, .. } = &variable.variableType {
+
+            if let Some(SimpleType::Enumeration {items, ..}) = trajectories.model_description.get_simple_type(declaredType) {
+                
+                let tick_values: Vec<f64> = items.iter().map(|item| item.value as f64).collect();
+                let tick_text: Vec<String> = items.iter().map(|item| item.name.clone()).collect();
+
+                y_axis = y_axis
+                    .tick_values(tick_values)
+                    .tick_text(tick_text);
+            } else {
+                continue;
+
+            }
         }
 
         // Set y-axis titles for subplots (Plotly uses y1, y2, y3... internally)

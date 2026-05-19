@@ -264,4 +264,8 @@ impl ModelDescription {
         }
         None
     }
+
+    pub fn get_simple_type(&self, name: &str) -> Option<&SimpleType> {
+        self.typeDefinitions.iter().find(|t| t.name() == name)
+    }
 }

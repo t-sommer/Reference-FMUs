@@ -5,9 +5,7 @@ use fmi::{
     sim::{euler::ForwardEulerFactory, fmi3::Trajectories},
 };
 use plotly::{
-    Configuration, Layout, Plot, Scatter,
-    common::Line,
-    layout::{Axis, GridPattern, LayoutGrid, Margin},
+    Configuration, Layout, Plot, Scatter, color::{Color, NamedColor}, common::Line, layout::{Axis, GridPattern, LayoutGrid, Margin}
 };
 
 use crate::{InterfaceType, SimulateArgs, SolverType, cvode};
@@ -218,7 +216,9 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
         if let Some(unit) = trajectories.model_description.get_unit(variable) {
             axis_title.push_str(format!(" [{unit}]").as_str());
         }
-        let mut y_axis = Axis::new().title(axis_title.as_str());
+        let mut y_axis = Axis::new()
+            .title(axis_title.as_str())
+            .zero_line_color(NamedColor::LightGrey);
 
         if matches!(variable.variableType, VariableType::Boolean { .. }) {
             y_axis = y_axis

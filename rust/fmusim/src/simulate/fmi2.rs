@@ -205,7 +205,13 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
             axis_title.push_str(format!(" [{unit}]").as_str());
         }
 
-        let y_axis = Axis::new().title(axis_title.as_str());
+        let mut y_axis = Axis::new().title(axis_title.as_str());
+
+        if matches!(variable.variableType, VariableType::Boolean { .. }) {
+            y_axis = y_axis
+                .tick_values(vec![0.0, 1.0])
+                .tick_text(vec!["false", "true"]);
+        }
 
         // Set y-axis titles for subplots (Plotly uses y1, y2, y3... internally)
         layout = match i {

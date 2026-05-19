@@ -1,6 +1,7 @@
-use crate::model_description::file::StringAttribute;
+use crate::model_description::file::{NodeExt, StringAttribute};
 use crate::model_description::{Unit, fmi2::SimpleType};
 use roxmltree::Node;
+use std::vec;
 use std::{error::Error, path::Path};
 
 use crate::model_description::fmi2::{
@@ -258,21 +259,22 @@ impl ModelDescription {
     }
 
     fn get_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Error>> {
-        let modelStructure = root
-            .descendants()
-            .find(|n| n.has_tag_name("ModelStructure"))
-            .ok_or("Missing ModelStructure element.")?;
 
-        let container = modelStructure
-            .descendants()
-            .find(|n| n.has_tag_name(name))
-            .ok_or(format!("Missing container element '{name}'."))?;
+        let modelStructure = if let Some(modelStructure) = root.get_child("ModelStructure") {
+            modelStructure
+        } else {
+            return Ok(Vec::new());
+        };
+
+        let container = if let Some(container) = modelStructure.get_child(name) {
+            container
+        } else {
+            return Ok(Vec::new());
+        };
 
         let mut unkonwns = vec![];
 
-        for child in container
-            .descendants()
-            .filter(|n| n.has_tag_name("Unknown"))
+        for child in container.get_children("Unknown")
         {
             let index = child
                 .attribute("index")

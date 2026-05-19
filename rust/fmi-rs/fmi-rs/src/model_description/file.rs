@@ -11,6 +11,11 @@ pub(crate) trait StringAttribute {
     fn optional_attribute_as<T: FromStr>(&self, name: &str) -> Option<T>;
 }
 
+pub(crate) trait NodeExt<'a, 'input> {
+    fn get_child(&self, name: &str) -> Option<Node<'a, 'input>>;
+    fn get_children(&self, name: &str) -> Vec<Node<'a, 'input>>;
+}
+
 impl<'a, 'input> StringAttribute for Node<'a, 'input> {
     fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>> {
         self.attribute(name)
@@ -32,6 +37,15 @@ impl<'a, 'input> StringAttribute for Node<'a, 'input> {
 
     fn optional_attribute_as<T: FromStr>(&self, name: &str) -> Option<T> {
         self.attribute(name).and_then(|v| v.parse().ok())
+    }
+}
+
+impl<'a, 'input> NodeExt<'a, 'input> for Node<'a, 'input> {
+    fn get_child(&self, name: &str) -> Option<Node<'a, 'input>> {
+        self.children().find(|n| n.has_tag_name(name))
+    }
+    fn get_children(&self, name: &str) -> Vec<Node<'a, 'input>> {
+        self.children().filter(|n| n.has_tag_name(name)).collect()
     }
 }
 

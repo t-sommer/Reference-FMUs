@@ -57,6 +57,22 @@ impl VariableValue {
         }
     }
 
+    pub fn to_i32(&self) -> i32 {
+        if let VariableValue::Integer(value) = self {
+            *value
+        } else {
+            panic!("Expected a Integer variable value, but got {:?}", self);
+        }
+    }
+
+    pub fn to_bool(&self) -> i32 {
+        if let VariableValue::Boolean(value) = self {
+            *value
+        } else {
+            panic!("Expected a Integer variable value, but got {:?}", self);
+        }
+    }
+
     pub fn to_literal(&self) -> String {
         match self {
             VariableValue::Real(v) => v.to_string(),

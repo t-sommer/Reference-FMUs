@@ -6,9 +6,7 @@ use fmi::model_description::fmi2::VariableType;
 use fmi::sim::euler::ForwardEulerFactory;
 use fmi::sim::fmi2::Trajectories;
 use plotly::{
-    Configuration, Layout, Plot, Scatter,
-    common::Line,
-    layout::{Axis, GridPattern, LayoutGrid, Margin},
+    Configuration, Layout, Plot, Scatter, Trace, common::{Line, LineShape}, layout::{Axis, GridPattern, LayoutGrid, Margin}
 };
 
 use crate::{InterfaceType, SimulateArgs, SolverType, cvode};
@@ -230,18 +228,72 @@ pub fn plot_result(trajectories: &Trajectories<'_>) -> Plot {
             continue;
         }
 
-        let values: Vec<f64> = trajectories
-            .rows
-            .iter()
-            .map(|row| row[i].to_f64())
-            .collect();
+        let trace: Box<dyn Trace> = match variable.variableType {
+            VariableType::Real { .. } => {
+                let values: Vec<f64> = trajectories
+                    .rows
+                    .iter()
+                    .map(|row| row[i].to_f64())
+                    .collect();
+                let mut trace = Scatter::new(time, values).name(name);
+                // Use the shared x-axis ("x") for all subplots
+                trace = trace
+                    .x_axis("x")
+                    .y_axis(format!("y{row}"))
+                    .line(Line::new().width(1.5).color("#229AEB"));
+                trace
+            }
+            VariableType::Integer { .. } => {
+                let values: Vec<i32> = trajectories
+                    .rows
+                    .iter()
+                    .map(|row| row[i].to_i32())
+                    .collect();
+                let mut trace = Scatter::new(time, values).name(name);
+                // Use the shared x-axis ("x") for all subplots
+                trace = trace
+                    .x_axis("x")
+                    .y_axis(format!("y{row}"))
+                    .line(Line::new().width(1.5).color("#229AEB").shape(LineShape::Hv));
+                trace
+            }
+            VariableType::Boolean { .. } => {
+                let values: Vec<i32> = trajectories
+                    .rows
+                    .iter()
+                    .map(|row| row[i].to_bool())
+                    .collect();
+                let mut trace = Scatter::new(time, values).name(name);
+                // Use the shared x-axis ("x") for all subplots
+                trace = trace
+                    .x_axis("x")
+                    .y_axis(format!("y{row}"))
+                    .line(Line::new().width(1.5).color("#229AEB").shape(LineShape::Hv));
+                trace
+            }
+            VariableType::Enumeration { .. } => {
+                todo!()
+            }
+            VariableType::String { .. } => {
+                continue
+            }
+        };
 
-        let mut trace = Scatter::new(time, values).name(name);
-        // Use the shared x-axis ("x") for all subplots
-        trace = trace
-            .x_axis("x")
-            .y_axis(format!("y{row}"))
-            .line(Line::new().width(1.5).color("#229AEB"));
+
+        // let values: Vec<f64> = trajectories
+        //     .rows
+        //     .iter()
+        //     .map(|row| row[i].to_f64())
+        //     .collect();
+
+        // let mut trace = Scatter::new(time, values).name(name);
+
+        // // Use the shared x-axis ("x") for all subplots
+        // trace = trace
+        //     .x_axis("x")
+        //     .y_axis(format!("y{row}"))
+        //     .line(Line::new().width(1.5).color("#229AEB"));
+        
         plot.add_trace(trace);
     }
 

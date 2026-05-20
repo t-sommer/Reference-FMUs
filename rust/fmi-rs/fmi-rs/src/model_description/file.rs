@@ -2,7 +2,7 @@ use std::{error::Error, str::FromStr};
 
 use roxmltree::Node;
 
-use crate::model_description::{BaseUnit, DisplayUnit, Unit, fmi2::Item};
+use crate::model_description::{BaseUnit, DisplayUnit, Unit};
 
 pub(crate) trait StringAttribute {
     fn optional_attribute(&self, name: &str) -> Option<String>;

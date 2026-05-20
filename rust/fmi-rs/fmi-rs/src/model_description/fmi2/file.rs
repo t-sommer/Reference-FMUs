@@ -32,10 +32,9 @@ impl ModelDescription {
 
         let mut modelVariables = vec![];
 
-        for (_i, child) in ModelVariables
+        for child in ModelVariables
             .children()
             .filter(|n| n.has_tag_name("ScalarVariable"))
-            .enumerate()
         {
             let name = child.required_attribute("name")?;
 
@@ -146,7 +145,6 @@ impl ModelDescription {
             .into_iter()
             .flatten()
             .filter(|n| n.has_tag_name("Unit"))
-            .into_iter()
             .map(|u| Unit::from_node(&u).unwrap())
             .collect();
 
@@ -157,7 +155,6 @@ impl ModelDescription {
             .into_iter()
             .flatten()
             .filter(|n| n.has_tag_name("SimpleType"))
-            .into_iter()
             .map(|u| SimpleType::from_node(&u).unwrap())
             .collect();
 

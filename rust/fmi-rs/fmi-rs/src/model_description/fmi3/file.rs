@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, path::Path, str::FromStr};
+use std::{error::Error, path::Path, str::FromStr};
 
 use roxmltree::Node;
 
@@ -324,24 +324,22 @@ impl ModelDescription {
                 let causality = child
                     .optional_attribute_as("causality")
                     .unwrap_or(Causality::Local);
-                let variability = child
-                    .optional_attribute_as("variability")
-                    .unwrap_or_else(|| {
-                        if matches!(
-                            variable_type,
-                            VariableType::Float32 { .. } | VariableType::Float64 { .. }
-                        ) && matches!(
-                            causality,
-                            Causality::Input
-                                | Causality::Output
-                                | Causality::Independent
-                                | Causality::Local
-                        ) {
-                            Variability::Continuous
-                        } else {
-                            Variability::Discrete
-                        }
-                    });
+                let variability = child.optional_attribute_as("variability").unwrap_or({
+                    if matches!(
+                        variable_type,
+                        VariableType::Float32 { .. } | VariableType::Float64 { .. }
+                    ) && matches!(
+                        causality,
+                        Causality::Input
+                            | Causality::Output
+                            | Causality::Independent
+                            | Causality::Local
+                    ) {
+                        Variability::Continuous
+                    } else {
+                        Variability::Discrete
+                    }
+                });
 
                 Ok(ModelVariable {
                     variableType: variable_type,
@@ -365,10 +363,10 @@ impl ModelDescription {
                 stepSize: e.attribute("stepSize").map(|s| s.to_string()),
             });
 
-        let coSimulation = if let Some(cs) =
-            root.descendants().find(|n| n.has_tag_name("CoSimulation"))
-        {
-            Some(CoSimulation {
+        let coSimulation = root
+            .descendants()
+            .find(|n| n.has_tag_name("CoSimulation"))
+            .map(|cs| CoSimulation {
                 modelIdentifier: cs.attribute("modelIdentifier").unwrap().to_string(),
                 providesDirectionalDerivatives: cs
                     .bool_attribute("providesDirectionalDerivatives", false),
@@ -376,24 +374,19 @@ impl ModelDescription {
                 canHandleVariableCommunicationStepSize: cs
                     .bool_attribute("canHandleVariableCommunicationStepSize", false),
                 canNotUseMemoryManagementFunctions: true,
-            })
-        } else {
-            None
-        };
+            });
 
-        let modelExchange =
-            if let Some(me) = root.descendants().find(|n| n.has_tag_name("ModelExchange")) {
-                Some(ModelExchange {
-                    modelIdentifier: me.attribute("modelIdentifier").unwrap().to_string(),
-                    providesDirectionalDerivatives: me
-                        .bool_attribute("providesDirectionalDerivatives", false),
-                    needsCompletedIntegratorStep: me
-                        .bool_attribute("needsCompletedIntegratorStep", false),
-                    canNotUseMemoryManagementFunctions: true,
-                })
-            } else {
-                None
-            };
+        let modelExchange = root
+            .descendants()
+            .find(|n| n.has_tag_name("ModelExchange"))
+            .map(|me| ModelExchange {
+                modelIdentifier: me.attribute("modelIdentifier").unwrap().to_string(),
+                providesDirectionalDerivatives: me
+                    .bool_attribute("providesDirectionalDerivatives", false),
+                needsCompletedIntegratorStep: me
+                    .bool_attribute("needsCompletedIntegratorStep", false),
+                canNotUseMemoryManagementFunctions: true,
+            });
 
         let unitDefintions = root
             .descendants()
@@ -402,7 +395,6 @@ impl ModelDescription {
             .into_iter()
             .flatten()
             .filter(|n| n.has_tag_name("Unit"))
-            .into_iter()
             .map(|n| Unit::from_node(&n).unwrap())
             .collect();
 
@@ -413,7 +405,6 @@ impl ModelDescription {
             .into_iter()
             .flatten()
             .filter(|n| n.tag_name().name().ends_with("Type"))
-            .into_iter()
             .map(|n| TypeDefinition::from_node(&n).unwrap())
             .collect();
 
@@ -461,7 +452,7 @@ impl TypeDefinition {
         let description = node.optional_attribute("description");
 
         if node.has_tag_name("Float32Type") {
-            return Ok(TypeDefinition::Float32 {
+            Ok(TypeDefinition::Float32 {
                 name,
                 description,
                 quantity: node.optional_attribute("quantity"),
@@ -472,9 +463,9 @@ impl TypeDefinition {
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
                 nominal: node.optional_attribute_as("nominal"),
-            });
+            })
         } else if node.has_tag_name("Float64Type") {
-            return Ok(TypeDefinition::Float64 {
+            Ok(TypeDefinition::Float64 {
                 name,
                 description,
                 quantity: node.optional_attribute("quantity"),
@@ -485,77 +476,77 @@ impl TypeDefinition {
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
                 nominal: node.optional_attribute_as("nominal"),
-            });
+            })
         } else if node.has_tag_name("Int8Type") {
-            return Ok(TypeDefinition::Int8 {
+            Ok(TypeDefinition::Int8 {
                 name,
                 description,
                 quantity: node.optional_attribute("quantity"),
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
-            });
+            })
         } else if node.has_tag_name("UInt8Type") {
-            return Ok(TypeDefinition::UInt8 {
+            Ok(TypeDefinition::UInt8 {
                 name,
                 description,
                 quantity: node.optional_attribute("quantity"),
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
-            });
+            })
         } else if node.has_tag_name("Int16Type") {
-            return Ok(TypeDefinition::Int16 {
+            Ok(TypeDefinition::Int16 {
                 name,
                 description,
                 quantity: node.optional_attribute("quantity"),
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
-            });
+            })
         } else if node.has_tag_name("UInt16Type") {
-            return Ok(TypeDefinition::UInt16 {
+            Ok(TypeDefinition::UInt16 {
                 name,
                 description,
                 quantity: node.optional_attribute("quantity"),
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
-            });
+            })
         } else if node.has_tag_name("Int32Type") {
-            return Ok(TypeDefinition::Int32 {
+            Ok(TypeDefinition::Int32 {
                 name,
                 description,
                 quantity: node.optional_attribute("quantity"),
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
-            });
+            })
         } else if node.has_tag_name("UInt32Type") {
-            return Ok(TypeDefinition::UInt32 {
+            Ok(TypeDefinition::UInt32 {
                 name,
                 description,
                 quantity: node.optional_attribute("quantity"),
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
-            });
+            })
         } else if node.has_tag_name("Int64Type") {
-            return Ok(TypeDefinition::Int64 {
+            Ok(TypeDefinition::Int64 {
                 name,
                 description,
                 quantity: node.optional_attribute("quantity"),
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
-            });
+            })
         } else if node.has_tag_name("UInt64Type") {
-            return Ok(TypeDefinition::UInt64 {
+            Ok(TypeDefinition::UInt64 {
                 name,
                 description,
                 quantity: node.optional_attribute("quantity"),
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
-            });
+            })
         } else if node.has_tag_name("BooleanType") {
-            return Ok(TypeDefinition::Boolean { name, description });
+            Ok(TypeDefinition::Boolean { name, description })
         } else if node.has_tag_name("StringType") {
-            return Ok(TypeDefinition::String { name, description });
+            Ok(TypeDefinition::String { name, description })
         } else if node.has_tag_name("BinaryType") {
-            return Ok(TypeDefinition::Binary {
+            Ok(TypeDefinition::Binary {
                 name,
                 description,
                 mimeType: node
@@ -563,7 +554,7 @@ impl TypeDefinition {
                     .unwrap_or("application/octet-stream")
                     .to_string(),
                 maxSize: node.optional_attribute_as("maxSize"),
-            });
+            })
         } else if node.has_tag_name("EnumerationType") {
             let mut items = vec![];
             for child in node.children() {
@@ -572,16 +563,16 @@ impl TypeDefinition {
                 }
             }
 
-            return Ok(TypeDefinition::Enumeration {
+            Ok(TypeDefinition::Enumeration {
                 name,
                 description,
                 items,
                 quantity: node.optional_attribute("quantity"),
                 min: node.optional_attribute_as("min"),
                 max: node.optional_attribute_as("max"),
-            });
+            })
         } else {
-            return Err(format!("Unknown type definition: {}", node.tag_name().name()).into());
+            Err(format!("Unknown type definition: {}", node.tag_name().name()).into())
         }
     }
 }

@@ -581,9 +581,8 @@ impl FMU3 {
 
         let instantiation_token_cstr = CString::new(instantiationToken).unwrap();
 
-        let resource_path_cstr = resourcePath
-            .map(|path| CString::new(path.to_string_lossy().as_ref()).ok())
-            .flatten();
+        let resource_path_cstr =
+            resourcePath.and_then(|path| CString::new(path.to_string_lossy().as_ref()).ok());
 
         let path_ptr = resource_path_cstr
             .as_ref()
@@ -702,9 +701,8 @@ impl FMU3 {
 
         let instantiation_token_cstr = CString::new(instantiationToken).unwrap();
 
-        let resource_path_cstr = resourcePath
-            .map(|path| CString::new(path.to_string_lossy().as_ref()).ok())
-            .flatten();
+        let resource_path_cstr =
+            resourcePath.and_then(|path| CString::new(path.to_string_lossy().as_ref()).ok());
 
         let path_ptr = resource_path_cstr
             .as_ref()

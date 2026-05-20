@@ -94,19 +94,19 @@ impl SolverFactory for CVodeSolverFactory {
     ) -> Result<Box<dyn Solver + 'a>, Error> {
         unsafe {
             let functions = Box::new(Functions {
-                nx: nx,
-                nz: nz,
-                rtol: rtol,
-                unknowns: unknowns,
-                knowns: knowns,
-                set_time: set_time,
-                set_continuous_inputs: set_continuous_inputs,
-                get_event_indicators: get_event_indicators,
-                get_continuous_states: get_continuous_states,
-                get_nominals_of_continuous_states: get_nominals_of_continuous_states,
-                get_continuous_state_derivatives: get_continuous_state_derivatives,
-                get_directional_derivative: get_directional_derivative,
-                set_continuous_states: set_continuous_states,
+                nx,
+                nz,
+                rtol,
+                unknowns,
+                knowns,
+                set_time,
+                set_continuous_inputs,
+                get_event_indicators,
+                get_continuous_states,
+                get_nominals_of_continuous_states,
+                get_continuous_state_derivatives,
+                get_directional_derivative,
+                set_continuous_states,
             });
 
             let mut sunctx = std::ptr::null_mut();
@@ -136,7 +136,7 @@ impl SolverFactory for CVodeSolverFactory {
             (functions.get_nominals_of_continuous_states)(abstol_slice)?;
 
             for i in 0..nx {
-                abstol_slice[i] = abstol_slice[i] * rtol;
+                abstol_slice[i] *= rtol;
             }
 
             expect_no_error!(
@@ -195,7 +195,7 @@ impl<'a> Solver for CVodeSolver<'a> {
             (self.functions.get_nominals_of_continuous_states)(abstol_slice)?;
 
             for i in 0..abstol_slice.len() {
-                abstol_slice[i] = abstol_slice[i] * self.functions.rtol;
+                abstol_slice[i] *= self.functions.rtol;
             }
 
             expect_no_error!(

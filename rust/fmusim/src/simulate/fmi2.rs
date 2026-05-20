@@ -4,10 +4,10 @@ use std::path::PathBuf;
 
 use fmi::model_description::fmi2::{SimpleType, Variability, VariableType};
 use fmi::sim::euler::ForwardEulerFactory;
-use fmi::sim::fmi2::{Trajectories, VariableValue};
+use fmi::sim::fmi2::Trajectories;
 use plotly::layout::AxisRange;
 use plotly::{
-    Configuration, Layout, Plot, Scatter, Trace,
+    Configuration, Layout, Plot, Scatter,
     color::NamedColor,
     common::{Fill, Line, LineShape, Mode},
     layout::{Axis, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType},
@@ -20,7 +20,7 @@ pub fn simulate_fmu(
     unzipdir: &tempfile::TempDir,
     xml_path: &PathBuf,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let model_description = fmi::model_description::fmi2::ModelDescription::read(&xml_path)?;
+    let model_description = fmi::model_description::fmi2::ModelDescription::read(xml_path)?;
 
     let output_variables: Vec<&fmi::model_description::fmi2::ScalarVariable> =
         if args.output_variable.is_empty() {
@@ -88,12 +88,10 @@ pub fn simulate_fmu(
 
     let output_interval = if let Some(v) = args.output_interval {
         v
+    } else if let Some(v) = internal_step_size {
+        v
     } else {
-        if let Some(v) = internal_step_size {
-            v
-        } else {
-            (stop_time - start_time) / 500.0
-        }
+        (stop_time - start_time) / 500.0
     };
 
     let settings = fmi::sim::fmi2::SimulationSettings {
@@ -106,7 +104,7 @@ pub fn simulate_fmu(
         tolerance,
         start_values: args.start_values.clone(),
         log_fmi_calls: args.log_fmi_calls,
-        input_file: args.input_file.as_ref().map(|f| PathBuf::from(f)),
+        input_file: args.input_file.as_ref().map(PathBuf::from),
         early_return_allowed: args.early_return_allowed,
         event_mode_used: args.event_mode_used,
         logging_on: args.logging_on,
@@ -115,7 +113,7 @@ pub fn simulate_fmu(
     let interface_type = match &args.interface_type {
         Some(t) => t.clone(),
         None => {
-            if let Some(_) = &model_description.coSimulation {
+            if model_description.coSimulation.is_some() {
                 InterfaceType::CoSimulation
             } else {
                 InterfaceType::ModelExchange
@@ -124,8 +122,8 @@ pub fn simulate_fmu(
     };
 
     let input = if let Some(path) = &args.input_file {
-        let file = File::open(&path).expect("Failed to open input file");
-        let trajectories = fmi::sim::fmi2::csv::read_csv(&file, &settings.model_description)
+        let file = File::open(path).expect("Failed to open input file");
+        let trajectories = fmi::sim::fmi2::csv::read_csv(&file, settings.model_description)
             .expect("Failed to read CSV");
         Some(fmi::sim::fmi2::input::StaticInput::new(trajectories))
     } else {

@@ -21,7 +21,7 @@ pub fn write_csv<P: AsRef<Path>>(
     for i in 0..trajectories.time.len() {
         let mut record = vec![trajectories.time[i].to_string()];
 
-        for variable_value in (&trajectories.rows[i]).iter() {
+        for variable_value in trajectories.rows[i].iter() {
             record.push(variable_value.to_literal());
         }
 

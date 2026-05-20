@@ -85,7 +85,7 @@ impl<'a> StaticInput<'a> {
     pub fn set_discrete_inputs(
         &self,
         time: f64,
-        after_event: bool,
+        _after_event: bool,
         fmu: &FMU3,
     ) -> Result<(), Box<dyn Error>> {
         let mut index = 0;

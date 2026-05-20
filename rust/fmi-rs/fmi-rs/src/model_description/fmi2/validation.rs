@@ -80,10 +80,10 @@ impl ModelDescription {
                 }
             }
 
-            if let Some(dependencies_kind) = &unknown.dependenciesKind {
-                if dependencies.len() != dependencies_kind.len() {
-                    problems.push(format!("The number of elements in dependenciesKind does not match the number of elements in dependencies of unknown with index {}.", unknown.index));
-                }
+            if let Some(dependencies_kind) = &unknown.dependenciesKind
+                && dependencies.len() != dependencies_kind.len()
+            {
+                problems.push(format!("The number of elements in dependenciesKind does not match the number of elements in dependencies of unknown with index {}.", unknown.index));
             }
         }
 

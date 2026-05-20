@@ -580,10 +580,9 @@ impl ModelDescription {
                 for type_definition in &self.typeDefinitions {
                     if let TypeDefinition::Float32 { name, unit, .. }
                     | TypeDefinition::Float64 { name, unit, .. } = type_definition
+                        && name == declaredType
                     {
-                        if name == declaredType {
-                            return unit.as_deref();
-                        }
+                        return unit.as_deref();
                     }
                 }
             }

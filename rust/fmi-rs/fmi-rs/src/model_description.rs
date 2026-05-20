@@ -57,7 +57,7 @@ pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
     let root = doc.root_element();
 
     if let Some(fmi_version) = root.attribute("fmiVersion") {
-        return Ok(fmi_version.to_string());
+        Ok(fmi_version.to_string())
     } else {
         Err("Attribute fmiVersion is missing.".into())
     }

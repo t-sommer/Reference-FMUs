@@ -493,7 +493,7 @@ impl<T> FMU2<T> {
 
         if self.logCalls {
             let url = if let Some(url) = resourceUrl {
-                format!("\"{}\"", url.to_string())
+                format!("\"{}\"", url)
             } else {
                 String::from("0x0")
             };

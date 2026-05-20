@@ -85,7 +85,7 @@ impl<'a> StaticInput<'a> {
     pub fn set_discrete_inputs<I>(
         &self,
         time: f64,
-        after_event: bool,
+        _after_event: bool,
         fmu: &FMU2<I>,
     ) -> Result<(), Box<dyn Error>> {
         let mut index = 0;
@@ -173,7 +173,7 @@ impl<'a> StaticInput<'a> {
                 }
 
                 match value {
-                    VariableValue::Real(value) => {
+                    VariableValue::Real(_value) => {
                         todo!()
                         // fmu.setReal(&[variable.valueReference], &[*value]);
                     }

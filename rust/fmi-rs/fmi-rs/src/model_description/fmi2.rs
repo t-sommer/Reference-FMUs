@@ -254,10 +254,10 @@ impl ModelDescription {
                 return Some(unit);
             } else if let Some(declaredType) = declaredType {
                 for simple_type in &self.typeDefinitions {
-                    if let SimpleType::Real { name, unit, .. } = simple_type {
-                        if name == declaredType {
-                            return unit.as_deref();
-                        }
+                    if let SimpleType::Real { name, unit, .. } = simple_type
+                        && name == declaredType
+                    {
+                        return unit.as_deref();
                     }
                 }
             }

@@ -9,7 +9,7 @@ use crate::{
         self, CS, FMU2, ME,
         types::{fmi2Boolean, fmi2False, fmi2Integer, fmi2Real, fmi2True},
     },
-    model_description::fmi2::{Causality, ModelDescription, ScalarVariable, VariableType},
+    model_description::fmi2::{ModelDescription, ScalarVariable, VariableType},
     sim::{
         SolverFactory,
         fmi2::{input::StaticInput, recorder::Recorder},
@@ -202,10 +202,10 @@ pub fn simulate_cs(
     };
 
     let can_handle_variable_communication_step_size =
-        co_simulation.canHandleVariableCommunicationStepSize.clone();
+        co_simulation.canHandleVariableCommunicationStepSize;
 
     let fmu = FMU2::<CS>::new(
-        settings.unzipdir.as_ref(),
+        settings.unzipdir,
         &co_simulation.modelIdentifier,
         &settings.model_description.modelName,
         &settings.model_description.guid,
@@ -218,7 +218,7 @@ pub fn simulate_cs(
         !co_simulation.canNotUseMemoryManagementFunctions,
     )?;
 
-    set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
+    set_start_values(&settings.start_values, settings.model_description, &fmu)?;
 
     call(fmu.setupExperiment(
         settings.tolerance,
@@ -331,7 +331,7 @@ pub fn simulate_me<S: SolverFactory>(
     let needs_completed_integrator_step = model_exchange.needsCompletedIntegratorStep;
 
     let fmu = FMU2::<ME>::new(
-        settings.unzipdir.as_ref(),
+        settings.unzipdir,
         &model_exchange.modelIdentifier,
         &settings.model_description.modelName,
         &settings.model_description.guid,
@@ -344,7 +344,7 @@ pub fn simulate_me<S: SolverFactory>(
         !model_exchange.canNotUseMemoryManagementFunctions,
     )?;
 
-    set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
+    set_start_values(&settings.start_values, settings.model_description, &fmu)?;
 
     call(fmu.setupExperiment(
         settings.tolerance,

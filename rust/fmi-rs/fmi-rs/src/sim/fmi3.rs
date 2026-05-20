@@ -2,14 +2,14 @@ pub mod csv;
 pub mod input;
 pub mod recorder;
 
-use std::{collections::HashMap, error::Error, fs::File};
+use std::{collections::HashMap, error::Error};
 
 use crate::{
     fmi3::{FMU3, types::*},
     model_description::fmi3::{ModelVariable, VariableType},
     sim::{
         SolverFactory,
-        fmi3::{csv::read_csv, input::StaticInput, recorder::Recorder},
+        fmi3::{input::StaticInput, recorder::Recorder},
     },
     types::*,
 };
@@ -157,8 +157,8 @@ impl VariableValue {
             VariableValue::Int64(v) => v.iter().map(|x| *x as f64).collect(),
             VariableValue::UInt64(v) => v.iter().map(|x| *x as f64).collect(),
             VariableValue::Boolean(v) => v.iter().map(|&b| if b { 1.0 } else { 0.0 }).collect(),
-            VariableValue::String(v) => panic!("String value cannot be converted to f64."),
-            VariableValue::Binary(v) => panic!("Binary value cannot be converted to f64."),
+            VariableValue::String(_) => panic!("String value cannot be converted to f64."),
+            VariableValue::Binary(_) => panic!("Binary value cannot be converted to f64."),
         }
     }
 }
@@ -310,7 +310,7 @@ pub fn set_variable_value(
             let string_refs: Vec<&str> = values.iter().map(|x| x.as_str()).collect();
             fmu.setString(&[value_reference], &string_refs)
         }
-        VariableValue::Binary(values) => fmu.setBinary(&[value_reference], &values),
+        VariableValue::Binary(values) => fmu.setBinary(&[value_reference], values),
     }
 }
 
@@ -411,10 +411,10 @@ pub fn simulate_cs(
     };
 
     let can_handle_variable_communication_step_size =
-        co_simulation.canHandleVariableCommunicationStepSize.clone();
+        co_simulation.canHandleVariableCommunicationStepSize;
 
     let fmu = FMU3::instantiateCoSimulation(
-        settings.unzipdir.as_ref(),
+        settings.unzipdir,
         &co_simulation.modelIdentifier,
         &settings.model_description.modelName,
         &settings.model_description.instantiationToken,
@@ -429,7 +429,7 @@ pub fn simulate_cs(
         true,
     )?;
 
-    set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
+    set_start_values(&settings.start_values, settings.model_description, &fmu)?;
 
     call(fmu.enterInitializationMode(
         settings.tolerance,
@@ -637,7 +637,7 @@ pub fn simulate_me<S: SolverFactory>(
     let needs_completed_integrator_step = model_exchange.needsCompletedIntegratorStep;
 
     let fmu = FMU3::instantiateModelExchange(
-        settings.unzipdir.as_ref(),
+        settings.unzipdir,
         &model_exchange.modelIdentifier,
         &settings.model_description.modelName,
         &settings.model_description.instantiationToken,
@@ -649,7 +649,7 @@ pub fn simulate_me<S: SolverFactory>(
         true,
     )?;
 
-    set_start_values(&settings.start_values, &settings.model_description, &fmu)?;
+    set_start_values(&settings.start_values, settings.model_description, &fmu)?;
 
     call(fmu.enterInitializationMode(
         settings.tolerance,

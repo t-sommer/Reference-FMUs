@@ -135,7 +135,6 @@ pub fn parse_variable_value(
             }))
         }
         VariableType::String { .. } => Ok(VariableValue::String(literal.to_string())),
-        _ => Err(format!("Unsupported variable type {variable_type:?}.").into()),
     }
 }
 

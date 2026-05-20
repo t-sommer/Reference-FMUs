@@ -144,10 +144,21 @@ impl VariableValue {
         }
     }
 
-    pub fn as_f64(&self) -> &Vec<f64> {
+    pub fn as_f64(&self) -> Vec<f64> {
         match self {
-            VariableValue::Float64(v) => v,
-            _ => panic!("VariableValue is not a Float64"),
+            VariableValue::Float32(v) => v.iter().map(|x| *x as f64).collect(),
+            VariableValue::Float64(v) => v.clone(),
+            VariableValue::Int8(v) => v.iter().map(|x| *x as f64).collect(),
+            VariableValue::UInt8(v) => v.iter().map(|x| *x as f64).collect(),
+            VariableValue::Int16(v) => v.iter().map(|x| *x as f64).collect(),
+            VariableValue::UInt16(v) => v.iter().map(|x| *x as f64).collect(),
+            VariableValue::Int32(v) => v.iter().map(|x| *x as f64).collect(),
+            VariableValue::UInt32(v) => v.iter().map(|x| *x as f64).collect(),
+            VariableValue::Int64(v) => v.iter().map(|x| *x as f64).collect(),
+            VariableValue::UInt64(v) => v.iter().map(|x| *x as f64).collect(),
+            VariableValue::Boolean(v) => v.iter().map(|&b| if b { 1.0 } else { 0.0 }).collect(),
+            VariableValue::String(v) => panic!("String value cannot be converted to f64."),
+            VariableValue::Binary(v) => panic!("Binary value cannot be converted to f64."),
         }
     }
 }

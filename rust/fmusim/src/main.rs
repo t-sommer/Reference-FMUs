@@ -1,5 +1,4 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
-mod cvode;
 mod info;
 mod simulate;
 mod validate;
@@ -8,7 +7,6 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 use fmi::{
     model_description::{FMIMajorVersion, peak_fmi_major_version},
-    sim::{self},
     util::extract_fmu,
 };
 use std::process::ExitCode;

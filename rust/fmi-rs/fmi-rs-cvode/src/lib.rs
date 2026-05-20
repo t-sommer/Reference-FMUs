@@ -11,6 +11,8 @@
 #[rustfmt::skip] pub mod sunlinsol_dense;
 #[rustfmt::skip] pub mod sunmatrix_dense;
 
+pub mod solver;
+
 use crate::cvode::*;
 use crate::cvode_ls::*;
 use crate::nvector_serial::*;

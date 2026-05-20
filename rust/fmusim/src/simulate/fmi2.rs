@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use fmi::model_description::fmi2::{SimpleType, Variability, VariableType};
 use fmi::sim::euler::ForwardEulerFactory;
 use fmi::sim::fmi2::Trajectories;
+use fmi_rs_cvode::solver::CVodeSolverFactory;
 use plotly::layout::AxisRange;
 use plotly::{
     Configuration, Layout, Plot, Scatter,
@@ -13,7 +14,7 @@ use plotly::{
     layout::{Axis, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType},
 };
 
-use crate::{InterfaceType, SimulateArgs, SolverType, cvode};
+use crate::{InterfaceType, SimulateArgs, SolverType};
 
 pub fn simulate_fmu(
     args: &SimulateArgs,
@@ -147,7 +148,7 @@ pub fn simulate_fmu(
             ),
             SolverType::Cvode => fmi::sim::fmi2::simulate_me(
                 &settings,
-                &cvode::CVodeSolverFactory,
+                &CVodeSolverFactory,
                 input.as_ref(),
                 &mut recorder,
             ),

@@ -4,6 +4,7 @@ use fmi::{
     model_description::fmi3::{TypeDefinition, VariableType},
     sim::{euler::ForwardEulerFactory, fmi3::Trajectories},
 };
+use fmi_rs_cvode::solver::CVodeSolverFactory;
 use plotly::{
     Configuration, Layout, Plot, Scatter,
     color::NamedColor,
@@ -13,7 +14,7 @@ use plotly::{
     },
 };
 
-use crate::{InterfaceType, SimulateArgs, SolverType, cvode};
+use crate::{InterfaceType, SimulateArgs, SolverType};
 
 pub fn simulate_fmu(
     args: &SimulateArgs,
@@ -147,7 +148,7 @@ pub fn simulate_fmu(
             ),
             SolverType::Cvode => fmi::sim::fmi3::simulate_me(
                 &settings,
-                &cvode::CVodeSolverFactory,
+                &CVodeSolverFactory,
                 input.as_ref(),
                 &mut recorder,
             ),

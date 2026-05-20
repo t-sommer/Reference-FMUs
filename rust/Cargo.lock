@@ -563,6 +563,9 @@ dependencies = [
 [[package]]
 name = "fmi-rs-cvode"
 version = "0.1.0"
+dependencies = [
+ "fmi-rs",
+]
 
 [[package]]
 name = "fmi-rs-xsd"

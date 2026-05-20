@@ -1,9 +1,5 @@
-use crate::sim::{
-    GetContinuousStateDerivativesFn, GetContinuousStatesFn, GetEventIndicatorsFn,
-    SetContinuousInputsFn, SetContinuousStatesFn, SetTimeFn, Solver, SolverFactory,
-};
-use fmi::sim::{GetDirectionalDerivativeFn, GetNominalsOfContinuousStatesFn};
-use fmi_rs_cvode::{
+use crate::cvode::CV_BDF;
+use crate::{
     cvode::{
         CV_NORMAL, CV_ROOT_RETURN, CVode, CVodeCreate, CVodeFree, CVodeInit, CVodeReInit,
         CVodeRootInit, CVodeSVtolerances, CVodeSetUserData,
@@ -18,6 +14,11 @@ use fmi_rs_cvode::{
     sunlinsol_dense::SUNLinSol_Dense,
     sunmatrix_dense::{SM_COLUMN_D, SUNDenseMatrix},
 };
+use fmi::sim::{
+    GetContinuousStateDerivativesFn, GetContinuousStatesFn, GetEventIndicatorsFn,
+    SetContinuousInputsFn, SetContinuousStatesFn, SetTimeFn, Solver, SolverFactory,
+};
+use fmi::sim::{GetDirectionalDerivativeFn, GetNominalsOfContinuousStatesFn};
 use std::{ffi::c_void, slice::from_raw_parts_mut};
 
 type Error = Box<dyn std::error::Error>;
@@ -94,19 +95,19 @@ impl SolverFactory for CVodeSolverFactory {
     ) -> Result<Box<dyn Solver + 'a>, Error> {
         unsafe {
             let functions = Box::new(Functions {
-                nx,
-                nz,
-                rtol,
-                unknowns,
-                knowns,
-                set_time,
-                set_continuous_inputs,
-                get_event_indicators,
-                get_continuous_states,
-                get_nominals_of_continuous_states,
-                get_continuous_state_derivatives,
-                get_directional_derivative,
-                set_continuous_states,
+                nx: nx,
+                nz: nz,
+                rtol: rtol,
+                unknowns: unknowns,
+                knowns: knowns,
+                set_time: set_time,
+                set_continuous_inputs: set_continuous_inputs,
+                get_event_indicators: get_event_indicators,
+                get_continuous_states: get_continuous_states,
+                get_nominals_of_continuous_states: get_nominals_of_continuous_states,
+                get_continuous_state_derivatives: get_continuous_state_derivatives,
+                get_directional_derivative: get_directional_derivative,
+                set_continuous_states: set_continuous_states,
             });
 
             let mut sunctx = std::ptr::null_mut();
@@ -116,7 +117,7 @@ impl SolverFactory for CVodeSolverFactory {
                 "Failed to create SUNDIALS context"
             );
 
-            let cvode_mem = CVodeCreate(fmi_rs_cvode::cvode::CV_BDF, sunctx);
+            let cvode_mem = CVodeCreate(CV_BDF, sunctx);
             expect_not_null!(cvode_mem, "Failed to create CVODE memory");
 
             let user_data: *const Functions = &*functions;
@@ -136,7 +137,7 @@ impl SolverFactory for CVodeSolverFactory {
             (functions.get_nominals_of_continuous_states)(abstol_slice)?;
 
             for i in 0..nx {
-                abstol_slice[i] *= rtol;
+                abstol_slice[i] = abstol_slice[i] * rtol;
             }
 
             expect_no_error!(
@@ -195,7 +196,7 @@ impl<'a> Solver for CVodeSolver<'a> {
             (self.functions.get_nominals_of_continuous_states)(abstol_slice)?;
 
             for i in 0..abstol_slice.len() {
-                abstol_slice[i] *= self.functions.rtol;
+                abstol_slice[i] = abstol_slice[i] * self.functions.rtol;
             }
 
             expect_no_error!(

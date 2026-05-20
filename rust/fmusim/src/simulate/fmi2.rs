@@ -217,7 +217,9 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
         if matches!(variable.variableType, VariableType::Boolean { .. }) {
             y_axis = y_axis
                 .tick_values(vec![0.0, 1.0])
-                .tick_text(vec!["false", "true"]);
+                .tick_text(vec!["false", "true"])
+                .range(AxisRange::new(0.0, 1.0))
+                .fixed_range(true);
         }
 
         // Use item names as tick text for enumeration variables

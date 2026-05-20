@@ -200,8 +200,8 @@ impl TypeDefinition {
             | TypeDefinition::Binary { name, .. }
             | TypeDefinition::Enumeration { name, .. }
             | TypeDefinition::Clock { name, .. } => name,
+        }
     }
-}
 }
 
 #[derive(Debug)]

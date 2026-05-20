@@ -22,12 +22,8 @@ pub fn show_fmu_info(args: &InfoArgs) -> ExitCode {
     platform_dirs.extend(
         entries
             .filter_map(|res| res.ok())
-            .filter(|entry| {
-                entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false)
-            })
-            .filter_map(|entry| {
-                entry.file_name().into_string().ok()
-            }),
+            .filter(|entry| entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+            .filter_map(|entry| entry.file_name().into_string().ok()),
     );
 
     match fmi_major_version {

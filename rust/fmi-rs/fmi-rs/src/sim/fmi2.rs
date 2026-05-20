@@ -53,7 +53,13 @@ impl VariableValue {
         match self {
             VariableValue::Real(value) => *value,
             VariableValue::Integer(value) => *value as f64,
-            VariableValue::Boolean(value) => if *value != 1 { 1.0 } else { 0.0 },
+            VariableValue::Boolean(value) => {
+                if *value != 1 {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
             VariableValue::String(_) => panic!("String value cannot be converted to f64."),
         }
     }
@@ -98,7 +104,7 @@ impl<'a> Trajectories<'a> {
                 events.push(t[0]);
             }
         }
-        
+
         events
     }
 }

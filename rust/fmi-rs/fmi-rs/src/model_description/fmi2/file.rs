@@ -259,7 +259,6 @@ impl ModelDescription {
     }
 
     fn get_unkonwns(root: &Node, name: &str) -> Result<Vec<Unknown>, Box<dyn Error>> {
-
         let modelStructure = if let Some(modelStructure) = root.get_child("ModelStructure") {
             modelStructure
         } else {
@@ -274,8 +273,7 @@ impl ModelDescription {
 
         let mut unkonwns = vec![];
 
-        for child in container.get_children("Unknown")
-        {
+        for child in container.get_children("Unknown") {
             let index = child
                 .attribute("index")
                 .ok_or(format!("Missing index attribute in {}", name))?

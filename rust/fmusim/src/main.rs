@@ -11,7 +11,7 @@ use fmi::{
     sim::{self},
     util::extract_fmu,
 };
-use std::{process::ExitCode};
+use std::process::ExitCode;
 
 #[derive(ValueEnum, Clone, Debug)]
 enum InterfaceType {

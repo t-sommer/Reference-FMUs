@@ -6,7 +6,11 @@ use fmi::model_description::fmi2::{SimpleType, Variability, VariableType};
 use fmi::sim::euler::ForwardEulerFactory;
 use fmi::sim::fmi2::{Trajectories, VariableValue};
 use plotly::layout::AxisRange;
-use plotly::{color::NamedColor, common::{Fill, Line, LineShape, Mode}, layout::{Axis, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType}, Configuration, Layout, Plot, Scatter, Trace
+use plotly::{
+    Configuration, Layout, Plot, Scatter, Trace,
+    color::NamedColor,
+    common::{Fill, Line, LineShape, Mode},
+    layout::{Axis, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType},
 };
 
 use crate::{InterfaceType, SimulateArgs, SolverType, cvode};
@@ -160,7 +164,8 @@ pub fn simulate_fmu(
     }
 
     if args.show_plot {
-        let plot = crate::simulate::fmi2::plot_result(&trajectories, args.show_markers, args.show_events);
+        let plot =
+            crate::simulate::fmi2::plot_result(&trajectories, args.show_markers, args.show_events);
 
         // Generate a unique path in the temp directory starting with the model name
         let temp_path = tempfile::Builder::new()
@@ -217,12 +222,13 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
 
         // Use item names as tick text for enumeration variables
         if let VariableType::Enumeration { declaredType, .. } = &variable.variableType {
-
-            if let Some(SimpleType::Enumeration {items, ..}) = trajectories.model_description.get_type_definition(declaredType) {
-                
+            if let Some(SimpleType::Enumeration { items, .. }) = trajectories
+                .model_description
+                .get_type_definition(declaredType)
+            {
                 let tick_values: Vec<i32> = items.iter().map(|item| item.value).collect();
                 let tick_text: Vec<String> = items.iter().map(|item| item.name.clone()).collect();
-                
+
                 let minimum = tick_values.iter().min().unwrap();
                 let maximum = tick_values.iter().max().unwrap();
 
@@ -271,11 +277,8 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
         }
 
         let mut trace = Scatter::new(time, values).name(name);
-            // Use the shared x-axis ("x") for all subplots
-            trace = trace
-            .x_axis("x")
-            .y_axis(format!("y{row}"))
-            .line(line);
+        // Use the shared x-axis ("x") for all subplots
+        trace = trace.x_axis("x").y_axis(format!("y{row}")).line(line);
 
         if show_markers {
             trace = trace.mode(Mode::LinesMarkers);
@@ -284,10 +287,10 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
         if matches!(variable.variableType, VariableType::Boolean { .. }) {
             trace = trace.fill(Fill::ToZeroY).fill_color(NamedColor::AliceBlue);
         }
-        
+
         plot.add_trace(trace);
     }
-    
+
     if show_events {
         let mut shapes = Vec::new();
         for event_time in trajectories.events() {

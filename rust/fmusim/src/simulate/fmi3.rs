@@ -5,7 +5,12 @@ use fmi::{
     sim::{euler::ForwardEulerFactory, fmi3::Trajectories},
 };
 use plotly::{
-    Configuration, Layout, Plot, Scatter, color::{Color, NamedColor}, common::{Fill, Line, Mode}, layout::{Axis, AxisRange, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType}
+    Configuration, Layout, Plot, Scatter,
+    color::{Color, NamedColor},
+    common::{Fill, Line, Mode},
+    layout::{
+        Axis, AxisRange, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType,
+    },
 };
 
 use crate::{InterfaceType, SimulateArgs, SolverType, cvode};
@@ -161,7 +166,8 @@ pub fn simulate_fmu(
     }
 
     if args.show_plot {
-        let plot = crate::simulate::fmi3::plot_result(&trajectories, args.show_markers, args.show_events);
+        let plot =
+            crate::simulate::fmi3::plot_result(&trajectories, args.show_markers, args.show_events);
 
         // Generate a unique path in the temp directory starting with the model name
         let temp_path = tempfile::Builder::new()
@@ -228,12 +234,13 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
 
         // Use item names as tick text for enumeration variables
         if let VariableType::Enumeration { declaredType, .. } = &variable.variableType {
-
-            if let Some(TypeDefinition::Enumeration {items, ..}) = trajectories.model_description.get_type_definition(declaredType) {
-                
+            if let Some(TypeDefinition::Enumeration { items, .. }) = trajectories
+                .model_description
+                .get_type_definition(declaredType)
+            {
                 let tick_values: Vec<i64> = items.iter().map(|item| item.value).collect();
                 let tick_text: Vec<String> = items.iter().map(|item| item.name.clone()).collect();
-                
+
                 let minimum = tick_values.iter().min().unwrap();
                 let maximum = tick_values.iter().max().unwrap();
 

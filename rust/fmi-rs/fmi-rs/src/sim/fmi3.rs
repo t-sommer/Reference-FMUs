@@ -179,7 +179,7 @@ impl<'a> Trajectories<'a> {
                 events.push(t[0]);
             }
         }
-        
+
         events
     }
 }

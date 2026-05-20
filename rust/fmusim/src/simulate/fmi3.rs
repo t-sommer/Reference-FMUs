@@ -1,11 +1,11 @@
 use std::{collections::HashMap, fs::File, path::PathBuf};
 
 use fmi::{
-    model_description::fmi3::VariableType,
+    model_description::fmi3::{TypeDefinition, VariableType},
     sim::{euler::ForwardEulerFactory, fmi3::Trajectories},
 };
 use plotly::{
-    Configuration, Layout, Plot, Scatter, color::{Color, NamedColor}, common::{Fill, Line, Mode}, layout::{Axis, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType}
+    Configuration, Layout, Plot, Scatter, color::{Color, NamedColor}, common::{Fill, Line, Mode}, layout::{Axis, AxisRange, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType}
 };
 
 use crate::{InterfaceType, SimulateArgs, SolverType, cvode};
@@ -224,6 +224,28 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
             y_axis = y_axis
                 .tick_values(vec![0.0, 1.0])
                 .tick_text(vec!["false", "true"]);
+        }
+
+        // Use item names as tick text for enumeration variables
+        if let VariableType::Enumeration { declaredType, .. } = &variable.variableType {
+
+            if let Some(TypeDefinition::Enumeration {items, ..}) = trajectories.model_description.get_type_definition(declaredType) {
+                
+                let tick_values: Vec<i64> = items.iter().map(|item| item.value).collect();
+                let tick_text: Vec<String> = items.iter().map(|item| item.name.clone()).collect();
+                
+                let minimum = tick_values.iter().min().unwrap();
+                let maximum = tick_values.iter().max().unwrap();
+
+                let tick_values = tick_values.iter().map(|v| *v as f64).collect();
+
+                y_axis = y_axis
+                    .tick_values(tick_values)
+                    .tick_text(tick_text)
+                    .range(AxisRange::new(*minimum, *maximum));
+            } else {
+                continue;
+            }
         }
 
         // Set y-axis titles for subplots (Plotly uses y1, y2, y3... internally)

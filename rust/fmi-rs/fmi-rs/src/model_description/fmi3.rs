@@ -182,6 +182,28 @@ pub enum TypeDefinition {
     },
 }
 
+impl TypeDefinition {
+    pub fn name(&self) -> &str {
+        match self {
+            TypeDefinition::Float32 { name, .. }
+            | TypeDefinition::Float64 { name, .. }
+            | TypeDefinition::Int8 { name, .. }
+            | TypeDefinition::UInt8 { name, .. }
+            | TypeDefinition::Int16 { name, .. }
+            | TypeDefinition::UInt16 { name, .. }
+            | TypeDefinition::Int32 { name, .. }
+            | TypeDefinition::UInt32 { name, .. }
+            | TypeDefinition::Int64 { name, .. }
+            | TypeDefinition::UInt64 { name, .. }
+            | TypeDefinition::Boolean { name, .. }
+            | TypeDefinition::String { name, .. }
+            | TypeDefinition::Binary { name, .. }
+            | TypeDefinition::Enumeration { name, .. }
+            | TypeDefinition::Clock { name, .. } => name,
+    }
+}
+}
+
 #[derive(Debug)]
 pub enum VariableType {
     Float32 {
@@ -567,5 +589,9 @@ impl ModelDescription {
             }
         }
         None
+    }
+
+    pub fn get_type_definition(&self, name: &str) -> Option<&TypeDefinition> {
+        self.typeDefinitions.iter().find(|t| t.name() == name)
     }
 }

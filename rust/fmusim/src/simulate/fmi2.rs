@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use fmi::model_description::fmi2::{SimpleType, Variability, VariableType};
 use fmi::sim::euler::ForwardEulerFactory;
 use fmi::sim::fmi2::{Trajectories, VariableValue};
+use plotly::layout::AxisRange;
 use plotly::{color::NamedColor, common::{Fill, Line, LineShape, Mode}, layout::{Axis, GridPattern, LayoutGrid, Margin, Shape, ShapeLayer, ShapeLine, ShapeType}, Configuration, Layout, Plot, Scatter, Trace
 };
 
@@ -214,19 +215,25 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
                 .tick_text(vec!["false", "true"]);
         }
 
+        // Use item names as tick text for enumeration variables
         if let VariableType::Enumeration { declaredType, .. } = &variable.variableType {
 
-            if let Some(SimpleType::Enumeration {items, ..}) = trajectories.model_description.get_simple_type(declaredType) {
+            if let Some(SimpleType::Enumeration {items, ..}) = trajectories.model_description.get_type_definition(declaredType) {
                 
-                let tick_values: Vec<f64> = items.iter().map(|item| item.value as f64).collect();
+                let tick_values: Vec<i32> = items.iter().map(|item| item.value).collect();
                 let tick_text: Vec<String> = items.iter().map(|item| item.name.clone()).collect();
+                
+                let minimum = tick_values.iter().min().unwrap();
+                let maximum = tick_values.iter().max().unwrap();
+
+                let tick_values = tick_values.iter().map(|v| *v as f64).collect();
 
                 y_axis = y_axis
                     .tick_values(tick_values)
-                    .tick_text(tick_text);
+                    .tick_text(tick_text)
+                    .range(AxisRange::new(*minimum, *maximum));
             } else {
                 continue;
-
             }
         }
 

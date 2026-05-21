@@ -18,14 +18,14 @@ impl ModelDescription {
             .find(|n| n.has_tag_name("ModelStructure"))
             .ok_or("Missing <ModelStructure> element.")?;
 
-        let mut unkonwns = vec![];
+        let mut unknowns = vec![];
 
         for child in modelStructure.children().filter(|n| n.has_tag_name(name)) {
+
             let valueReference = child
                 .attribute("valueReference")
-                .ok_or(format!("Missing valueReference attribute in {}", name))?
-                .parse()
-                .unwrap();
+                .ok_or_else(|| format!("Missing valueReference attribute in {}", name))?
+                .parse()?;
 
             let dependencies: Option<Vec<u32>> = match child.attribute("dependencies") {
                 Some(dependencies) => {
@@ -34,9 +34,9 @@ impl ModelDescription {
                     } else {
                         Some(
                             dependencies
-                                .split(" ")
-                                .map(|s| s.parse::<u32>().unwrap())
-                                .collect(),
+                                .split_whitespace()
+                                .map(|s| s.parse::<u32>())
+                                .collect::<Result<Vec<_>, _>>()?,
                         )
                     }
                 }
@@ -46,40 +46,35 @@ impl ModelDescription {
             let dependenciesKind: Option<Vec<DependencyKind>> =
                 match child.attribute("dependenciesKind") {
                     Some(dependenciesKind) => {
-                        if dependenciesKind.is_empty() {
-                            Some(Vec::new())
-                        } else {
-                            Some(
-                                dependenciesKind
-                                    .split(" ")
-                                    .map(|s| DependencyKind::from_str(s).unwrap())
-                                    .collect(),
-                            )
+                        let mut kinds = vec![];
+                        for kind in dependenciesKind.split_whitespace() {
+                            kinds.push(DependencyKind::from_str(kind)?);
                         }
+                        Some(kinds)
                     }
                     None => None,
                 };
 
-            unkonwns.push(Unknown {
+            unknowns.push(Unknown {
                 valueReference,
                 dependencies,
                 dependenciesKind,
             });
         }
 
-        Ok(unkonwns)
+        Ok(unknowns)
     }
 
     fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
         if node.has_tag_name("Float32") {
             return Ok(VariableType::Float32 {
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
-                declaredType: node.optional_attribute("declaredType"),
-                initial: node.optional_attribute_as("initial"),
-                quantity: node.optional_attribute("quantity"),
-                unit: node.optional_attribute("unit"),
-                displayUnit: node.optional_attribute("displayUnit"),
+                previous: node.optional_attribute_as("previous")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
+                initial: node.optional_attribute_as("initial")?,
+                quantity: node.optional_attribute_as("quantity")?,
+                unit: node.optional_attribute_as("unit")?,
+                displayUnit: node.optional_attribute_as("displayUnit")?,
                 relativeQuantity: node
                     .attribute("relativeQuantity")
                     .map(|s| s == "true")
@@ -88,11 +83,11 @@ impl ModelDescription {
                     .attribute("unbounded")
                     .map(|s| s == "true")
                     .unwrap_or(false),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
-                nominal: node.optional_attribute_as("nominal"),
-                start: node.optional_attribute_as("start"),
-                derivative: node.optional_attribute_as("derivative"),
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
+                nominal: node.optional_attribute_as("nominal")?,
+                start: node.optional_attribute_as("start")?,
+                derivative: node.optional_attribute_as("derivative")?,
                 reinit: node
                     .attribute("reinit")
                     .map(|s| s == "true")
@@ -101,12 +96,12 @@ impl ModelDescription {
         } else if node.has_tag_name("Float64") {
             return Ok(VariableType::Float64 {
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
-                declaredType: node.optional_attribute("declaredType"),
-                initial: node.optional_attribute_as("initial"),
-                quantity: node.optional_attribute("quantity"),
-                unit: node.optional_attribute("unit"),
-                displayUnit: node.optional_attribute("displayUnit"),
+                previous: node.optional_attribute_as("previous")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
+                initial: node.optional_attribute_as("initial")?,
+                quantity: node.optional_attribute_as("quantity")?,
+                unit: node.optional_attribute_as("unit")?,
+                displayUnit: node.optional_attribute_as("displayUnit")?,
                 relativeQuantity: node
                     .attribute("relativeQuantity")
                     .map(|s| s == "true")
@@ -115,11 +110,11 @@ impl ModelDescription {
                     .attribute("unbounded")
                     .map(|s| s == "true")
                     .unwrap_or(false),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
-                nominal: node.optional_attribute_as("nominal"),
-                start: node.optional_attribute_as("start"),
-                derivative: node.optional_attribute_as("derivative"),
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
+                nominal: node.optional_attribute_as("nominal")?,
+                start: node.optional_attribute_as("start")?,
+                derivative: node.optional_attribute_as("derivative")?,
                 reinit: node
                     .attribute("reinit")
                     .map(|s| s == "true")
@@ -127,147 +122,147 @@ impl ModelDescription {
             });
         } else if node.has_tag_name("Int8") {
             return Ok(VariableType::Int8 {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                previous: node.optional_attribute_as("previous")?,
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             });
         } else if node.has_tag_name("UInt8") {
             return Ok(VariableType::UInt8 {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                previous: node.optional_attribute_as("previous")?,
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             });
         } else if node.has_tag_name("Int16") {
             return Ok(VariableType::Int16 {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                previous: node.optional_attribute_as("previous")?,
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             });
         } else if node.has_tag_name("UInt16") {
             return Ok(VariableType::UInt16 {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                previous: node.optional_attribute_as("previous")?,
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             });
         } else if node.has_tag_name("Int32") {
             return Ok(VariableType::Int32 {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                previous: node.optional_attribute_as("previous")?,
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             });
         } else if node.has_tag_name("UInt32") {
             return Ok(VariableType::UInt32 {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                previous: node.optional_attribute_as("previous")?,
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             });
         } else if node.has_tag_name("Int64") {
             return Ok(VariableType::Int64 {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                previous: node.optional_attribute_as("previous")?,
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             });
         } else if node.has_tag_name("UInt64") {
             return Ok(VariableType::UInt64 {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                previous: node.optional_attribute_as("previous")?,
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             });
         } else if node.has_tag_name("Boolean") {
             return Ok(VariableType::Boolean {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
+                previous: node.optional_attribute_as("previous")?,
             });
         } else if node.has_tag_name("String") {
             return Ok(VariableType::String {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
+                previous: node.optional_attribute_as("previous")?,
             });
         } else if node.has_tag_name("Binary") {
             return Ok(VariableType::Binary {
                 start: None, // TODO: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
+                previous: node.optional_attribute_as("previous")?,
             });
         } else if node.has_tag_name("Clock") {
             return Ok(VariableType::Clock {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
-                declaredType: node.optional_attribute("declaredType"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
+                declaredType: node.optional_attribute_as("declaredType")?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
+                previous: node.optional_attribute_as("previous")?,
                 canBeDeactivated: node.bool_attribute("canBeDeactivated", false),
-                priority: node.optional_attribute_as("priority"),
+                priority: node.optional_attribute_as("priority")?,
                 intervalVariability: IntervalVariability::from_str(
                     node.required_attribute("intervalVariability")?.as_str(),
                 )?,
-                intervalDecimal: node.optional_attribute_as("intervalDecimal"),
+                intervalDecimal: node.optional_attribute_as("intervalDecimal")?,
                 shiftDecimal: node.required_attribute("shiftDecimal")?.parse()?,
                 supportsFraction: node.bool_attribute("supportsFraction", false),
-                resolution: node.optional_attribute_as("resolution"),
-                intervalCounter: node.optional_attribute_as("intervalCounter"),
+                resolution: node.optional_attribute_as("resolution")?,
+                intervalCounter: node.optional_attribute_as("intervalCounter")?,
                 shiftCounter: node.required_attribute("shiftDecimal")?.parse()?,
             });
         } else if node.has_tag_name("Enumeration") {
             return Ok(VariableType::Enumeration {
-                start: node.optional_attribute_as("start"),
-                initial: node.optional_attribute_as("initial"),
+                start: node.optional_attribute_as("start")?,
+                initial: node.optional_attribute_as("initial")?,
                 declaredType: node.required_attribute("declaredType")?,
                 intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
-                previous: node.optional_attribute_as("previous"),
+                previous: node.optional_attribute_as("previous")?,
             });
         }
 
@@ -322,9 +317,9 @@ impl ModelDescription {
             .map(|child| {
                 let variable_type = Self::get_variable_type(&child)?;
                 let causality = child
-                    .optional_attribute_as("causality")
+                    .optional_attribute_as("causality")?
                     .unwrap_or(Causality::Local);
-                let variability = child.optional_attribute_as("variability").unwrap_or({
+                let variability = child.optional_attribute_as("variability")?.unwrap_or({
                     if matches!(
                         variable_type,
                         VariableType::Float32 { .. } | VariableType::Float64 { .. }
@@ -345,7 +340,7 @@ impl ModelDescription {
                     variableType: variable_type,
                     name: child.required_attribute("name")?,
                     valueReference: child.required_attribute("valueReference")?.parse()?,
-                    description: child.optional_attribute("description"),
+                    description: child.optional_attribute_as("description")?,
                     causality,
                     variability,
                     dimensions: Self::get_dimensions(&child)?,
@@ -418,15 +413,15 @@ impl ModelDescription {
             fmiVersion: root.required_attribute("fmiVersion")?,
             modelName: root.required_attribute("modelName")?,
             instantiationToken: root.required_attribute("instantiationToken")?,
-            description: root.optional_attribute("description"),
-            author: root.optional_attribute("author"),
-            version: root.optional_attribute("version"),
-            copyright: root.optional_attribute("copyright"),
-            license: root.optional_attribute("license"),
-            generationTool: root.optional_attribute("generationTool"),
-            generationDateAndTime: root.optional_attribute("generationDateAndTime"),
+            description: root.optional_attribute_as("description")?,
+            author: root.optional_attribute_as("author")?,
+            version: root.optional_attribute_as("version")?,
+            copyright: root.optional_attribute_as("copyright")?,
+            license: root.optional_attribute_as("license")?,
+            generationTool: root.optional_attribute_as("generationTool")?,
+            generationDateAndTime: root.optional_attribute_as("generationDateAndTime")?,
             variableNamingConvention: root
-                .optional_attribute("variableNamingConvention")
+                .optional_attribute_as("variableNamingConvention")?
                 .unwrap_or("flat".to_string())
                 .parse()?,
             defaultExperiment,
@@ -449,97 +444,97 @@ impl ModelDescription {
 impl TypeDefinition {
     fn from_node(node: &Node) -> Result<Self, Box<dyn Error>> {
         let name = node.required_attribute("name")?;
-        let description = node.optional_attribute("description");
+        let description = node.optional_attribute_as("description")?;
 
         if node.has_tag_name("Float32Type") {
             Ok(TypeDefinition::Float32 {
                 name,
                 description,
-                quantity: node.optional_attribute("quantity"),
-                unit: node.optional_attribute("unit"),
-                displayUnit: node.optional_attribute("displayUnit"),
+                quantity: node.optional_attribute_as("quantity")?,
+                unit: node.optional_attribute_as("unit")?,
+                displayUnit: node.optional_attribute_as("displayUnit")?,
                 relativeQuantity: node.bool_attribute("relativeQuantity", false),
                 unbounded: node.bool_attribute("unbounded", false),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
-                nominal: node.optional_attribute_as("nominal"),
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
+                nominal: node.optional_attribute_as("nominal")?,
             })
         } else if node.has_tag_name("Float64Type") {
             Ok(TypeDefinition::Float64 {
                 name,
                 description,
-                quantity: node.optional_attribute("quantity"),
-                unit: node.optional_attribute("unit"),
-                displayUnit: node.optional_attribute("displayUnit"),
+                quantity: node.optional_attribute_as("quantity")?,
+                unit: node.optional_attribute_as("unit")?,
+                displayUnit: node.optional_attribute_as("displayUnit")?,
                 relativeQuantity: node.bool_attribute("relativeQuantity", false),
                 unbounded: node.bool_attribute("unbounded", false),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
-                nominal: node.optional_attribute_as("nominal"),
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
+                nominal: node.optional_attribute_as("nominal")?,
             })
         } else if node.has_tag_name("Int8Type") {
             Ok(TypeDefinition::Int8 {
                 name,
                 description,
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             })
         } else if node.has_tag_name("UInt8Type") {
             Ok(TypeDefinition::UInt8 {
                 name,
                 description,
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             })
         } else if node.has_tag_name("Int16Type") {
             Ok(TypeDefinition::Int16 {
                 name,
                 description,
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             })
         } else if node.has_tag_name("UInt16Type") {
             Ok(TypeDefinition::UInt16 {
                 name,
                 description,
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             })
         } else if node.has_tag_name("Int32Type") {
             Ok(TypeDefinition::Int32 {
                 name,
                 description,
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             })
         } else if node.has_tag_name("UInt32Type") {
             Ok(TypeDefinition::UInt32 {
                 name,
                 description,
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             })
         } else if node.has_tag_name("Int64Type") {
             Ok(TypeDefinition::Int64 {
                 name,
                 description,
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             })
         } else if node.has_tag_name("UInt64Type") {
             Ok(TypeDefinition::UInt64 {
                 name,
                 description,
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             })
         } else if node.has_tag_name("BooleanType") {
             Ok(TypeDefinition::Boolean { name, description })
@@ -553,7 +548,7 @@ impl TypeDefinition {
                     .attribute("mimeType")
                     .unwrap_or("application/octet-stream")
                     .to_string(),
-                maxSize: node.optional_attribute_as("maxSize"),
+                maxSize: node.optional_attribute_as("maxSize")?,
             })
         } else if node.has_tag_name("EnumerationType") {
             let mut items = vec![];
@@ -567,9 +562,9 @@ impl TypeDefinition {
                 name,
                 description,
                 items,
-                quantity: node.optional_attribute("quantity"),
-                min: node.optional_attribute_as("min"),
-                max: node.optional_attribute_as("max"),
+                quantity: node.optional_attribute_as("quantity")?,
+                min: node.optional_attribute_as("min")?,
+                max: node.optional_attribute_as("max")?,
             })
         } else {
             Err(format!("Unknown type definition: {}", node.tag_name().name()).into())
@@ -581,7 +576,7 @@ impl Item {
     pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
         Ok(Item {
             name: node.required_attribute("name")?,
-            description: node.optional_attribute("description"),
+            description: node.optional_attribute_as("description")?,
             value: node.required_attribute("value")?.parse()?,
         })
     }

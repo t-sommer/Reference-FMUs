@@ -420,7 +420,7 @@ pub fn simulate_me<S: SolverFactory>(
     let mut solver = solver_factory.create(
         time,
         settings.model_description.derivatives.len(),
-        settings.model_description.numberOfEventIndicators,
+        settings.model_description.numberOfEventIndicators as usize,
         settings.tolerance.unwrap_or(1e-4),
         derivative_vrs,
         state_vrs,

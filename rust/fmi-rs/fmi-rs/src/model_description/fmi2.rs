@@ -83,6 +83,21 @@ pub enum DependencyKind {
     Discrete,
 }
 
+impl FromStr for DependencyKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "dependent" => Ok(DependencyKind::Dependent),
+            "constant" => Ok(DependencyKind::Constant),
+            "fixed" => Ok(DependencyKind::Fixed),
+            "tunable" => Ok(DependencyKind::Tunable),
+            "discrete" => Ok(DependencyKind::Discrete),
+            _ => Err(format!("Unknown dependency kind: {}", s)),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum VariableNamingConvention {
     Flat,
@@ -210,8 +225,8 @@ pub struct ScalarVariable {
 
 #[derive(Debug)]
 pub struct Unknown {
-    pub index: u32,
-    pub dependencies: Option<Vec<u32>>,
+    pub index: VariableIndex,
+    pub dependencies: Option<Vec<VariableIndex>>,
     pub dependenciesKind: Option<Vec<DependencyKind>>,
 }
 
@@ -233,7 +248,7 @@ pub struct ModelDescription {
     pub unitDefintions: Vec<Unit>,
     pub typeDefinitions: Vec<SimpleType>,
     pub modelVariables: Vec<ScalarVariable>,
-    pub numberOfEventIndicators: usize,
+    pub numberOfEventIndicators: u32,
     pub outputs: Vec<Unknown>,
     pub derivatives: Vec<Unknown>,
     pub initialUnknowns: Vec<Unknown>,

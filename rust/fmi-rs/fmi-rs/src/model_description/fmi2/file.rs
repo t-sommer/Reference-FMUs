@@ -34,7 +34,7 @@ impl ModelDescription {
 
             let valueReference = child.required_attribute("valueReference")?.parse()?;
 
-            let description = child.optional_attribute_as("description")?;
+            let description = child.attribute_as("description")?;
 
             let canHandleMultipleSetPerTimeInstant =
                 child.bool_attribute("canHandleMultipleSetPerTimeInstant", false);
@@ -94,10 +94,10 @@ impl ModelDescription {
         let defaultExperiment = root
             .get_child("DefaultExperiment")
             .map(|e| DefaultExperiment {
-                startTime: e.optional_attribute_as("startTime").unwrap(),
-                stopTime: e.optional_attribute_as("stopTime").unwrap(),
-                tolerance: e.optional_attribute_as("tolerance").unwrap(),
-                stepSize: e.optional_attribute_as("stepSize").unwrap(),
+                startTime: e.attribute_as("startTime").unwrap(),
+                stopTime: e.attribute_as("stopTime").unwrap(),
+                tolerance: e.attribute_as("tolerance").unwrap(),
+                stepSize: e.attribute_as("stepSize").unwrap(),
             });
 
         let coSimulation =
@@ -106,7 +106,7 @@ impl ModelDescription {
                     modelIdentifier: cs.required_attribute("modelIdentifier")?,
                     providesDirectionalDerivatives: cs
                         .bool_attribute("providesDirectionalDerivative", false),
-                    fixedInternalStepSize: cs.optional_attribute_as("fixedInternalStepSize")?,
+                    fixedInternalStepSize: cs.attribute_as("fixedInternalStepSize")?,
                     canHandleVariableCommunicationStepSize: cs
                         .bool_attribute("canHandleVariableCommunicationStepSize", false),
                     canNotUseMemoryManagementFunctions: cs
@@ -154,15 +154,15 @@ impl ModelDescription {
         let model_description = ModelDescription {
             modelName: root.required_attribute("modelName")?,
             guid: root.required_attribute("guid")?,
-            description: root.optional_attribute_as("description")?,
-            author: root.optional_attribute_as("author")?,
-            version: root.optional_attribute_as("version")?,
-            copyright: root.optional_attribute_as("copyright")?,
-            license: root.optional_attribute_as("license")?,
-            generationTool: root.optional_attribute_as("generationTool")?,
-            generationDateAndTime: root.optional_attribute_as("generationDateAndTime")?,
+            description: root.attribute_as("description")?,
+            author: root.attribute_as("author")?,
+            version: root.attribute_as("version")?,
+            copyright: root.attribute_as("copyright")?,
+            license: root.attribute_as("license")?,
+            generationTool: root.attribute_as("generationTool")?,
+            generationDateAndTime: root.attribute_as("generationDateAndTime")?,
             variableNamingConvention: root
-                .optional_attribute_as("variableNamingConvention")?
+                .attribute_as("variableNamingConvention")?
                 .unwrap_or("flat".to_string())
                 .parse()?,
             defaultExperiment,
@@ -184,50 +184,50 @@ impl ModelDescription {
         for child in node.children() {
             if child.has_tag_name("Real") {
                 return Ok(VariableType::Real {
-                    declaredType: child.optional_attribute_as("declaredType")?,
-                    quantity: child.optional_attribute_as("quantity")?,
-                    unit: child.optional_attribute_as("unit")?,
-                    displayUnit: child.optional_attribute_as("displayUnit")?,
+                    declaredType: child.attribute_as("declaredType")?,
+                    quantity: child.attribute_as("quantity")?,
+                    unit: child.attribute_as("unit")?,
+                    displayUnit: child.attribute_as("displayUnit")?,
                     relativeQuantity: child
                         .attribute("relativeQuantity")
                         .map(|s| s == "true")
                         .unwrap_or(false),
-                    min: child.optional_attribute_as("min")?,
-                    max: child.optional_attribute_as("max")?,
-                    nominal: child.optional_attribute_as("nominal")?,
+                    min: child.attribute_as("min")?,
+                    max: child.attribute_as("max")?,
+                    nominal: child.attribute_as("nominal")?,
                     unbounded: child
                         .attribute("unbounded")
                         .map(|s| s == "true")
                         .unwrap_or(false),
-                    start: child.optional_attribute_as("start")?,
+                    start: child.attribute_as("start")?,
                     derivative: child.optional_u32_attribute("derivative")?,
                     reinit: child.optional_bool_attribute("reinit")?.unwrap_or(false),
                 });
             } else if child.has_tag_name("Integer") {
                 return Ok(VariableType::Integer {
-                    declaredType: child.optional_attribute_as("declaredType")?,
-                    quantity: child.optional_attribute_as("quantity")?,
-                    min: child.optional_attribute_as("min")?,
-                    max: child.optional_attribute_as("max")?,
-                    start: child.optional_attribute_as("start")?,
+                    declaredType: child.attribute_as("declaredType")?,
+                    quantity: child.attribute_as("quantity")?,
+                    min: child.attribute_as("min")?,
+                    max: child.attribute_as("max")?,
+                    start: child.attribute_as("start")?,
                 });
             } else if child.has_tag_name("Boolean") {
                 return Ok(VariableType::Boolean {
-                    declaredType: child.optional_attribute_as("declaredType")?,
-                    start: child.optional_attribute_as("start")?,
+                    declaredType: child.attribute_as("declaredType")?,
+                    start: child.attribute_as("start")?,
                 });
             } else if child.has_tag_name("String") {
                 return Ok(VariableType::String {
-                    declaredType: child.optional_attribute_as("declaredType")?,
-                    start: child.optional_attribute_as("start")?,
+                    declaredType: child.attribute_as("declaredType")?,
+                    start: child.attribute_as("start")?,
                 });
             } else if child.has_tag_name("Enumeration") {
                 return Ok(VariableType::Enumeration {
                     declaredType: child.required_attribute("declaredType")?,
-                    quantity: child.optional_attribute_as("quantity")?,
-                    min: child.optional_attribute_as("min")?,
-                    max: child.optional_attribute_as("max")?,
-                    start: child.optional_attribute_as("start")?,
+                    quantity: child.attribute_as("quantity")?,
+                    min: child.attribute_as("min")?,
+                    max: child.attribute_as("max")?,
+                    start: child.attribute_as("start")?,
                 });
             }
         }
@@ -284,29 +284,29 @@ impl ModelDescription {
 impl SimpleType {
     fn from_node(node: &Node) -> Result<Self, Box<dyn Error>> {
         let name = node.required_attribute("name")?;
-        let description = node.optional_attribute_as("description")?;
+        let description = node.attribute_as("description")?;
 
         for child in node.children() {
             if child.has_tag_name("Real") {
                 return Ok(SimpleType::Real {
                     name,
                     description,
-                    quantity: child.optional_attribute_as("quantity")?,
-                    unit: child.optional_attribute_as("unit")?,
-                    displayUnit: child.optional_attribute_as("displayUnit")?,
+                    quantity: child.attribute_as("quantity")?,
+                    unit: child.attribute_as("unit")?,
+                    displayUnit: child.attribute_as("displayUnit")?,
                     relativeQuantity: child.bool_attribute("relativeQuantity", false),
                     unbounded: child.bool_attribute("unbounded", false),
-                    min: child.optional_attribute_as("min")?,
-                    max: child.optional_attribute_as("max")?,
-                    nominal: child.optional_attribute_as("nominal")?,
+                    min: child.attribute_as("min")?,
+                    max: child.attribute_as("max")?,
+                    nominal: child.attribute_as("nominal")?,
                 });
             } else if child.has_tag_name("Integer") {
                 return Ok(SimpleType::Integer {
                     name,
                     description,
-                    quantity: child.optional_attribute_as("quantity")?,
-                    min: child.optional_attribute_as("min")?,
-                    max: child.optional_attribute_as("max")?,
+                    quantity: child.attribute_as("quantity")?,
+                    min: child.attribute_as("min")?,
+                    max: child.attribute_as("max")?,
                 });
             } else if child.has_tag_name("Boolean") {
                 return Ok(SimpleType::Boolean { name, description });
@@ -323,7 +323,7 @@ impl SimpleType {
                     name,
                     description,
                     items,
-                    quantity: child.optional_attribute_as("quantity")?,
+                    quantity: child.attribute_as("quantity")?,
                 });
             }
         }
@@ -336,7 +336,7 @@ impl Item {
     pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
         Ok(Item {
             name: node.required_attribute("name")?,
-            description: node.optional_attribute_as("description")?,
+            description: node.attribute_as("description")?,
             value: node.required_attribute_as("value")?,
         })
     }

@@ -8,7 +8,7 @@ pub(crate) trait StringAttribute {
     // fn optional_attribute(&self, name: &str) -> Option<String>;
     fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>>;
     fn bool_attribute(&self, name: &str, default: bool) -> bool;
-    fn optional_attribute_as<T: FromStr>(&self, name: &str) -> Result<Option<T>, Box<dyn Error>>;
+    fn attribute_as<T: FromStr>(&self, name: &str) -> Result<Option<T>, Box<dyn Error>>;
     fn required_attribute_as<T: FromStr>(&self, name: &str) -> Result<T, Box<dyn Error>>;
     fn optional_u32_attribute(&self, name: &str) -> Result<Option<u32>, Box<dyn Error>>;
     // fn optional_i32_attribute(&self, name: &str) -> Result<Option<i32>, Box<dyn Error>>;
@@ -40,7 +40,7 @@ impl<'a, 'input> StringAttribute for Node<'a, 'input> {
         }
     }
 
-    fn optional_attribute_as<T: FromStr>(&self, name: &str) -> Result<Option<T>, Box<dyn Error>> {
+    fn attribute_as<T: FromStr>(&self, name: &str) -> Result<Option<T>, Box<dyn Error>> {
         if let Some(literal) = self.attribute(name) {
             let result = literal.parse().map_err(|_| {
                 format!(
@@ -122,16 +122,16 @@ impl Unit {
             .descendants()
             .find(|n| n.has_tag_name("BaseUnit"))
             .map(|n| BaseUnit {
-                kg: n.optional_attribute_as("kg").unwrap().unwrap_or(0),
-                m: n.optional_attribute_as("m").unwrap().unwrap_or(0),
-                s: n.optional_attribute_as("s").unwrap().unwrap_or(0),
-                A: n.optional_attribute_as("A").unwrap().unwrap_or(0),
-                K: n.optional_attribute_as("K").unwrap().unwrap_or(0),
-                mol: n.optional_attribute_as("mol").unwrap().unwrap_or(0),
-                cd: n.optional_attribute_as("cd").unwrap().unwrap_or(0),
-                rad: n.optional_attribute_as("rad").unwrap().unwrap_or(0),
-                factor: n.optional_attribute_as("factor").unwrap().unwrap_or(1.0),
-                offset: n.optional_attribute_as("offset").unwrap().unwrap_or(0.0),
+                kg: n.attribute_as("kg").unwrap().unwrap_or(0),
+                m: n.attribute_as("m").unwrap().unwrap_or(0),
+                s: n.attribute_as("s").unwrap().unwrap_or(0),
+                A: n.attribute_as("A").unwrap().unwrap_or(0),
+                K: n.attribute_as("K").unwrap().unwrap_or(0),
+                mol: n.attribute_as("mol").unwrap().unwrap_or(0),
+                cd: n.attribute_as("cd").unwrap().unwrap_or(0),
+                rad: n.attribute_as("rad").unwrap().unwrap_or(0),
+                factor: n.attribute_as("factor").unwrap().unwrap_or(1.0),
+                offset: n.attribute_as("offset").unwrap().unwrap_or(0.0),
             });
 
         let displayUnits = node
@@ -139,8 +139,8 @@ impl Unit {
             .filter(|n| n.has_tag_name("DisplayUnit"))
             .map(|n| DisplayUnit {
                 name: n.required_attribute("name").unwrap(),
-                factor: n.optional_attribute_as("factor").unwrap().unwrap_or(1.0),
-                offset: n.optional_attribute_as("offset").unwrap().unwrap_or(0.0),
+                factor: n.attribute_as("factor").unwrap().unwrap_or(1.0),
+                offset: n.attribute_as("offset").unwrap().unwrap_or(0.0),
                 inverse: n.bool_attribute("inverse", false),
             })
             .collect();

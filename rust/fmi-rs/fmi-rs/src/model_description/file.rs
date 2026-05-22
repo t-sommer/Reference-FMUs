@@ -4,7 +4,6 @@ use roxmltree::Node;
 
 use crate::model_description::{BaseUnit, DisplayUnit, Unit};
 
-
 pub(crate) trait NodeExt<'a, 'input> {
     fn get_child(&self, name: &str) -> Option<Node<'a, 'input>>;
     fn get_required_child(&self, name: &str) -> Result<Node<'a, 'input>, Box<dyn Error>>;

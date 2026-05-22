@@ -494,20 +494,38 @@ pub struct DefaultExperiment {
 }
 
 #[derive(Debug)]
-pub struct CoSimulation {
+pub struct ModelExchange {
     pub modelIdentifier: String,
+    pub needsExecutionTool: bool,
+    pub canBeInstantiatedOnlyOncePerProcess: bool,
+    pub canGetAndSetFMUState: bool,
+    pub canSerializeFMUState: bool,
     pub providesDirectionalDerivatives: bool,
-    pub fixedInternalStepSize: Option<String>,
-    pub canHandleVariableCommunicationStepSize: bool,
-    pub canNotUseMemoryManagementFunctions: bool,
+    pub providesAdjointDerivatives: bool,
+    pub providesPerElementDependencies: bool,
+    pub needsCompletedIntegratorStep: bool,
+    pub providesEvaluateDiscreteStates: bool,
 }
 
 #[derive(Debug)]
-pub struct ModelExchange {
+pub struct CoSimulation {
     pub modelIdentifier: String,
+    pub needsExecutionTool: bool,
+    pub canBeInstantiatedOnlyOncePerProcess: bool,
+    pub canGetAndSetFMUState: bool,
+    pub canSerializeFMUState: bool,
     pub providesDirectionalDerivatives: bool,
-    pub needsCompletedIntegratorStep: bool,
-    pub canNotUseMemoryManagementFunctions: bool,
+    pub providesAdjointDerivatives: bool,
+    pub providesPerElementDependencies: bool,
+    pub canHandleVariableCommunicationStepSize: bool,
+    pub fixedInternalStepSize: Option<String>,
+    pub maxOutputDerivativeOrder: u32,
+    pub recommendedIntermediateInputSmoothness: i32,
+    pub providesIntermediateUpdate: bool,
+    pub mightReturnEarlyFromDoStep: bool,
+    pub canReturnEarlyAfterIntermediateUpdate: bool,
+    pub hasEventMode: bool,
+    pub providesEvaluateDiscreteStates: bool,
 }
 
 #[derive(Debug)]
@@ -550,7 +568,7 @@ pub struct ModelDescription {
     pub defaultExperiment: Option<DefaultExperiment>,
     pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,
-    pub unitDefintions: Vec<Unit>,
+    pub unitDefinitions: Vec<Unit>,
     pub typeDefinitions: Vec<TypeDefinition>,
     pub modelVariables: Vec<ModelVariable>,
     pub outputs: Vec<Unknown>,

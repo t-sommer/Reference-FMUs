@@ -349,59 +349,35 @@ impl ModelDescription {
             .collect::<Result<Vec<_>, Box<dyn Error>>>()?;
 
         let defaultExperiment = root
-            .descendants()
-            .find(|n| n.has_tag_name("DefaultExperiment"))
-            .map(|e| DefaultExperiment {
-                startTime: e.attribute("startTime").map(|s| s.to_string()),
-                stopTime: e.attribute("stopTime").map(|s| s.to_string()),
-                tolerance: e.attribute("tolerance").map(|s| s.to_string()),
-                stepSize: e.attribute("stepSize").map(|s| s.to_string()),
-            });
+            .get_child("DefaultExperiment")
+            .map(|n| DefaultExperiment::from_node(&n))
+            .transpose()?;
 
         let coSimulation = root
-            .descendants()
-            .find(|n| n.has_tag_name("CoSimulation"))
-            .map(|cs| CoSimulation {
-                modelIdentifier: cs.attribute("modelIdentifier").unwrap().to_string(),
-                providesDirectionalDerivatives: cs
-                    .attribute_as("providesDirectionalDerivatives").unwrap().unwrap_or_default(),
-                fixedInternalStepSize: cs.attribute("fixedInternalStepSize").map(|s| s.to_string()),
-                canHandleVariableCommunicationStepSize: cs
-                    .attribute_as("canHandleVariableCommunicationStepSize").unwrap().unwrap_or_default(),
-                canNotUseMemoryManagementFunctions: true,
-            });
+            .get_child("CoSimulation")
+            .map(|n| CoSimulation::from_node(&n))
+            .transpose()?;
 
         let modelExchange = root
-            .descendants()
-            .find(|n| n.has_tag_name("ModelExchange"))
-            .map(|me| ModelExchange {
-                modelIdentifier: me.attribute("modelIdentifier").unwrap().to_string(),
-                providesDirectionalDerivatives: me
-                    .attribute_as("providesDirectionalDerivatives").unwrap().unwrap_or_default(),
-                needsCompletedIntegratorStep: me
-                    .attribute_as("needsCompletedIntegratorStep").unwrap().unwrap_or_default(),
-                canNotUseMemoryManagementFunctions: true,
-            });
+            .get_child("ModelExchange")
+            .map(|n| ModelExchange::from_node(&n))
+            .transpose()?;
 
-        let unitDefintions = root
-            .descendants()
-            .find(|n| n.has_tag_name("UnitDefinitions"))
-            .map(|n| n.descendants())
+        let unitDefinitions = root
+            .get_child("UnitDefinitions")
+            .map(|n| n.get_children("Unit"))
             .into_iter()
             .flatten()
-            .filter(|n| n.has_tag_name("Unit"))
-            .map(|n| Unit::from_node(&n).unwrap())
-            .collect();
+            .map(|n| Unit::from_node(&n))
+            .collect::<Result<Vec<_>, _>>()?;
 
         let typeDefinitions = root
-            .descendants()
-            .find(|n| n.has_tag_name("TypeDefinitions"))
-            .map(|n| n.descendants())
+            .get_child("TypeDefinitions")
+            .map(|n| n.children().filter(|c| c.tag_name().name().ends_with("Type")))
             .into_iter()
             .flatten()
-            .filter(|n| n.tag_name().name().ends_with("Type"))
-            .map(|n| TypeDefinition::from_node(&n).unwrap())
-            .collect();
+            .map(|n| TypeDefinition::from_node(&n))
+            .collect::<Result<Vec<_>, _>>()?;
 
         let outputs = Self::get_unknowns(root, "Output")?;
         let derivatives = Self::get_unknowns(root, "ContinuousStateDerivative")?;
@@ -427,7 +403,7 @@ impl ModelDescription {
             defaultExperiment,
             modelExchange,
             coSimulation,
-            unitDefintions,
+            unitDefinitions,
             typeDefinitions,
             modelVariables,
             outputs,
@@ -569,6 +545,58 @@ impl TypeDefinition {
         } else {
             Err(format!("Unknown type definition: {}", node.tag_name().name()).into())
         }
+    }
+}
+
+impl DefaultExperiment {
+    fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(DefaultExperiment {
+            startTime: node.attribute_as("startTime")?,
+            stopTime: node.attribute_as("stopTime")?,
+            tolerance: node.attribute_as("tolerance")?,
+            stepSize: node.attribute_as("stepSize")?,
+        })
+    }
+}
+
+impl ModelExchange {
+    fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(ModelExchange {
+            modelIdentifier: node.required_attribute_as("modelIdentifier")?,
+            needsExecutionTool: node.attribute_as("needsExecutionTool")?.unwrap_or_default(),
+            canBeInstantiatedOnlyOncePerProcess: node.attribute_as("canBeInstantiatedOnlyOncePerProcess")?.unwrap_or_default(),
+            canGetAndSetFMUState: node.attribute_as("canGetAndSetFMUState")?.unwrap_or_default(),
+            canSerializeFMUState: node.attribute_as("canSerializeFMUState")?.unwrap_or_default(),
+            providesDirectionalDerivatives: node.attribute_as("providesDirectionalDerivatives")?.unwrap_or_default(),
+            providesAdjointDerivatives: node.attribute_as("providesAdjointDerivatives")?.unwrap_or_default(),
+            providesPerElementDependencies: node.attribute_as("providesPerElementDependencies")?.unwrap_or_default(),
+            needsCompletedIntegratorStep: node.attribute_as("needsCompletedIntegratorStep")?.unwrap_or_default(),
+            providesEvaluateDiscreteStates: node.attribute_as("providesEvaluateDiscreteStates")?.unwrap_or_default(),
+        })
+    }
+}
+
+impl CoSimulation {
+    fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(CoSimulation {
+            modelIdentifier: node.required_attribute_as("modelIdentifier")?,
+            needsExecutionTool: node.attribute_as("needsExecutionTool")?.unwrap_or_default(),
+            canBeInstantiatedOnlyOncePerProcess: node.attribute_as("canBeInstantiatedOnlyOncePerProcess")?.unwrap_or_default(),
+            canGetAndSetFMUState: node.attribute_as("canGetAndSetFMUState")?.unwrap_or_default(),
+            canSerializeFMUState: node.attribute_as("canSerializeFMUState")?.unwrap_or_default(),
+            providesDirectionalDerivatives: node.attribute_as("providesDirectionalDerivatives")?.unwrap_or_default(),
+            providesAdjointDerivatives: node.attribute_as("providesAdjointDerivatives")?.unwrap_or_default(),
+            providesPerElementDependencies: node.attribute_as("providesPerElementDependencies")?.unwrap_or_default(),
+            canHandleVariableCommunicationStepSize: node.attribute_as("canHandleVariableCommunicationStepSize")?.unwrap_or_default(),
+            fixedInternalStepSize: node.attribute_as("fixedInternalStepSize")?,
+            maxOutputDerivativeOrder: node.attribute_as("maxOutputDerivativeOrder")?.unwrap_or_default(),
+            recommendedIntermediateInputSmoothness: node.attribute_as("recommendedIntermediateInputSmoothness")?.unwrap_or_default(),
+            providesIntermediateUpdate: node.attribute_as("providesIntermediateUpdate")?.unwrap_or_default(),
+            mightReturnEarlyFromDoStep: node.attribute_as("mightReturnEarlyFromDoStep")?.unwrap_or_default(),
+            canReturnEarlyAfterIntermediateUpdate: node.attribute_as("canReturnEarlyAfterIntermediateUpdate")?.unwrap_or_default(),
+            hasEventMode: node.attribute_as("hasEventMode")?.unwrap_or_default(),
+            providesEvaluateDiscreteStates: node.attribute_as("providesEvaluateDiscreteStates")?.unwrap_or_default(),
+        })
     }
 }
 

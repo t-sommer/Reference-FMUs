@@ -6,8 +6,7 @@ use std::vec;
 use std::{error::Error, path::Path};
 
 use crate::model_description::fmi2::{
-    Causality, CoSimulation, DefaultExperiment, DependencyKind, Initial, Item, ModelDescription,
-    ModelExchange, ScalarVariable, Unknown, Variability, VariableType,
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Initial, Item, ModelDescription, ModelExchange, ScalarVariable, Unknown, Variability, VariableNamingConvention, VariableType
 };
 
 impl DefaultExperiment {
@@ -150,10 +149,6 @@ impl ModelDescription {
             .map(|n| SimpleType::from_node(&n))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let numberOfEventIndicators = root.attribute_as("numberOfEventIndicators")?.unwrap_or_default();
-        let outputs = Self::get_unkonwns(root, "Outputs")?;
-        let derivatives = Self::get_unkonwns(root, "Derivatives")?;
-        let initialUnknowns = Self::get_unkonwns(root, "InitialUnknowns")?;
         let model_description = ModelDescription {
             modelName: root.required_attribute("modelName")?,
             guid: root.required_attribute("guid")?,
@@ -165,19 +160,20 @@ impl ModelDescription {
             generationTool: root.attribute_as("generationTool")?,
             generationDateAndTime: root.attribute_as("generationDateAndTime")?,
             variableNamingConvention: root
-                .attribute_as("variableNamingConvention")?
-                .unwrap_or("flat".to_string())
-                .parse()?,
+                .attribute("variableNamingConvention")
+                .map(|n| n.parse())
+                .transpose()?
+                .unwrap_or(VariableNamingConvention::Flat),
             defaultExperiment,
             coSimulation,
             modelExchange,
             unitDefintions,
             typeDefinitions,
             modelVariables,
-            numberOfEventIndicators,
-            outputs,
-            derivatives,
-            initialUnknowns,
+            numberOfEventIndicators: root.attribute_as("numberOfEventIndicators")?.unwrap_or_default(),
+            outputs: Self::get_unkonwns(root, "Outputs")?,
+            derivatives: Self::get_unkonwns(root, "Derivatives")?,
+            initialUnknowns: Self::get_unkonwns(root, "InitialUnknowns")?,
         };
 
         Ok(model_description)
@@ -336,7 +332,7 @@ impl SimpleType {
 }
 
 impl Item {
-    pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
+    fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
         Ok(Item {
             name: node.required_attribute("name")?,
             description: node.attribute_as("description")?,

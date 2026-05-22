@@ -25,7 +25,7 @@ impl ModelExchange {
 
         let sourceFiles = node
             .get_child("SourceFiles")
-            .map(|n| n.get_children("SourceFile"))
+            .map(|n| n.get_children("File"))
             .into_iter()
             .flatten()
             .map(|n| n.required_attribute("name"))
@@ -50,7 +50,7 @@ impl CoSimulation {
         
         let sourceFiles = node
             .get_child("SourceFiles")
-            .map(|n| n.get_children("SourceFile"))
+            .map(|n| n.get_children("File"))
             .into_iter()
             .flatten()
             .map(|n| n.required_attribute("name"))

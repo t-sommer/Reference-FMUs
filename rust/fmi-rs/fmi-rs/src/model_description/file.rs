@@ -1,4 +1,4 @@
-use std::{error::Error, str::FromStr};
+use std::{any::TypeId, error::Error, str::FromStr};
 
 use roxmltree::Node;
 
@@ -10,8 +10,8 @@ pub(crate) trait NodeExt<'a, 'input> {
     fn get_required_child(&self, name: &str) -> Result<Node<'a, 'input>, Box<dyn Error>>;
     fn get_children(&self, name: &str) -> Vec<Node<'a, 'input>>;
     fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>>;
-    fn attribute_as<T: FromStr>(&self, name: &str) -> Result<Option<T>, Box<dyn Error>>;
-    fn required_attribute_as<T: FromStr>(&self, name: &str) -> Result<T, Box<dyn Error>>;
+    fn attribute_as<T: FromStr + 'static>(&self, name: &str) -> Result<Option<T>, Box<dyn Error>>;
+    fn required_attribute_as<T: FromStr + 'static>(&self, name: &str) -> Result<T, Box<dyn Error>>;
 }
 
 impl<'a, 'input> NodeExt<'a, 'input> for Node<'a, 'input> {
@@ -35,25 +35,43 @@ impl<'a, 'input> NodeExt<'a, 'input> for Node<'a, 'input> {
             .map(|s| s.to_string())
     }
 
-    fn attribute_as<T: FromStr>(&self, name: &str) -> Result<Option<T>, Box<dyn Error>> {
+    fn attribute_as<T: FromStr + 'static>(&self, name: &str) -> Result<Option<T>, Box<dyn Error>> {
         if let Some(literal) = self.attribute(name) {
-            let result = literal.parse().map_err(|_| {
+            let normalized = if TypeId::of::<T>() == TypeId::of::<bool>() {
+                match literal {
+                    "1" => "true",
+                    "0" => "false",
+                    _ => literal,
+                }
+            } else {
+                literal
+            };
+            let result = normalized.parse::<T>().map_err(|_| {
                 format!(
                     "Illegal value '{}' for attribute '{}' in <{}>.",
                     literal,
                     name,
                     self.tag_name().name()
                 )
-            });
-            Ok(Some(result?))
+            })?;
+            Ok(Some(result))
         } else {
             Ok(None)
         }
     }
 
-    fn required_attribute_as<T: FromStr>(&self, name: &str) -> Result<T, Box<dyn Error>> {
+    fn required_attribute_as<T: FromStr + 'static>(&self, name: &str) -> Result<T, Box<dyn Error>> {
         if let Some(value) = self.attribute(name) {
-            value.parse().map_err(|_| {
+            let normalized = if TypeId::of::<T>() == TypeId::of::<bool>() {
+                match value {
+                    "1" => "true",
+                    "0" => "false",
+                    _ => value,
+                }
+            } else {
+                value
+            };
+            normalized.parse::<T>().map_err(|_| {
                 format!(
                     "Illegal value '{}' for attribute '{}' in <{}>.",
                     value,

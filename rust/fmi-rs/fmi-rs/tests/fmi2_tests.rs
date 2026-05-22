@@ -1,9 +1,9 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
 use fmi::fmi2::*;
-use fmi::model_description::{Causality, read_model_description};
-use fmi::sim::SimulationSettings;
-use fmi::sim::fmi2::Trajectories;
+use fmi::model_description::fmi2::{Causality, ModelDescription};
+use fmi::sim::fmi2::recorder::Recorder;
+use fmi::sim::fmi2::{SimulationSettings, Trajectories};
 use fmi::{fmi2::types::*, sim::fmi2::simulate_cs};
 use std::vec;
 use std::{env, path::PathBuf};
@@ -13,6 +13,17 @@ macro_rules! assert_ok {
         assert_eq!($status, fmi2OK);
     };
 }
+
+#[test]
+fn test_read_model_description() {
+    let unzipdir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("resources")
+        .join("fmi2")
+        .join("Feedthrough");
+    ModelDescription::read(&unzipdir.join("modelDescription.xml")).unwrap();
+}
+
 
 fn create_fmu() -> FMU2<CS> {
     let unzipdir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -54,7 +65,7 @@ fn test_csv_input() {
 
     let unzipdir = resources_dir.join("fmi2").join("Feedthrough");
 
-    let model_description = read_model_description(&unzipdir.join("modelDescription.xml")).unwrap();
+    let model_description = ModelDescription::read(&unzipdir.join("modelDescription.xml")).unwrap();
 
     let settings = SimulationSettings {
         unzipdir: &unzipdir,
@@ -66,7 +77,6 @@ fn test_csv_input() {
         output_interval: 0.1,
         tolerance: None,
         start_values: vec![],
-        output_file: None,
         log_fmi_calls: true,
         input_file: Some(resources_dir.join("fmi2").join("Feedthrough_in.csv")),
         early_return_allowed: false,
@@ -80,9 +90,11 @@ fn test_csv_input() {
         .filter(|var| var.causality == Causality::Output)
         .collect();
 
-    let mut simulation_result = Trajectories::new(output_variables);
+    let mut output = Trajectories::new(&model_description, output_variables);
 
-    simulate_cs(&settings, &mut simulation_result).unwrap();
+    let mut recorder = Recorder::new(&mut output);
+
+    simulate_cs(&settings, None, &mut recorder).unwrap();
 }
 
 #[test]

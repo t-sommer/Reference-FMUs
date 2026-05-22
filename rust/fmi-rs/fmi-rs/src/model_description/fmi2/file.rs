@@ -10,6 +10,46 @@ use crate::model_description::fmi2::{
     ModelExchange, ScalarVariable, Unknown, Variability, VariableType,
 };
 
+impl DefaultExperiment {
+    fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(DefaultExperiment {
+            startTime: node.attribute_as("startTime")?,
+            stopTime: node.attribute_as("stopTime")?,
+            tolerance: node.attribute_as("tolerance")?,
+            stepSize: node.attribute_as("stepSize")?,
+        })
+    }
+}
+
+impl ModelExchange {
+    fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(ModelExchange {
+            modelIdentifier: node.required_attribute("modelIdentifier")?,
+            providesDirectionalDerivatives: node
+                .attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
+            needsCompletedIntegratorStep: !node
+                .attribute_as::<bool>("completedIntegratorStepNotNeeded")?.unwrap_or_default(),
+            canNotUseMemoryManagementFunctions: node
+                .attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
+        })
+    }
+}
+
+impl CoSimulation {
+    fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(CoSimulation {
+            modelIdentifier: node.required_attribute("modelIdentifier")?,
+            providesDirectionalDerivatives: node
+                .attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
+            fixedInternalStepSize: node.attribute_as("fixedInternalStepSize")?,
+            canHandleVariableCommunicationStepSize: node
+                .attribute_as("canHandleVariableCommunicationStepSize")?.unwrap_or_default(),
+            canNotUseMemoryManagementFunctions: node
+                .attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
+        })
+    }
+}
+
 impl ModelDescription {
     pub fn read(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
         let text = match std::fs::read_to_string(path) {
@@ -41,41 +81,30 @@ impl ModelDescription {
 
             let variableType = Self::get_variable_type(&child)?;
 
-            let causality = match child.attribute("causality") {
-                Some("parameter") => Causality::Parameter,
-                Some("calculatedParameter") => Causality::CalculatedParameter,
-                Some("input") => Causality::Input,
-                Some("output") => Causality::Output,
-                Some("independent") => Causality::Independent,
-                _ => Causality::Local,
-            };
+            let causality = child.attribute("causality")
+                .map(|causality| Causality::from_str(causality))
+                .transpose()?
+                .unwrap_or(Causality::Local);
 
-            let variability = match child.attribute("variability") {
-                Some("constant") => Variability::Constant,
-                Some("fixed") => Variability::Fixed,
-                Some("tunable") => Variability::Tunable,
-                Some("discrete") => Variability::Discrete,
-                Some("continuous") => Variability::Continuous,
-                _ => {
-                    if matches!(variableType, VariableType::Real { .. })
-                        && !matches!(
-                            causality,
-                            Causality::Parameter | Causality::CalculatedParameter
-                        )
-                    {
-                        Variability::Continuous
-                    } else {
-                        Variability::Discrete
-                    }
+            let variability = if let Some(causality) = child.attribute("variability") {
+                Variability::from_str(causality)?
+            } else {
+                if matches!(variableType, VariableType::Real { .. })
+                    && !matches!(
+                        causality,
+                        Causality::Parameter | Causality::CalculatedParameter
+                    )
+                {
+                    Variability::Continuous
+                } else {
+                    Variability::Discrete
                 }
             };
 
-            let initial = match child.attribute("initial") {
-                Some("exact") => Initial::Exact,
-                Some("approx") => Initial::Approx,
-                Some("calculated") => Initial::Calculated,
-                _ => Initial::Exact,
-            };
+            let initial = child.attribute("initial")
+                .map(|initial| Initial::from_str(initial))
+                .transpose()?
+                .unwrap_or(Initial::Exact);
 
             let variable = ScalarVariable {
                 variableType,
@@ -93,43 +122,17 @@ impl ModelDescription {
 
         let defaultExperiment = root
             .get_child("DefaultExperiment")
-            .map(|e| DefaultExperiment {
-                startTime: e.attribute_as("startTime").unwrap(),
-                stopTime: e.attribute_as("stopTime").unwrap(),
-                tolerance: e.attribute_as("tolerance").unwrap(),
-                stepSize: e.attribute_as("stepSize").unwrap(),
-            });
+            .map(|n| DefaultExperiment::from_node(&n))
+            .transpose()?;
 
-        let coSimulation =
-            if let Some(cs) = root.get_child("CoSimulation") {
-                Some(CoSimulation {
-                    modelIdentifier: cs.required_attribute("modelIdentifier")?,
-                    providesDirectionalDerivatives: cs
-                        .attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
-                    fixedInternalStepSize: cs.attribute_as("fixedInternalStepSize")?,
-                    canHandleVariableCommunicationStepSize: cs
-                        .attribute_as("canHandleVariableCommunicationStepSize")?.unwrap_or_default(),
-                    canNotUseMemoryManagementFunctions: cs
-                        .attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
-                })
-            } else {
-                None
-            };
+        let coSimulation = root.get_child("CoSimulation")
+            .map(|n| CoSimulation::from_node(&n))
+            .transpose()?;
 
-        let modelExchange =
-            if let Some(me) = root.get_child("ModelExchange") {
-                Some(ModelExchange {
-                    modelIdentifier: me.required_attribute("modelIdentifier")?,
-                    providesDirectionalDerivatives: me
-                        .attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
-                    needsCompletedIntegratorStep: !me
-                        .attribute_as::<bool>("completedIntegratorStepNotNeeded")?.unwrap_or_default(),
-                    canNotUseMemoryManagementFunctions: me
-                        .attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
-                })
-            } else {
-                None
-            };
+        let modelExchange = root
+            .get_child("ModelExchange")
+            .map(|n| ModelExchange::from_node(&n))
+            .transpose()?;
 
         let unitDefintions = root
             .get_child("UnitDefintions")

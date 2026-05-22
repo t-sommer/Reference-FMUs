@@ -87,42 +87,39 @@ impl<'a, 'input> NodeExt<'a, 'input> for Node<'a, 'input> {
 }
 
 impl BaseUnit {
-    pub(crate) fn from_node(n: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
+    pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
         Ok(BaseUnit {
-            kg: n.attribute_as("kg")?.unwrap_or_default(),
-            m: n.attribute_as("m")?.unwrap_or_default(),
-            s: n.attribute_as("s")?.unwrap_or_default(),
-            A: n.attribute_as("A")?.unwrap_or_default(),
-            K: n.attribute_as("K")?.unwrap_or_default(),
-            mol: n.attribute_as("mol")?.unwrap_or_default(),
-            cd: n.attribute_as("cd")?.unwrap_or_default(),
-            rad: n.attribute_as("rad")?.unwrap_or_default(),
-            factor: n.attribute_as("factor")?.unwrap_or(1.0),
-            offset: n.attribute_as("offset")?.unwrap_or_default(),
+            kg: node.attribute_as("kg")?.unwrap_or_default(),
+            m: node.attribute_as("m")?.unwrap_or_default(),
+            s: node.attribute_as("s")?.unwrap_or_default(),
+            A: node.attribute_as("A")?.unwrap_or_default(),
+            K: node.attribute_as("K")?.unwrap_or_default(),
+            mol: node.attribute_as("mol")?.unwrap_or_default(),
+            cd: node.attribute_as("cd")?.unwrap_or_default(),
+            rad: node.attribute_as("rad")?.unwrap_or_default(),
+            factor: node.attribute_as("factor")?.unwrap_or(1.0),
+            offset: node.attribute_as("offset")?.unwrap_or_default(),
         })
     }
 }
 
 impl DisplayUnit {
-    pub(crate) fn from_node(n: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
+    pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
         Ok(DisplayUnit {
-            factor: n.attribute_as("factor")?.unwrap_or(1.0),
-            offset: n.attribute_as("offset")?.unwrap_or_default(),
-            inverse: n.attribute_as("inverse")?.unwrap_or_default(),
-            name: n.required_attribute("name")?,
+            factor: node.attribute_as("factor")?.unwrap_or(1.0),
+            offset: node.attribute_as("offset")?.unwrap_or_default(),
+            inverse: node.attribute_as("inverse")?.unwrap_or_default(),
+            name: node.required_attribute("name")?,
         })
     }
 }
 
 impl Unit {
     pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
-        let name = node.required_attribute("name")?;
-        let baseUnit = node.get_child("BaseUnit").map(|n| BaseUnit::from_node(&n)).transpose()?;
-        let displayUnits = node.get_children("DisplayUnit").into_iter().map(|n| DisplayUnit::from_node(&n)).collect::<Result<Vec<_>, _>>()?;
         Ok(Unit {
-            name,
-            baseUnit,
-            displayUnits,
+            name: node.required_attribute("name")?,
+            baseUnit: node.get_child("BaseUnit").map(|n| BaseUnit::from_node(&n)).transpose()?,
+            displayUnits: node.get_children("DisplayUnit").into_iter().map(|n| DisplayUnit::from_node(&n)).collect::<Result<Vec<_>, _>>()?,
         })
     }
 }

@@ -58,6 +58,21 @@ pub enum Causality {
     Independent,
 }
 
+impl FromStr for Causality {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "parameter" => Ok(Causality::Parameter),
+            "calculatedParameter" => Ok(Causality::CalculatedParameter),
+            "input" => Ok(Causality::Input),
+            "output" => Ok(Causality::Output),
+            "local" => Ok(Causality::Local),
+            "independent" => Ok(Causality::Independent),
+            _ => Err(format!("Unknown causality: {}", s)),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Variability {
     Constant,
@@ -67,11 +82,37 @@ pub enum Variability {
     Continuous,
 }
 
+impl FromStr for Variability {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "constant" => Ok(Variability::Constant),
+            "fixed" => Ok(Variability::Fixed),
+            "tunable" => Ok(Variability::Tunable),
+            "discrete" => Ok(Variability::Discrete),
+            "continuous" => Ok(Variability::Continuous),
+            _ => Err(format!("Unknown variability: {}", s)),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Initial {
     Exact,
     Approx,
     Calculated,
+}
+
+impl FromStr for Initial {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "exact" => Ok(Initial::Exact),
+            "approx" => Ok(Initial::Approx),
+            "calculated" => Ok(Initial::Calculated),
+            _ => Err(format!("Unknown intial: {}", s)),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -112,19 +153,6 @@ impl FromStr for VariableNamingConvention {
             "flat" => Ok(VariableNamingConvention::Flat),
             "structured" => Ok(VariableNamingConvention::Structured),
             _ => Err(format!("Unknown variable naming convention: {}", s)),
-        }
-    }
-}
-
-impl FromStr for Initial {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "exact" => Ok(Initial::Exact),
-            "approx" => Ok(Initial::Approx),
-            "calculated" => Ok(Initial::Calculated),
-            _ => Err(format!("Unknown initial value: {}", s)),
         }
     }
 }

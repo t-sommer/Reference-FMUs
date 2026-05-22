@@ -3,7 +3,7 @@ use std::{error::Error, path::Path, str::FromStr};
 use roxmltree::Node;
 
 use crate::model_description::Unit;
-use crate::model_description::file::StringAttribute;
+use crate::model_description::file::NodeExt;
 
 use crate::model_description::fmi3::{
     Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability,
@@ -68,7 +68,7 @@ impl ModelDescription {
     fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
         if node.has_tag_name("Float32") {
             return Ok(VariableType::Float32 {
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 declaredType: node.attribute_as("declaredType")?,
                 initial: node.attribute_as("initial")?,
@@ -95,7 +95,7 @@ impl ModelDescription {
             });
         } else if node.has_tag_name("Float64") {
             return Ok(VariableType::Float64 {
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 declaredType: node.attribute_as("declaredType")?,
                 initial: node.attribute_as("initial")?,
@@ -125,7 +125,7 @@ impl ModelDescription {
                 start: node.attribute_as("start")?,
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
@@ -136,7 +136,7 @@ impl ModelDescription {
                 start: node.attribute_as("start")?,
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
@@ -147,7 +147,7 @@ impl ModelDescription {
                 start: node.attribute_as("start")?,
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
@@ -158,7 +158,7 @@ impl ModelDescription {
                 start: node.attribute_as("start")?,
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
@@ -170,7 +170,7 @@ impl ModelDescription {
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
@@ -182,7 +182,7 @@ impl ModelDescription {
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
@@ -194,7 +194,7 @@ impl ModelDescription {
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
@@ -206,7 +206,7 @@ impl ModelDescription {
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
@@ -217,7 +217,7 @@ impl ModelDescription {
                 start: node.attribute_as("start")?,
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
             });
         } else if node.has_tag_name("String") {
@@ -225,7 +225,7 @@ impl ModelDescription {
                 start: node.attribute_as("start")?,
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
             });
         } else if node.has_tag_name("Binary") {
@@ -234,7 +234,7 @@ impl ModelDescription {
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
             });
         } else if node.has_tag_name("Clock") {
@@ -242,16 +242,16 @@ impl ModelDescription {
                 start: node.attribute_as("start")?,
                 initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
-                canBeDeactivated: node.bool_attribute("canBeDeactivated", false),
+                canBeDeactivated: node.attribute_as("canBeDeactivated")?.unwrap_or_default(),
                 priority: node.attribute_as("priority")?,
                 intervalVariability: IntervalVariability::from_str(
                     node.required_attribute("intervalVariability")?.as_str(),
                 )?,
                 intervalDecimal: node.attribute_as("intervalDecimal")?,
                 shiftDecimal: node.required_attribute("shiftDecimal")?.parse()?,
-                supportsFraction: node.bool_attribute("supportsFraction", false),
+                supportsFraction: node.attribute_as("supportsFraction")?.unwrap_or_default(),
                 resolution: node.attribute_as("resolution")?,
                 intervalCounter: node.attribute_as("intervalCounter")?,
                 shiftCounter: node.required_attribute("shiftDecimal")?.parse()?,
@@ -261,7 +261,7 @@ impl ModelDescription {
                 start: node.attribute_as("start")?,
                 initial: node.attribute_as("initial")?,
                 declaredType: node.required_attribute("declaredType")?,
-                intermediateUpdate: node.bool_attribute("intermediateUpdate", false),
+                intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
             });
         }
@@ -364,10 +364,10 @@ impl ModelDescription {
             .map(|cs| CoSimulation {
                 modelIdentifier: cs.attribute("modelIdentifier").unwrap().to_string(),
                 providesDirectionalDerivatives: cs
-                    .bool_attribute("providesDirectionalDerivatives", false),
+                    .attribute_as("providesDirectionalDerivatives").unwrap().unwrap_or_default(),
                 fixedInternalStepSize: cs.attribute("fixedInternalStepSize").map(|s| s.to_string()),
                 canHandleVariableCommunicationStepSize: cs
-                    .bool_attribute("canHandleVariableCommunicationStepSize", false),
+                    .attribute_as("canHandleVariableCommunicationStepSize").unwrap().unwrap_or_default(),
                 canNotUseMemoryManagementFunctions: true,
             });
 
@@ -377,9 +377,9 @@ impl ModelDescription {
             .map(|me| ModelExchange {
                 modelIdentifier: me.attribute("modelIdentifier").unwrap().to_string(),
                 providesDirectionalDerivatives: me
-                    .bool_attribute("providesDirectionalDerivatives", false),
+                    .attribute_as("providesDirectionalDerivatives").unwrap().unwrap_or_default(),
                 needsCompletedIntegratorStep: me
-                    .bool_attribute("needsCompletedIntegratorStep", false),
+                    .attribute_as("needsCompletedIntegratorStep").unwrap().unwrap_or_default(),
                 canNotUseMemoryManagementFunctions: true,
             });
 
@@ -453,8 +453,8 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 unit: node.attribute_as("unit")?,
                 displayUnit: node.attribute_as("displayUnit")?,
-                relativeQuantity: node.bool_attribute("relativeQuantity", false),
-                unbounded: node.bool_attribute("unbounded", false),
+                relativeQuantity: node.attribute_as("relativeQuantity")?.unwrap_or_default(),
+                unbounded: node.attribute_as("unbounded")?.unwrap_or_default(),
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
                 nominal: node.attribute_as("nominal")?,
@@ -466,8 +466,8 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 unit: node.attribute_as("unit")?,
                 displayUnit: node.attribute_as("displayUnit")?,
-                relativeQuantity: node.bool_attribute("relativeQuantity", false),
-                unbounded: node.bool_attribute("unbounded", false),
+                relativeQuantity: node.attribute_as("relativeQuantity")?.unwrap_or_default(),
+                unbounded: node.attribute_as("unbounded")?.unwrap_or_default(),
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
                 nominal: node.attribute_as("nominal")?,

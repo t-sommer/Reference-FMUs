@@ -1,4 +1,4 @@
-use crate::model_description::file::{NodeExt, StringAttribute};
+use crate::model_description::file::NodeExt;
 use crate::model_description::{Unit, fmi2::SimpleType};
 use roxmltree::Node;
 use std::str::FromStr;
@@ -37,7 +37,7 @@ impl ModelDescription {
             let description = child.attribute_as("description")?;
 
             let canHandleMultipleSetPerTimeInstant =
-                child.bool_attribute("canHandleMultipleSetPerTimeInstant", false);
+                child.attribute_as("canHandleMultipleSetPerTimeInstant")?.unwrap_or_default();
 
             let variableType = Self::get_variable_type(&child)?;
 
@@ -105,12 +105,12 @@ impl ModelDescription {
                 Some(CoSimulation {
                     modelIdentifier: cs.required_attribute("modelIdentifier")?,
                     providesDirectionalDerivatives: cs
-                        .bool_attribute("providesDirectionalDerivative", false),
+                        .attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
                     fixedInternalStepSize: cs.attribute_as("fixedInternalStepSize")?,
                     canHandleVariableCommunicationStepSize: cs
-                        .bool_attribute("canHandleVariableCommunicationStepSize", false),
+                        .attribute_as("canHandleVariableCommunicationStepSize")?.unwrap_or_default(),
                     canNotUseMemoryManagementFunctions: cs
-                        .bool_attribute("canNotUseMemoryManagementFunctions", false),
+                        .attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
                 })
             } else {
                 None
@@ -121,11 +121,11 @@ impl ModelDescription {
                 Some(ModelExchange {
                     modelIdentifier: me.required_attribute("modelIdentifier")?,
                     providesDirectionalDerivatives: me
-                        .bool_attribute("providesDirectionalDerivative", false),
+                        .attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
                     needsCompletedIntegratorStep: !me
-                        .bool_attribute("completedIntegratorStepNotNeeded", false),
+                        .attribute_as::<bool>("completedIntegratorStepNotNeeded")?.unwrap_or_default(),
                     canNotUseMemoryManagementFunctions: me
-                        .bool_attribute("canNotUseMemoryManagementFunctions", false),
+                        .attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
                 })
             } else {
                 None
@@ -147,7 +147,7 @@ impl ModelDescription {
             .map(|n| SimpleType::from_node(&n))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let numberOfEventIndicators = root.optional_u32_attribute("numberOfEventIndicators")?.unwrap_or(0);
+        let numberOfEventIndicators = root.attribute_as("numberOfEventIndicators")?.unwrap_or_default();
         let outputs = Self::get_unkonwns(root, "Outputs")?;
         let derivatives = Self::get_unkonwns(root, "Derivatives")?;
         let initialUnknowns = Self::get_unkonwns(root, "InitialUnknowns")?;
@@ -200,8 +200,8 @@ impl ModelDescription {
                         .map(|s| s == "true")
                         .unwrap_or(false),
                     start: child.attribute_as("start")?,
-                    derivative: child.optional_u32_attribute("derivative")?,
-                    reinit: child.optional_bool_attribute("reinit")?.unwrap_or(false),
+                    derivative: child.attribute_as("derivative")?,
+                    reinit: child.attribute_as("reinit")?.unwrap_or_default(),
                 });
             } else if child.has_tag_name("Integer") {
                 return Ok(VariableType::Integer {
@@ -294,8 +294,8 @@ impl SimpleType {
                     quantity: child.attribute_as("quantity")?,
                     unit: child.attribute_as("unit")?,
                     displayUnit: child.attribute_as("displayUnit")?,
-                    relativeQuantity: child.bool_attribute("relativeQuantity", false),
-                    unbounded: child.bool_attribute("unbounded", false),
+                    relativeQuantity: child.attribute_as("relativeQuantity")?.unwrap_or_default(),
+                    unbounded: child.attribute_as("unbounded")?.unwrap_or_default(),
                     min: child.attribute_as("min")?,
                     max: child.attribute_as("max")?,
                     nominal: child.attribute_as("nominal")?,

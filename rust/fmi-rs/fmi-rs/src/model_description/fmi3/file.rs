@@ -302,16 +302,12 @@ impl ModelDescription {
             ..roxmltree::ParsingOptions::default()
         };
 
-        let doc = roxmltree::Document::parse_with_options(&text, opt).unwrap();
+        let doc = roxmltree::Document::parse_with_options(&text, opt)?;
 
         let root = &doc.root_element();
 
-        let model_variables_node = root
-            .descendants()
-            .find(|n| n.has_tag_name("ModelVariables"))
-            .unwrap();
-
-        let modelVariables: Vec<ModelVariable> = model_variables_node
+        let modelVariables: Vec<ModelVariable> = root
+            .get_required_child("ModelVariables")?
             .children()
             .filter(|n| n.is_element())
             .map(|child| {

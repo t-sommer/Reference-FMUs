@@ -529,6 +529,18 @@ pub struct CoSimulation {
 }
 
 #[derive(Debug)]
+pub struct ScheduledExecution {
+    pub modelIdentifier: String,
+    pub needsExecutionTool: bool,
+    pub canBeInstantiatedOnlyOncePerProcess: bool,
+    pub canGetAndSetFMUState: bool,
+    pub canSerializeFMUState: bool,
+    pub providesDirectionalDerivatives: bool,
+    pub providesAdjointDerivatives: bool,
+    pub providesPerElementDependencies: bool,
+}
+
+#[derive(Debug)]
 pub enum Dimension {
     Fixed { start: usize },
     Variable { valueReference: fmiValueReference },
@@ -568,6 +580,7 @@ pub struct ModelDescription {
     pub defaultExperiment: Option<DefaultExperiment>,
     pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,
+    pub scheduledExecution: Option<ScheduledExecution>,
     pub unitDefinitions: Vec<Unit>,
     pub typeDefinitions: Vec<TypeDefinition>,
     pub modelVariables: Vec<ModelVariable>,

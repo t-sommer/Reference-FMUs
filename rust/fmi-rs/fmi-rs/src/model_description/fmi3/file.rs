@@ -5,10 +5,9 @@ use roxmltree::Node;
 use crate::model_description::Unit;
 use crate::model_description::file::NodeExt;
 
+use crate::model_description::fmi3::VariableNamingConvention;
 use crate::model_description::fmi3::{
-    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability,
-    Item, ModelDescription, ModelExchange, ModelVariable, TypeDefinition, Unknown, Variability,
-    VariableType,
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability, Item, ModelDescription, ModelExchange, ModelVariable, ScheduledExecution, TypeDefinition, Unknown, Variability, VariableType
 };
 
 impl ModelDescription {
@@ -349,14 +348,19 @@ impl ModelDescription {
             .map(|n| DefaultExperiment::from_node(&n))
             .transpose()?;
 
+        let modelExchange = root
+            .get_child("ModelExchange")
+            .map(|n| ModelExchange::from_node(&n))
+            .transpose()?;
+
         let coSimulation = root
             .get_child("CoSimulation")
             .map(|n| CoSimulation::from_node(&n))
             .transpose()?;
 
-        let modelExchange = root
-            .get_child("ModelExchange")
-            .map(|n| ModelExchange::from_node(&n))
+        let scheduledExecution = root
+            .get_child("ScheduledExecution")
+            .map(|n| ScheduledExecution::from_node(&n))
             .transpose()?;
 
         let unitDefinitions = root
@@ -394,11 +398,11 @@ impl ModelDescription {
             generationDateAndTime: root.attribute_as("generationDateAndTime")?,
             variableNamingConvention: root
                 .attribute_as("variableNamingConvention")?
-                .unwrap_or("flat".to_string())
-                .parse()?,
+                .unwrap_or(VariableNamingConvention::Flat),
             defaultExperiment,
             modelExchange,
             coSimulation,
+            scheduledExecution,
             unitDefinitions,
             typeDefinitions,
             modelVariables,
@@ -592,6 +596,21 @@ impl CoSimulation {
             canReturnEarlyAfterIntermediateUpdate: node.attribute_as("canReturnEarlyAfterIntermediateUpdate")?.unwrap_or_default(),
             hasEventMode: node.attribute_as("hasEventMode")?.unwrap_or_default(),
             providesEvaluateDiscreteStates: node.attribute_as("providesEvaluateDiscreteStates")?.unwrap_or_default(),
+        })
+    }
+}
+
+impl ScheduledExecution {
+    fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(ScheduledExecution {
+            modelIdentifier: node.required_attribute_as("modelIdentifier")?,
+            needsExecutionTool: node.attribute_as("needsExecutionTool")?.unwrap_or_default(),
+            canBeInstantiatedOnlyOncePerProcess: node.attribute_as("canBeInstantiatedOnlyOncePerProcess")?.unwrap_or_default(),
+            canGetAndSetFMUState: node.attribute_as("canGetAndSetFMUState")?.unwrap_or_default(),
+            canSerializeFMUState: node.attribute_as("canSerializeFMUState")?.unwrap_or_default(),
+            providesDirectionalDerivatives: node.attribute_as("providesDirectionalDerivatives")?.unwrap_or_default(),
+            providesAdjointDerivatives: node.attribute_as("providesAdjointDerivatives")?.unwrap_or_default(),
+            providesPerElementDependencies: node.attribute_as("providesPerElementDependencies")?.unwrap_or_default(),
         })
     }
 }

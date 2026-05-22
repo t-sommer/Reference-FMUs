@@ -224,19 +224,31 @@ pub struct DefaultExperiment {
 
 #[derive(Debug)]
 pub struct CoSimulation {
+    pub sourceFiles: Vec<String>,
     pub modelIdentifier: String,
-    pub providesDirectionalDerivatives: bool,
-    pub fixedInternalStepSize: Option<String>,
+    pub needsExecutionTool: bool,
     pub canHandleVariableCommunicationStepSize: bool,
+    pub canInterpolateInputs: bool,
+    pub maxOutputDerivativeOrder: u32,
+    pub canRunAsynchronuously: bool,
+    pub canBeInstantiatedOnlyOncePerProcess: bool,
     pub canNotUseMemoryManagementFunctions: bool,
+    pub canGetAndSetFMUstate: bool,
+    pub canSerializeFMUstate: bool,
+    pub providesDirectionalDerivative: bool,
 }
 
 #[derive(Debug)]
 pub struct ModelExchange {
+    pub sourceFiles: Vec<String>,
     pub modelIdentifier: String,
-    pub providesDirectionalDerivatives: bool,
-    pub needsCompletedIntegratorStep: bool,
+    pub needsExecutionTool: bool,
+    pub completedIntegratorStepNotNeeded: bool,
+    pub canBeInstantiatedOnlyOncePerProcess: bool,
     pub canNotUseMemoryManagementFunctions: bool,
+    pub canGetAndSetFMUstate: bool,
+    pub canSerializeFMUstate: bool,
+    pub providesDirectionalDerivative: bool,
 }
 
 #[derive(Debug)]

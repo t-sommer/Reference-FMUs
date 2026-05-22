@@ -76,12 +76,13 @@ pub fn simulate_fmu(
         };
 
     let internal_step_size: Option<f64> = model_description
-        .coSimulation
+        .defaultExperiment
         .as_ref()
         .unwrap()
-        .fixedInternalStepSize
+        .stepSize
         .as_ref()
-        .map(|v| v.parse().unwrap());
+        .map(|v| v.parse())
+        .transpose()?;
 
     let start_time = args.start_time.unwrap_or(start_time);
     let stop_time = args.stop_time.unwrap_or(stop_time);

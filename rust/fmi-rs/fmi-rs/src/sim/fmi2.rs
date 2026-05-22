@@ -327,7 +327,7 @@ pub fn simulate_me<S: SolverFactory>(
         }
     };
 
-    let needs_completed_integrator_step = model_exchange.needsCompletedIntegratorStep;
+    let needs_completed_integrator_step = !model_exchange.completedIntegratorStepNotNeeded;
 
     let fmu = FMU2::<ME>::new(
         settings.unzipdir,
@@ -450,7 +450,7 @@ pub fn simulate_me<S: SolverFactory>(
             fmu.getDerivatives(state_derivatives);
             Ok(())
         }),
-        if model_exchange.providesDirectionalDerivatives {
+        if model_exchange.providesDirectionalDerivative {
             Some(Box::new(|unknowns, knowns, seed, sensitivity| {
                 fmu.getDirectionalDerivative(unknowns, knowns, seed, sensitivity);
                 Ok(())

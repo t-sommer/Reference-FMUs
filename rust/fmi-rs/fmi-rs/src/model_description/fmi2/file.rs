@@ -22,29 +22,53 @@ impl DefaultExperiment {
 
 impl ModelExchange {
     fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
+
+        let sourceFiles = node
+            .get_child("SourceFiles")
+            .map(|n| n.get_children("SourceFile"))
+            .into_iter()
+            .flatten()
+            .map(|n| n.required_attribute("name"))
+            .collect::<Result<Vec<_>, _>>()?;
+
         Ok(ModelExchange {
-            modelIdentifier: node.required_attribute("modelIdentifier")?,
-            providesDirectionalDerivatives: node
-                .attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
-            needsCompletedIntegratorStep: !node
-                .attribute_as::<bool>("completedIntegratorStepNotNeeded")?.unwrap_or_default(),
-            canNotUseMemoryManagementFunctions: node
-                .attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
+            sourceFiles,
+            modelIdentifier: node.required_attribute_as("modelIdentifier")?,
+            needsExecutionTool: node.attribute_as("needsExecutionTool")?.unwrap_or_default(),
+            completedIntegratorStepNotNeeded: node.attribute_as("completedIntegratorStepNotNeeded")?.unwrap_or_default(),
+            canBeInstantiatedOnlyOncePerProcess: node.attribute_as("canBeInstantiatedOnlyOncePerProcess")?.unwrap_or_default(),
+            canNotUseMemoryManagementFunctions: node.attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
+            canGetAndSetFMUstate: node.attribute_as("canGetAndSetFMUstate")?.unwrap_or_default(),
+            canSerializeFMUstate: node.attribute_as("canSerializeFMUstate")?.unwrap_or_default(),
+            providesDirectionalDerivative: node.attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
         })
     }
 }
 
 impl CoSimulation {
     fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
+        
+        let sourceFiles = node
+            .get_child("SourceFiles")
+            .map(|n| n.get_children("SourceFile"))
+            .into_iter()
+            .flatten()
+            .map(|n| n.required_attribute("name"))
+            .collect::<Result<Vec<_>, _>>()?;
+        
         Ok(CoSimulation {
-            modelIdentifier: node.required_attribute("modelIdentifier")?,
-            providesDirectionalDerivatives: node
-                .attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
-            fixedInternalStepSize: node.attribute_as("fixedInternalStepSize")?,
-            canHandleVariableCommunicationStepSize: node
-                .attribute_as("canHandleVariableCommunicationStepSize")?.unwrap_or_default(),
-            canNotUseMemoryManagementFunctions: node
-                .attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
+            sourceFiles,
+            modelIdentifier: node.required_attribute_as("modelIdentifier")?,
+            needsExecutionTool: node.attribute_as("needsExecutionTool")?.unwrap_or_default(),
+            canHandleVariableCommunicationStepSize: node.attribute_as("canHandleVariableCommunicationStepSize")?.unwrap_or_default(),
+            canInterpolateInputs: node.attribute_as("canInterpolateInputs")?.unwrap_or_default(),
+            maxOutputDerivativeOrder: node.attribute_as("maxOutputDerivativeOrder")?.unwrap_or_default(),
+            canRunAsynchronuously: node.attribute_as("canRunAsynchronuously")?.unwrap_or_default(),
+            canBeInstantiatedOnlyOncePerProcess: node.attribute_as("canBeInstantiatedOnlyOncePerProcess")?.unwrap_or_default(),
+            canNotUseMemoryManagementFunctions: node.attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
+            canGetAndSetFMUstate: node.attribute_as("canGetAndSetFMUstate")?.unwrap_or_default(),
+            canSerializeFMUstate: node.attribute_as("canSerializeFMUstate")?.unwrap_or_default(),
+            providesDirectionalDerivative: node.attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
         })
     }
 }

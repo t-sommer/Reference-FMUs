@@ -1,7 +1,7 @@
 use crate::sim::{
     GetContinuousStateDerivativesFn, GetContinuousStatesFn, GetDirectionalDerivativeFn,
     GetEventIndicatorsFn, GetNominalsOfContinuousStatesFn, SetContinuousInputsFn,
-    SetContinuousStatesFn, SetTimeFn, Solver, SolverFactory,
+    SetContinuousStatesFn, SetTimeFn, Solver, SolverFactory, relative_eq,
 };
 
 type Error = Box<dyn std::error::Error>;
@@ -132,7 +132,7 @@ impl<'a> Solver for ForwardEuler<'a> {
         let mut time = self.start_time + self.n_steps as f64 * self.fixed_step_size;
 
         if next_time - time < self.fixed_step_size
-            && !relative_eq!(next_time, time + self.fixed_step_size)
+            && !relative_eq(next_time, time + self.fixed_step_size)
         {
             let message = format!(
                 "Next time {next_time} is too close to current time {time}. Minimum step size is {}.",
@@ -142,7 +142,7 @@ impl<'a> Solver for ForwardEuler<'a> {
         }
 
         while time + self.fixed_step_size < next_time
-            || relative_eq!(time + self.fixed_step_size, next_time)
+            || relative_eq(time + self.fixed_step_size, next_time)
         {
             let (time_reached, state_event) = self.do_fixed_step()?;
 

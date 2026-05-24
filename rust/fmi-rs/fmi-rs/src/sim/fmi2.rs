@@ -13,6 +13,7 @@ use crate::{
     sim::{
         SolverFactory,
         fmi2::{input::StaticInput, recorder::Recorder},
+        relative_eq, relative_ge, relative_gt, relative_lt,
     },
     types::{
         fmiStatus::{self, fmiOK, fmiWarning},
@@ -238,11 +239,7 @@ pub fn simulate_cs(
 
     let mut n_steps = 0;
 
-    loop {
-        if time > stop_time || relative_eq!(time, stop_time) {
-            break;
-        }
-
+    while relative_lt(time, stop_time) {
         let next_regular_point = start_time + (n_steps + 1) as f64 * output_interval;
 
         let mut next_communication_point = next_regular_point;
@@ -250,15 +247,12 @@ pub fn simulate_cs(
         if can_handle_variable_communication_step_size
             && let Some(input) = &input
             && let Some(next_input_event_time) = input.next_event_time(time)
-            && next_regular_point > next_input_event_time
-            && !relative_eq!(next_regular_point, next_input_event_time)
+            && relative_gt(next_regular_point, next_input_event_time)
         {
             next_communication_point = next_input_event_time;
         };
 
-        if next_communication_point > stop_time
-            && !relative_eq!(next_communication_point, stop_time)
-        {
+        if relative_gt(next_communication_point, stop_time) {
             if can_handle_variable_communication_step_size {
                 next_communication_point = stop_time;
             } else {
@@ -291,7 +285,7 @@ pub fn simulate_cs(
             time = next_communication_point;
         }
 
-        if relative_eq!(time, next_communication_point) {
+        if relative_eq(time, next_communication_point) {
             n_steps += 1;
         }
 
@@ -469,7 +463,7 @@ pub fn simulate_me<S: SolverFactory>(
     loop {
         recorder.sample(time, &fmu)?;
 
-        if time > stop_time || relative_eq!(time, stop_time) {
+        if relative_ge(time, stop_time) {
             break;
         }
 
@@ -484,33 +478,28 @@ pub fn simulate_me<S: SolverFactory>(
         };
 
         if let Some(next_input_event_time) = next_input_event_time
-            && next_regular_point > next_input_event_time
-            && !relative_eq!(next_regular_point, next_input_event_time)
+            && relative_gt(next_regular_point, next_input_event_time)
         {
             next_communication_point = next_input_event_time;
         }
 
         if let Some(next_event_time) = nextEventTime
-            && next_communication_point > next_event_time
-            && !relative_eq!(next_communication_point, next_event_time)
+            && relative_gt(next_communication_point, next_event_time)
         {
             next_communication_point = next_event_time;
         }
 
-        if next_communication_point > stop_time
-            && !relative_eq!(next_communication_point, stop_time)
-        {
+        if relative_gt(next_communication_point, stop_time) {
             next_communication_point = stop_time;
         }
 
         let is_input_event = if let Some(input_event_time) = next_input_event_time {
-            relative_eq!(input_event_time, next_communication_point)
+            relative_eq(input_event_time, next_communication_point)
         } else {
             false
         };
 
-        let is_time_event =
-            nextEventTime.is_some_and(|t| relative_eq!(t, next_communication_point));
+        let is_time_event = nextEventTime.is_some_and(|t| relative_eq(t, next_communication_point));
 
         let (time_reached, is_state_event) = solver.step(next_communication_point)?;
 
@@ -520,7 +509,7 @@ pub fn simulate_me<S: SolverFactory>(
             input.set_continuous_inputs(time, false, &fmu)?;
         }
 
-        if relative_eq!(time, next_regular_point) {
+        if relative_eq(time, next_regular_point) {
             n_steps += 1;
         }
 

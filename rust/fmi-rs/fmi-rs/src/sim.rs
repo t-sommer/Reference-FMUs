@@ -4,6 +4,8 @@ pub mod euler;
 pub mod fmi2;
 pub mod fmi3;
 
+use approx::relative_eq;
+
 type Error = Box<dyn std::error::Error>;
 
 pub type SetTimeFn<'a> = Box<dyn Fn(f64) -> Result<(), Error> + 'a>;
@@ -38,4 +40,29 @@ pub trait SolverFactory {
         get_directional_derivative: Option<GetDirectionalDerivativeFn<'a>>,
         set_continuous_states: SetContinuousStatesFn<'a>,
     ) -> Result<Box<dyn Solver + 'a>, Error>;
+}
+
+/// Approximate equality using both the absolute difference and relative based comparisons.
+pub fn relative_eq(lhs: f64, rhs: f64) -> bool {
+    relative_eq!(lhs, rhs)
+}
+
+/// Greater or approximate equality using both the absolute difference and relative based comparisons.
+pub fn relative_ge(lhs: f64, rhs: f64) -> bool {
+    lhs > rhs || relative_eq(lhs, rhs)
+}
+
+/// Less or approximate equality using both the absolute difference and relative based comparisons.
+pub fn relative_le(lhs: f64, rhs: f64) -> bool {
+    lhs < rhs || relative_eq(lhs, rhs)
+}
+
+/// Less than and not approximate equality using both the absolute difference and relative based comparisons.
+pub fn relative_lt(lhs: f64, rhs: f64) -> bool {
+    lhs < rhs && !relative_eq(lhs, rhs)
+}
+
+/// Greater than and not approximate equality using both the absolute difference and relative based comparisons.
+pub fn relative_gt(lhs: f64, rhs: f64) -> bool {
+    lhs > rhs && !relative_eq(lhs, rhs)
 }

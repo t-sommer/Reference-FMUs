@@ -7,9 +7,6 @@ pub mod types;
 #[cfg(feature = "zip")]
 pub mod util;
 
-#[macro_use]
-extern crate approx;
-
 #[cfg(all(target_os = "linux"))]
 pub const SHARED_LIBRARY_EXTENSION: &str = ".so";
 

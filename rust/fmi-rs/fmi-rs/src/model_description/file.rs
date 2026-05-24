@@ -17,18 +17,25 @@ impl<'a, 'input> NodeExt<'a, 'input> for Node<'a, 'input> {
     fn get_child(&self, name: &str) -> Option<Node<'a, 'input>> {
         self.children().find(|n| n.has_tag_name(name))
     }
-    
+
     fn get_required_child(&self, name: &str) -> Result<Node<'a, 'input>, Box<dyn Error>> {
         self.children()
             .find(|n| n.has_tag_name(name))
-            .ok_or_else(|| format!("Missing required element <{}> in <{}>", name, self.tag_name().name()).into())
+            .ok_or_else(|| {
+                format!(
+                    "Missing required element <{}> in <{}>",
+                    name,
+                    self.tag_name().name()
+                )
+                .into()
+            })
     }
-    
+
     fn get_children(&self, name: &str) -> Vec<Node<'a, 'input>> {
         self.children().filter(|n| n.has_tag_name(name)).collect()
     }
 
-        fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>> {
+    fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>> {
         self.attribute(name)
             .ok_or_else(|| format!("Missing required attribute '{}'", name).into())
             .map(|s| s.to_string())
@@ -80,7 +87,12 @@ impl<'a, 'input> NodeExt<'a, 'input> for Node<'a, 'input> {
                 .into()
             })
         } else {
-            Err(format!("Missing required attribute '{}' in <{}>.", name, self.tag_name().name()).into())
+            Err(format!(
+                "Missing required attribute '{}' in <{}>.",
+                name,
+                self.tag_name().name()
+            )
+            .into())
         }
     }
 }
@@ -117,8 +129,15 @@ impl Unit {
     pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
         Ok(Unit {
             name: node.required_attribute("name")?,
-            baseUnit: node.get_child("BaseUnit").map(|n| BaseUnit::from_node(&n)).transpose()?,
-            displayUnits: node.get_children("DisplayUnit").into_iter().map(|n| DisplayUnit::from_node(&n)).collect::<Result<Vec<_>, _>>()?,
+            baseUnit: node
+                .get_child("BaseUnit")
+                .map(|n| BaseUnit::from_node(&n))
+                .transpose()?,
+            displayUnits: node
+                .get_children("DisplayUnit")
+                .into_iter()
+                .map(|n| DisplayUnit::from_node(&n))
+                .collect::<Result<Vec<_>, _>>()?,
         })
     }
 }

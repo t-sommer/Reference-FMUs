@@ -6,7 +6,8 @@ use std::vec;
 use std::{error::Error, path::Path};
 
 use crate::model_description::fmi2::{
-    Causality, CoSimulation, DefaultExperiment, DependencyKind, Initial, Item, ModelDescription, ModelExchange, ScalarVariable, Unknown, Variability, VariableNamingConvention, VariableType
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Initial, Item, ModelDescription,
+    ModelExchange, ScalarVariable, Unknown, Variability, VariableNamingConvention, VariableType,
 };
 
 impl DefaultExperiment {
@@ -22,7 +23,6 @@ impl DefaultExperiment {
 
 impl ModelExchange {
     fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
-
         let sourceFiles = node
             .get_child("SourceFiles")
             .map(|n| n.get_children("File"))
@@ -35,19 +35,30 @@ impl ModelExchange {
             sourceFiles,
             modelIdentifier: node.required_attribute_as("modelIdentifier")?,
             needsExecutionTool: node.attribute_as("needsExecutionTool")?.unwrap_or_default(),
-            completedIntegratorStepNotNeeded: node.attribute_as("completedIntegratorStepNotNeeded")?.unwrap_or_default(),
-            canBeInstantiatedOnlyOncePerProcess: node.attribute_as("canBeInstantiatedOnlyOncePerProcess")?.unwrap_or_default(),
-            canNotUseMemoryManagementFunctions: node.attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
-            canGetAndSetFMUstate: node.attribute_as("canGetAndSetFMUstate")?.unwrap_or_default(),
-            canSerializeFMUstate: node.attribute_as("canSerializeFMUstate")?.unwrap_or_default(),
-            providesDirectionalDerivative: node.attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
+            completedIntegratorStepNotNeeded: node
+                .attribute_as("completedIntegratorStepNotNeeded")?
+                .unwrap_or_default(),
+            canBeInstantiatedOnlyOncePerProcess: node
+                .attribute_as("canBeInstantiatedOnlyOncePerProcess")?
+                .unwrap_or_default(),
+            canNotUseMemoryManagementFunctions: node
+                .attribute_as("canNotUseMemoryManagementFunctions")?
+                .unwrap_or_default(),
+            canGetAndSetFMUstate: node
+                .attribute_as("canGetAndSetFMUstate")?
+                .unwrap_or_default(),
+            canSerializeFMUstate: node
+                .attribute_as("canSerializeFMUstate")?
+                .unwrap_or_default(),
+            providesDirectionalDerivative: node
+                .attribute_as("providesDirectionalDerivative")?
+                .unwrap_or_default(),
         })
     }
 }
 
 impl CoSimulation {
     fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
-        
         let sourceFiles = node
             .get_child("SourceFiles")
             .map(|n| n.get_children("File"))
@@ -55,20 +66,38 @@ impl CoSimulation {
             .flatten()
             .map(|n| n.required_attribute("name"))
             .collect::<Result<Vec<_>, _>>()?;
-        
+
         Ok(CoSimulation {
             sourceFiles,
             modelIdentifier: node.required_attribute_as("modelIdentifier")?,
             needsExecutionTool: node.attribute_as("needsExecutionTool")?.unwrap_or_default(),
-            canHandleVariableCommunicationStepSize: node.attribute_as("canHandleVariableCommunicationStepSize")?.unwrap_or_default(),
-            canInterpolateInputs: node.attribute_as("canInterpolateInputs")?.unwrap_or_default(),
-            maxOutputDerivativeOrder: node.attribute_as("maxOutputDerivativeOrder")?.unwrap_or_default(),
-            canRunAsynchronuously: node.attribute_as("canRunAsynchronuously")?.unwrap_or_default(),
-            canBeInstantiatedOnlyOncePerProcess: node.attribute_as("canBeInstantiatedOnlyOncePerProcess")?.unwrap_or_default(),
-            canNotUseMemoryManagementFunctions: node.attribute_as("canNotUseMemoryManagementFunctions")?.unwrap_or_default(),
-            canGetAndSetFMUstate: node.attribute_as("canGetAndSetFMUstate")?.unwrap_or_default(),
-            canSerializeFMUstate: node.attribute_as("canSerializeFMUstate")?.unwrap_or_default(),
-            providesDirectionalDerivative: node.attribute_as("providesDirectionalDerivative")?.unwrap_or_default(),
+            canHandleVariableCommunicationStepSize: node
+                .attribute_as("canHandleVariableCommunicationStepSize")?
+                .unwrap_or_default(),
+            canInterpolateInputs: node
+                .attribute_as("canInterpolateInputs")?
+                .unwrap_or_default(),
+            maxOutputDerivativeOrder: node
+                .attribute_as("maxOutputDerivativeOrder")?
+                .unwrap_or_default(),
+            canRunAsynchronuously: node
+                .attribute_as("canRunAsynchronuously")?
+                .unwrap_or_default(),
+            canBeInstantiatedOnlyOncePerProcess: node
+                .attribute_as("canBeInstantiatedOnlyOncePerProcess")?
+                .unwrap_or_default(),
+            canNotUseMemoryManagementFunctions: node
+                .attribute_as("canNotUseMemoryManagementFunctions")?
+                .unwrap_or_default(),
+            canGetAndSetFMUstate: node
+                .attribute_as("canGetAndSetFMUstate")?
+                .unwrap_or_default(),
+            canSerializeFMUstate: node
+                .attribute_as("canSerializeFMUstate")?
+                .unwrap_or_default(),
+            providesDirectionalDerivative: node
+                .attribute_as("providesDirectionalDerivative")?
+                .unwrap_or_default(),
         })
     }
 }
@@ -91,7 +120,9 @@ impl ModelDescription {
 
         let mut modelVariables = vec![];
 
-        for child in root.get_required_child("ModelVariables")?.get_children("ScalarVariable")
+        for child in root
+            .get_required_child("ModelVariables")?
+            .get_children("ScalarVariable")
         {
             let name = child.required_attribute("name")?;
 
@@ -99,12 +130,14 @@ impl ModelDescription {
 
             let description = child.attribute_as("description")?;
 
-            let canHandleMultipleSetPerTimeInstant =
-                child.attribute_as("canHandleMultipleSetPerTimeInstant")?.unwrap_or_default();
+            let canHandleMultipleSetPerTimeInstant = child
+                .attribute_as("canHandleMultipleSetPerTimeInstant")?
+                .unwrap_or_default();
 
             let variableType = Self::get_variable_type(&child)?;
 
-            let causality = child.attribute("causality")
+            let causality = child
+                .attribute("causality")
                 .map(|causality| Causality::from_str(causality))
                 .transpose()?
                 .unwrap_or(Causality::Local);
@@ -124,7 +157,8 @@ impl ModelDescription {
                 }
             };
 
-            let initial = child.attribute("initial")
+            let initial = child
+                .attribute("initial")
                 .map(|initial| Initial::from_str(initial))
                 .transpose()?
                 .unwrap_or(Initial::Exact);
@@ -148,7 +182,8 @@ impl ModelDescription {
             .map(|n| DefaultExperiment::from_node(&n))
             .transpose()?;
 
-        let coSimulation = root.get_child("CoSimulation")
+        let coSimulation = root
+            .get_child("CoSimulation")
             .map(|n| CoSimulation::from_node(&n))
             .transpose()?;
 
@@ -194,7 +229,9 @@ impl ModelDescription {
             unitDefintions,
             typeDefinitions,
             modelVariables,
-            numberOfEventIndicators: root.attribute_as("numberOfEventIndicators")?.unwrap_or_default(),
+            numberOfEventIndicators: root
+                .attribute_as("numberOfEventIndicators")?
+                .unwrap_or_default(),
             outputs: Self::get_unkonwns(root, "Outputs")?,
             derivatives: Self::get_unkonwns(root, "Derivatives")?,
             initialUnknowns: Self::get_unkonwns(root, "InitialUnknowns")?,
@@ -274,22 +311,26 @@ impl ModelDescription {
         let mut unkonwns = vec![];
 
         for child in container.get_children("Unknown") {
-            let index = child
-                .required_attribute("index")?
-                .parse()?;
+            let index = child.required_attribute("index")?.parse()?;
 
             let dependencies: Option<Vec<u32>> = match child.attribute("dependencies") {
-                Some(dependencies) => {
-                    Some(dependencies.split_whitespace().map(|s| s.parse::<u32>()).collect::<Result<Vec<_>, _>>()?)
-                }
+                Some(dependencies) => Some(
+                    dependencies
+                        .split_whitespace()
+                        .map(|s| s.parse::<u32>())
+                        .collect::<Result<Vec<_>, _>>()?,
+                ),
                 None => None,
             };
 
             let dependenciesKind: Option<Vec<DependencyKind>> =
                 match child.attribute("dependenciesKind") {
-                    Some(dependenciesKind) => {
-                        Some(dependenciesKind.split_whitespace().map(DependencyKind::from_str).collect::<Result<Vec<_>, _>>()?)
-                    }
+                    Some(dependenciesKind) => Some(
+                        dependenciesKind
+                            .split_whitespace()
+                            .map(DependencyKind::from_str)
+                            .collect::<Result<Vec<_>, _>>()?,
+                    ),
                     None => None,
                 };
 

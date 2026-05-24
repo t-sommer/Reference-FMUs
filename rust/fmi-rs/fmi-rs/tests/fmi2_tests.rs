@@ -24,7 +24,6 @@ fn test_read_model_description() {
     ModelDescription::read(&unzipdir.join("modelDescription.xml")).unwrap();
 }
 
-
 fn create_fmu() -> FMU2<CS> {
     let unzipdir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")

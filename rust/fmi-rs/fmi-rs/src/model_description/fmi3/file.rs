@@ -7,7 +7,9 @@ use crate::model_description::file::NodeExt;
 
 use crate::model_description::fmi3::VariableNamingConvention;
 use crate::model_description::fmi3::{
-    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability, Item, ModelDescription, ModelExchange, ModelVariable, ScheduledExecution, TypeDefinition, Unknown, Variability, VariableType
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability,
+    Item, ModelDescription, ModelExchange, ModelVariable, ScheduledExecution, TypeDefinition,
+    Unknown, Variability, VariableType,
 };
 
 impl ModelDescription {
@@ -20,7 +22,6 @@ impl ModelDescription {
         let mut unknowns = vec![];
 
         for child in modelStructure.children().filter(|n| n.has_tag_name(name)) {
-
             let valueReference = child
                 .attribute("valueReference")
                 .ok_or_else(|| format!("Missing valueReference attribute in {}", name))?
@@ -311,9 +312,7 @@ impl ModelDescription {
             .filter(|n| n.is_element())
             .map(|child| {
                 let variable_type = Self::get_variable_type(&child)?;
-                let causality = child
-                    .attribute_as("causality")?
-                    .unwrap_or(Causality::Local);
+                let causality = child.attribute_as("causality")?.unwrap_or(Causality::Local);
                 let variability = child.attribute_as("variability")?.unwrap_or({
                     if matches!(
                         variable_type,
@@ -373,7 +372,10 @@ impl ModelDescription {
 
         let typeDefinitions = root
             .get_child("TypeDefinitions")
-            .map(|n| n.children().filter(|c| c.tag_name().name().ends_with("Type")))
+            .map(|n| {
+                n.children()
+                    .filter(|c| c.tag_name().name().ends_with("Type"))
+            })
             .into_iter()
             .flatten()
             .map(|n| TypeDefinition::from_node(&n))
@@ -564,14 +566,30 @@ impl ModelExchange {
         Ok(ModelExchange {
             modelIdentifier: node.required_attribute_as("modelIdentifier")?,
             needsExecutionTool: node.attribute_as("needsExecutionTool")?.unwrap_or_default(),
-            canBeInstantiatedOnlyOncePerProcess: node.attribute_as("canBeInstantiatedOnlyOncePerProcess")?.unwrap_or_default(),
-            canGetAndSetFMUState: node.attribute_as("canGetAndSetFMUState")?.unwrap_or_default(),
-            canSerializeFMUState: node.attribute_as("canSerializeFMUState")?.unwrap_or_default(),
-            providesDirectionalDerivatives: node.attribute_as("providesDirectionalDerivatives")?.unwrap_or_default(),
-            providesAdjointDerivatives: node.attribute_as("providesAdjointDerivatives")?.unwrap_or_default(),
-            providesPerElementDependencies: node.attribute_as("providesPerElementDependencies")?.unwrap_or_default(),
-            needsCompletedIntegratorStep: node.attribute_as("needsCompletedIntegratorStep")?.unwrap_or_default(),
-            providesEvaluateDiscreteStates: node.attribute_as("providesEvaluateDiscreteStates")?.unwrap_or_default(),
+            canBeInstantiatedOnlyOncePerProcess: node
+                .attribute_as("canBeInstantiatedOnlyOncePerProcess")?
+                .unwrap_or_default(),
+            canGetAndSetFMUState: node
+                .attribute_as("canGetAndSetFMUState")?
+                .unwrap_or_default(),
+            canSerializeFMUState: node
+                .attribute_as("canSerializeFMUState")?
+                .unwrap_or_default(),
+            providesDirectionalDerivatives: node
+                .attribute_as("providesDirectionalDerivatives")?
+                .unwrap_or_default(),
+            providesAdjointDerivatives: node
+                .attribute_as("providesAdjointDerivatives")?
+                .unwrap_or_default(),
+            providesPerElementDependencies: node
+                .attribute_as("providesPerElementDependencies")?
+                .unwrap_or_default(),
+            needsCompletedIntegratorStep: node
+                .attribute_as("needsCompletedIntegratorStep")?
+                .unwrap_or_default(),
+            providesEvaluateDiscreteStates: node
+                .attribute_as("providesEvaluateDiscreteStates")?
+                .unwrap_or_default(),
         })
     }
 }
@@ -581,21 +599,47 @@ impl CoSimulation {
         Ok(CoSimulation {
             modelIdentifier: node.required_attribute_as("modelIdentifier")?,
             needsExecutionTool: node.attribute_as("needsExecutionTool")?.unwrap_or_default(),
-            canBeInstantiatedOnlyOncePerProcess: node.attribute_as("canBeInstantiatedOnlyOncePerProcess")?.unwrap_or_default(),
-            canGetAndSetFMUState: node.attribute_as("canGetAndSetFMUState")?.unwrap_or_default(),
-            canSerializeFMUState: node.attribute_as("canSerializeFMUState")?.unwrap_or_default(),
-            providesDirectionalDerivatives: node.attribute_as("providesDirectionalDerivatives")?.unwrap_or_default(),
-            providesAdjointDerivatives: node.attribute_as("providesAdjointDerivatives")?.unwrap_or_default(),
-            providesPerElementDependencies: node.attribute_as("providesPerElementDependencies")?.unwrap_or_default(),
-            canHandleVariableCommunicationStepSize: node.attribute_as("canHandleVariableCommunicationStepSize")?.unwrap_or_default(),
+            canBeInstantiatedOnlyOncePerProcess: node
+                .attribute_as("canBeInstantiatedOnlyOncePerProcess")?
+                .unwrap_or_default(),
+            canGetAndSetFMUState: node
+                .attribute_as("canGetAndSetFMUState")?
+                .unwrap_or_default(),
+            canSerializeFMUState: node
+                .attribute_as("canSerializeFMUState")?
+                .unwrap_or_default(),
+            providesDirectionalDerivatives: node
+                .attribute_as("providesDirectionalDerivatives")?
+                .unwrap_or_default(),
+            providesAdjointDerivatives: node
+                .attribute_as("providesAdjointDerivatives")?
+                .unwrap_or_default(),
+            providesPerElementDependencies: node
+                .attribute_as("providesPerElementDependencies")?
+                .unwrap_or_default(),
+            canHandleVariableCommunicationStepSize: node
+                .attribute_as("canHandleVariableCommunicationStepSize")?
+                .unwrap_or_default(),
             fixedInternalStepSize: node.attribute_as("fixedInternalStepSize")?,
-            maxOutputDerivativeOrder: node.attribute_as("maxOutputDerivativeOrder")?.unwrap_or_default(),
-            recommendedIntermediateInputSmoothness: node.attribute_as("recommendedIntermediateInputSmoothness")?.unwrap_or_default(),
-            providesIntermediateUpdate: node.attribute_as("providesIntermediateUpdate")?.unwrap_or_default(),
-            mightReturnEarlyFromDoStep: node.attribute_as("mightReturnEarlyFromDoStep")?.unwrap_or_default(),
-            canReturnEarlyAfterIntermediateUpdate: node.attribute_as("canReturnEarlyAfterIntermediateUpdate")?.unwrap_or_default(),
+            maxOutputDerivativeOrder: node
+                .attribute_as("maxOutputDerivativeOrder")?
+                .unwrap_or_default(),
+            recommendedIntermediateInputSmoothness: node
+                .attribute_as("recommendedIntermediateInputSmoothness")?
+                .unwrap_or_default(),
+            providesIntermediateUpdate: node
+                .attribute_as("providesIntermediateUpdate")?
+                .unwrap_or_default(),
+            mightReturnEarlyFromDoStep: node
+                .attribute_as("mightReturnEarlyFromDoStep")?
+                .unwrap_or_default(),
+            canReturnEarlyAfterIntermediateUpdate: node
+                .attribute_as("canReturnEarlyAfterIntermediateUpdate")?
+                .unwrap_or_default(),
             hasEventMode: node.attribute_as("hasEventMode")?.unwrap_or_default(),
-            providesEvaluateDiscreteStates: node.attribute_as("providesEvaluateDiscreteStates")?.unwrap_or_default(),
+            providesEvaluateDiscreteStates: node
+                .attribute_as("providesEvaluateDiscreteStates")?
+                .unwrap_or_default(),
         })
     }
 }
@@ -605,12 +649,24 @@ impl ScheduledExecution {
         Ok(ScheduledExecution {
             modelIdentifier: node.required_attribute_as("modelIdentifier")?,
             needsExecutionTool: node.attribute_as("needsExecutionTool")?.unwrap_or_default(),
-            canBeInstantiatedOnlyOncePerProcess: node.attribute_as("canBeInstantiatedOnlyOncePerProcess")?.unwrap_or_default(),
-            canGetAndSetFMUState: node.attribute_as("canGetAndSetFMUState")?.unwrap_or_default(),
-            canSerializeFMUState: node.attribute_as("canSerializeFMUState")?.unwrap_or_default(),
-            providesDirectionalDerivatives: node.attribute_as("providesDirectionalDerivatives")?.unwrap_or_default(),
-            providesAdjointDerivatives: node.attribute_as("providesAdjointDerivatives")?.unwrap_or_default(),
-            providesPerElementDependencies: node.attribute_as("providesPerElementDependencies")?.unwrap_or_default(),
+            canBeInstantiatedOnlyOncePerProcess: node
+                .attribute_as("canBeInstantiatedOnlyOncePerProcess")?
+                .unwrap_or_default(),
+            canGetAndSetFMUState: node
+                .attribute_as("canGetAndSetFMUState")?
+                .unwrap_or_default(),
+            canSerializeFMUState: node
+                .attribute_as("canSerializeFMUState")?
+                .unwrap_or_default(),
+            providesDirectionalDerivatives: node
+                .attribute_as("providesDirectionalDerivatives")?
+                .unwrap_or_default(),
+            providesAdjointDerivatives: node
+                .attribute_as("providesAdjointDerivatives")?
+                .unwrap_or_default(),
+            providesPerElementDependencies: node
+                .attribute_as("providesPerElementDependencies")?
+                .unwrap_or_default(),
         })
     }
 }

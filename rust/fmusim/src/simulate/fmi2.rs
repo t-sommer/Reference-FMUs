@@ -191,7 +191,7 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
 
     let mut layout = Layout::new()
         .title(trajectories.model_description.modelName.clone())
-        .x_axis(Axis::new().title("time [s]"))
+        .x_axis(Axis::new().title("time [s]").zero_line_color(NamedColor::LightGrey))
         .grid(
             LayoutGrid::new()
                 .rows(trajectories.variables.len())

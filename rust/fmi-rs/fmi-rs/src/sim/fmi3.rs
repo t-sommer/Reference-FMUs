@@ -8,9 +8,7 @@ use crate::{
     fmi3::{FMU3, types::*},
     model_description::fmi3::{ModelVariable, VariableType},
     sim::{
-        SolverFactory,
-        fmi3::{input::StaticInput, recorder::Recorder},
-        relative_eq, relative_ge, relative_gt, relative_lt,
+        SolverFactory, fmi3::{input::StaticInput, recorder::Recorder}, relative_eq, relative_ge, relative_gt, relative_le, relative_lt
     },
     types::*,
 };
@@ -463,6 +461,11 @@ pub fn simulate_cs(
                 &mut nextEventTime,
             ))?;
 
+            if nextEventTimeDefined && relative_le(nextEventTime, time)
+            {
+                return Err(format!("The next event time ({nextEventTime}) must be greater than the current time ({time}).").into());
+            }
+
             if terminateSimulation {
                 call(fmu.terminate())?;
                 return Ok(());
@@ -582,6 +585,11 @@ pub fn simulate_cs(
                     &mut nextEventTimeDefined,
                     &mut nextEventTime,
                 ))?;
+
+                if nextEventTimeDefined && relative_le(nextEventTime, time)
+                {
+                    return Err(format!("The next event time ({nextEventTime}) must be greater than the current time ({time}).").into());
+                }
 
                 if terminateSimulation {
                     call(fmu.terminate())?;
@@ -873,6 +881,11 @@ pub fn simulate_me<S: SolverFactory>(
                     &mut nextEventTimeDefined,
                     &mut nextEventTime,
                 ))?;
+
+                if nextEventTimeDefined && relative_le(nextEventTime, time)
+                {
+                    return Err(format!("The next event time ({nextEventTime}) must be greater than the current time ({time}).").into());
+                }
 
                 if terminateSimulation {
                     call(fmu.terminate())?;

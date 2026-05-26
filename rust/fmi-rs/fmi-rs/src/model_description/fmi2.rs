@@ -296,8 +296,16 @@ pub struct ModelDescription {
 
 impl ModelDescription {
     /// Returns the first variable found with the given value reference.
-    pub fn get_variable(&self, vr: fmiValueReference) -> Option<&ScalarVariable> {
+    pub fn get_variable_by_value_reference(&self, vr: fmiValueReference) -> Option<&ScalarVariable> {
         self.modelVariables.iter().find(|v| v.valueReference == vr)
+    }
+
+    pub fn get_variable_by_name(&self, name: &str) -> Option<&ScalarVariable> {
+        self.modelVariables.iter().find(|v| v.name == name)
+    }
+
+    pub fn get_variable_by_index(&self, index: VariableIndex) -> Option<&ScalarVariable> {
+        self.modelVariables.get((index - 1) as usize)
     }
 
     pub fn get_unit<'a>(&'a self, variable: &'a ScalarVariable) -> Option<&'a str> {

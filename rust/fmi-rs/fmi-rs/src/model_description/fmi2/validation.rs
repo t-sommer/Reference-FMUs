@@ -17,7 +17,7 @@ impl ModelDescription {
 
         // check continuous states
         for unknown in &self.derivatives {
-            let derivative_variable = match self.modelVariables.get((unknown.index - 1) as usize) {
+            let derivative_variable = match self.get_variable_by_index(unknown.index) {
                 Some(variable) => variable,
                 None => {
                     problems.push(format!("Illegal variable index: {}", unknown.index));
@@ -27,7 +27,7 @@ impl ModelDescription {
 
             if let VariableType::Real { derivative, .. } = &derivative_variable.variableType {
                 if let Some(derivative_index) = derivative {
-                    match self.modelVariables.get((derivative_index - 1) as usize) {
+                    match self.get_variable_by_index(*derivative_index) {
                         Some(state_variable) => {
                             if !matches!(state_variable.variableType, VariableType::Real { .. }) {
                                 problems.push(format!("The continuous state variable {} referenced by the derivative {} is not a Real variable.", state_variable.name, derivative_variable.name));
@@ -35,7 +35,7 @@ impl ModelDescription {
                         }
                         None => {
                             problems.push(format!(
-                                "Attribute derivative of variable {} is not a valid variable index",
+                                "Attribute derivative of variable {} is not a valid variable index.",
                                 derivative_variable.name
                             ));
                             continue;

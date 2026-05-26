@@ -8,7 +8,9 @@ use crate::{
     fmi3::{FMU3, types::*},
     model_description::fmi3::{ModelVariable, VariableType},
     sim::{
-        SolverFactory, fmi3::{input::StaticInput, recorder::Recorder}, relative_eq, relative_ge, relative_gt, relative_le, relative_lt
+        SolverFactory,
+        fmi3::{input::StaticInput, recorder::Recorder},
+        relative_eq, relative_ge, relative_gt, relative_le, relative_lt,
     },
     types::*,
 };
@@ -665,14 +667,14 @@ pub fn simulate_me<S: SolverFactory>(
     call(fmu.exitInitializationMode())?;
 
     let mut nextEventTime = None;
-    
+
     // initial event iteration
     loop {
         let mut discreteStatesNeedUpdate = false;
         let mut terminateSimulation = false;
         let mut nominalsOfContinuousStatesChanged = false;
         let mut valuesOfContinuousStatesChanged = false;
-        
+
         call(fmu.updateDiscreteStates(
             &mut discreteStatesNeedUpdate,
             &mut terminateSimulation,
@@ -808,7 +810,9 @@ pub fn simulate_me<S: SolverFactory>(
             next_communication_point = next_input_event_time;
         }
 
-        if let Some(next_event_time) = nextEventTime && relative_gt(next_communication_point, next_event_time) {
+        if let Some(next_event_time) = nextEventTime
+            && relative_gt(next_communication_point, next_event_time)
+        {
             next_communication_point = next_event_time;
         }
 
@@ -822,7 +826,9 @@ pub fn simulate_me<S: SolverFactory>(
             false
         };
 
-        let is_time_event = if let Some(next_event_time) = nextEventTime && relative_eq(next_event_time, next_communication_point) {
+        let is_time_event = if let Some(next_event_time) = nextEventTime
+            && relative_eq(next_event_time, next_communication_point)
+        {
             true
         } else {
             false
@@ -881,7 +887,9 @@ pub fn simulate_me<S: SolverFactory>(
                     &mut nextEventTime,
                 ))?;
 
-                if let Some(next_event_time) = nextEventTime && relative_le(next_event_time, time) {
+                if let Some(next_event_time) = nextEventTime
+                    && relative_le(next_event_time, time)
+                {
                     return Err(format!("The next event time ({next_event_time}) must be greater than the current time ({time}).").into());
                 }
 

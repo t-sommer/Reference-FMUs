@@ -11,7 +11,9 @@ use crate::{
     },
     model_description::fmi2::{ModelDescription, ScalarVariable, VariableType},
     sim::{
-        SolverFactory, fmi2::{input::StaticInput, recorder::Recorder}, relative_eq, relative_ge, relative_gt, relative_le, relative_lt
+        SolverFactory,
+        fmi2::{input::StaticInput, recorder::Recorder},
+        relative_eq, relative_ge, relative_gt, relative_le, relative_lt,
     },
     types::{
         fmiStatus::{self, fmiOK, fmiWarning},
@@ -368,7 +370,8 @@ pub fn simulate_me<S: SolverFactory>(
             &mut nextEventTime,
         ))?;
 
-        if let Some(next_event_time) = nextEventTime && relative_le(next_event_time, time)
+        if let Some(next_event_time) = nextEventTime
+            && relative_le(next_event_time, time)
         {
             return Err(format!("The next event time ({next_event_time}) must be greater than the current time ({time}).").into());
         }
@@ -560,7 +563,8 @@ pub fn simulate_me<S: SolverFactory>(
                     &mut nextEventTime,
                 ))?;
 
-                if let Some(next_event_time) = nextEventTime && relative_le(next_event_time, time)
+                if let Some(next_event_time) = nextEventTime
+                    && relative_le(next_event_time, time)
                 {
                     return Err(format!("The next event time ({next_event_time}) must be greater than the current time ({time}).").into());
                 }

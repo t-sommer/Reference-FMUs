@@ -124,7 +124,7 @@ impl<'a> Solver for ForwardEuler<'a> {
         if !self.x.is_empty() {
             (self.get_continuous_states)(self.x.as_mut_slice())?;
         }
-        
+
         self.der_x.fill(0.0);
 
         self.z.fill(0.0);
@@ -132,7 +132,7 @@ impl<'a> Solver for ForwardEuler<'a> {
         if !self.pre_z.is_empty() {
             (self.get_event_indicators)(self.pre_z.as_mut_slice())?;
         }
-        
+
         Ok(())
     }
 

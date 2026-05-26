@@ -146,7 +146,7 @@ impl SolverFactory for CVodeSolverFactory {
             } else {
                 abstol_slice.fill(1.0); // Dummy tolerances for discrete systems
             }
-            
+
             for i in 0..abstol_slice.len() {
                 abstol_slice[i] *= rtol;
             }
@@ -185,7 +185,7 @@ impl SolverFactory for CVodeSolverFactory {
                     "Failed to initialize rootfinding"
                 );
             }
-            
+
             Ok(Box::new(CVodeSolver {
                 sunctx,
                 x,
@@ -204,11 +204,11 @@ impl<'a> Solver for CVodeSolver<'a> {
         unsafe {
             if self.functions.nx > 0 {
                 (self.functions.get_continuous_states)((*self.x).as_mut())?;
-                
+
                 let abstol_slice = (*self.abstol).as_mut();
-                
+
                 (self.functions.get_nominals_of_continuous_states)(abstol_slice)?;
-                
+
                 for i in 0..abstol_slice.len() {
                     abstol_slice[i] *= self.functions.rtol;
                 }
@@ -256,7 +256,7 @@ impl<'a> Drop for CVodeSolver<'a> {
 extern "C" fn f(t: sunrealtype, y: N_Vector, ydot: N_Vector, user_data: *mut c_void) -> i32 {
     unsafe {
         let functions: &Functions = &*(user_data as *const Functions);
-        
+
         expect_ok!((functions.set_time)(t));
         expect_ok!((functions.set_continuous_inputs)(t));
 

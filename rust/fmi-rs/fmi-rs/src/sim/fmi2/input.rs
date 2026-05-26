@@ -3,7 +3,10 @@ use std::error::Error;
 use crate::{
     fmi2::FMU2,
     model_description::fmi2::Variability,
-    sim::{fmi2::{Trajectories, VariableValue, set_variable_value}, relative_eq},
+    sim::{
+        fmi2::{Trajectories, VariableValue, set_variable_value},
+        relative_eq,
+    },
     types::*,
 };
 
@@ -59,11 +62,7 @@ impl<'a> StaticInput<'a> {
         None
     }
 
-    pub fn set_discrete_inputs<I>(
-        &self,
-        time: f64,
-        fmu: &FMU2<I>,
-    ) -> Result<(), Box<dyn Error>> {
+    pub fn set_discrete_inputs<I>(&self, time: f64, fmu: &FMU2<I>) -> Result<(), Box<dyn Error>> {
         let mut index = 0;
 
         for (i, t) in self.trajectories.time.iter().enumerate() {
@@ -111,8 +110,10 @@ impl<'a> StaticInput<'a> {
         let time_s = self.trajectories.time[0];
         let time_e = self.trajectories.time[self.trajectories.time.len() - 1];
 
-        let interpolate =
-            time > time_s && !relative_eq(time, time_s) && time < time_e && !relative_eq(time, time_e);
+        let interpolate = time > time_s
+            && !relative_eq(time, time_s)
+            && time < time_e
+            && !relative_eq(time, time_e);
 
         if interpolate {
             let row0 = &self.trajectories.rows[row_index];

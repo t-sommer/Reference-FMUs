@@ -1800,7 +1800,6 @@ impl FMU3 {
         valuesOfContinuousStatesChanged: &mut fmi3Boolean,
         nextEventTime: &mut Option<fmi3Float64>,
     ) -> fmi3Status {
-
         let mut nextEventTimeDefined = false;
         let mut nextEventTimeValue = 0.0;
 

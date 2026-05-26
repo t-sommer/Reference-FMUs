@@ -461,11 +461,10 @@ pub fn simulate_cs(
                 &mut nextEventTime,
             ))?;
 
-            if let Some(nextEventTime) = nextEventTime {
-                if relative_le(nextEventTime, time) {
+            if let Some(nextEventTime) = nextEventTime
+                && relative_le(nextEventTime, time) {
                     return Err(format!("The next event time ({nextEventTime}) must be greater than the current time ({time}).").into());
                 }
-            }
 
             if terminateSimulation {
                 call(fmu.terminate())?;
@@ -585,11 +584,10 @@ pub fn simulate_cs(
                     &mut nextEventTime,
                 ))?;
 
-                if let Some(nextEventTime) = nextEventTime {
-                    if relative_le(nextEventTime, time) {
+                if let Some(nextEventTime) = nextEventTime
+                    && relative_le(nextEventTime, time) {
                         return Err(format!("The next event time ({nextEventTime}) must be greater than the current time ({time}).").into());
                     }
-                }
 
                 if terminateSimulation {
                     call(fmu.terminate())?;

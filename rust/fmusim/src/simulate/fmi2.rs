@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use fmi::model_description::fmi2::{SimpleType, Variability, VariableType};
 use fmi::sim::euler::ForwardEulerFactory;
@@ -19,7 +19,7 @@ use crate::{InterfaceType, SimulateArgs, SolverType};
 pub fn simulate_fmu(
     args: &SimulateArgs,
     unzipdir: &tempfile::TempDir,
-    xml_path: &PathBuf,
+    xml_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let model_description = fmi::model_description::fmi2::ModelDescription::read(xml_path)?;
 

@@ -138,28 +138,26 @@ impl ModelDescription {
 
             let causality = child
                 .attribute("causality")
-                .map(|causality| Causality::from_str(causality))
+                .map(Causality::from_str)
                 .transpose()?
                 .unwrap_or(Causality::Local);
 
             let variability = if let Some(causality) = child.attribute("variability") {
                 Variability::from_str(causality)?
+            } else if matches!(variableType, VariableType::Real { .. })
+                && !matches!(
+                    causality,
+                    Causality::Parameter | Causality::CalculatedParameter
+                )
+            {
+                Variability::Continuous
             } else {
-                if matches!(variableType, VariableType::Real { .. })
-                    && !matches!(
-                        causality,
-                        Causality::Parameter | Causality::CalculatedParameter
-                    )
-                {
-                    Variability::Continuous
-                } else {
-                    Variability::Discrete
-                }
+                Variability::Discrete
             };
 
             let initial = child
                 .attribute("initial")
-                .map(|initial| Initial::from_str(initial))
+                .map(Initial::from_str)
                 .transpose()?
                 .unwrap_or(Initial::Exact);
 

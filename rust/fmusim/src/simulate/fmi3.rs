@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, path::PathBuf};
+use std::{collections::HashMap, fs::File, path::{Path, PathBuf}};
 
 use fmi::{
     model_description::fmi3::{TypeDefinition, VariableType},
@@ -19,7 +19,7 @@ use crate::{InterfaceType, SimulateArgs, SolverType};
 pub fn simulate_fmu(
     args: &SimulateArgs,
     unzipdir: &tempfile::TempDir,
-    xml_path: &PathBuf,
+    xml_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let model_description = fmi::model_description::fmi3::ModelDescription::read(xml_path)?;
 

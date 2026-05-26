@@ -147,8 +147,8 @@ impl SolverFactory for CVodeSolverFactory {
                 abstol_slice.fill(1.0); // Dummy tolerances for discrete systems
             }
 
-            for i in 0..abstol_slice.len() {
-                abstol_slice[i] *= rtol;
+            for value in abstol_slice.iter_mut() {
+                *value *= rtol;
             }
 
             expect_no_error!(
@@ -209,9 +209,10 @@ impl<'a> Solver for CVodeSolver<'a> {
 
                 (self.functions.get_nominals_of_continuous_states)(abstol_slice)?;
 
-                for i in 0..abstol_slice.len() {
-                    abstol_slice[i] *= self.functions.rtol;
+                for value in abstol_slice.iter_mut() {
+                    *value *= self.functions.rtol;
                 }
+
             } else {
                 (*self.x).as_mut().fill(0.0); // Dummy state for discrete systems
                 (*self.abstol).as_mut().fill(0.0); // Dummy tolerances for discrete systems

@@ -30,7 +30,7 @@ impl ModelDescription {
                     match self.modelVariables.get((derivative_index - 1) as usize) {
                         Some(state_variable) => {
                             if !matches!(state_variable.variableType, VariableType::Real { .. }) {
-                                problems.push(format!("The continuous state variable {} referenced by the derivative {} not a Real variable.", state_variable.name, derivative_variable.name));
+                                problems.push(format!("The continuous state variable {} referenced by the derivative {} is not a Real variable.", state_variable.name, derivative_variable.name));
                             }
                         }
                         None => {

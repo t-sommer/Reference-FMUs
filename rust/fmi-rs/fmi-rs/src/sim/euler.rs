@@ -120,11 +120,19 @@ impl<'a> Solver for ForwardEuler<'a> {
     fn reset(&mut self, time: f64) -> Result<(), Error> {
         self.start_time = time;
         self.n_steps = 0;
-        self.x.fill(0.0);
+
+        if !self.x.is_empty() {
+            (self.get_continuous_states)(self.x.as_mut_slice())?;
+        }
+        
         self.der_x.fill(0.0);
+
         self.z.fill(0.0);
-        (self.get_continuous_states)(self.x.as_mut_slice())?;
-        (self.get_event_indicators)(self.pre_z.as_mut_slice())?;
+
+        if !self.pre_z.is_empty() {
+            (self.get_event_indicators)(self.pre_z.as_mut_slice())?;
+        }
+        
         Ok(())
     }
 

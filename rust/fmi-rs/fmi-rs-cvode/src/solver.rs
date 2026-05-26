@@ -254,12 +254,13 @@ impl<'a> Drop for CVodeSolver<'a> {
 extern "C" fn f(t: sunrealtype, y: N_Vector, ydot: N_Vector, user_data: *mut c_void) -> i32 {
     unsafe {
         let functions: &Functions = &*(user_data as *const Functions);
+        
+        expect_ok!((functions.set_time)(t));
+        expect_ok!((functions.set_continuous_inputs)(t));
 
         let ydot_slice = (*ydot).as_mut();
 
         if functions.nx > 0 {
-            expect_ok!((functions.set_time)(t));
-            expect_ok!((functions.set_continuous_inputs)(t));
             expect_ok!((functions.set_continuous_states)((*y).as_mut()));
             expect_ok!((functions.get_continuous_state_derivatives)(ydot_slice));
         } else {

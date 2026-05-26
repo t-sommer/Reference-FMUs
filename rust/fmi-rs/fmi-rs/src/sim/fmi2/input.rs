@@ -3,7 +3,7 @@ use std::error::Error;
 use crate::{
     fmi2::FMU2,
     model_description::fmi2::Variability,
-    sim::fmi2::{Trajectories, VariableValue, set_variable_value},
+    sim::{fmi2::{Trajectories, VariableValue, set_variable_value}, relative_eq},
     types::*,
 };
 
@@ -18,29 +18,6 @@ fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
 #[derive(Debug)]
 pub struct StaticInput<'a> {
     trajectories: Trajectories<'a>,
-}
-
-fn approx_eq(a: f64, b: f64) -> bool {
-    let rel_tol = 1e-12;
-    let abs_tol = 1e-15;
-
-    // exact equality handles infinities and signed zero quickly
-    if a == b {
-        return true;
-    }
-
-    // NaNs are never approximately equal
-    if a.is_nan() || b.is_nan() {
-        return false;
-    }
-
-    let diff = (a - b).abs();
-
-    if diff <= abs_tol {
-        return true;
-    }
-
-    diff <= rel_tol * a.abs().max(b.abs())
 }
 
 impl<'a> StaticInput<'a> {
@@ -85,7 +62,6 @@ impl<'a> StaticInput<'a> {
     pub fn set_discrete_inputs<I>(
         &self,
         time: f64,
-        _after_event: bool,
         fmu: &FMU2<I>,
     ) -> Result<(), Box<dyn Error>> {
         let mut index = 0;
@@ -121,11 +97,11 @@ impl<'a> StaticInput<'a> {
         while row_index < self.trajectories.time.len() - 1 {
             let next_time = self.trajectories.time[row_index + 1];
 
-            if !after_event && (approx_eq(next_time, time) || next_time > time) {
+            if !after_event && (relative_eq(next_time, time) || next_time > time) {
                 break;
             }
 
-            if after_event && (next_time > time && !approx_eq(next_time, time)) {
+            if after_event && (next_time > time && !relative_eq(next_time, time)) {
                 break;
             }
 
@@ -136,7 +112,7 @@ impl<'a> StaticInput<'a> {
         let time_e = self.trajectories.time[self.trajectories.time.len() - 1];
 
         let interpolate =
-            time > time_s && !approx_eq(time, time_s) && time < time_e && !approx_eq(time, time_e);
+            time > time_s && !relative_eq(time, time_s) && time < time_e && !relative_eq(time, time_e);
 
         if interpolate {
             let row0 = &self.trajectories.rows[row_index];
@@ -173,9 +149,8 @@ impl<'a> StaticInput<'a> {
                 }
 
                 match value {
-                    VariableValue::Real(_value) => {
-                        todo!()
-                        // fmu.setReal(&[variable.valueReference], &[*value]);
+                    VariableValue::Real(value) => {
+                        fmu.setReal(&[variable.valueReference], &[*value]);
                     }
                     _ => panic!("Cannot set {value:?}!"),
                 }

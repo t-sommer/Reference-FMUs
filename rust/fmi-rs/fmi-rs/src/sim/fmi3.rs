@@ -439,7 +439,7 @@ pub fn simulate_cs(
     ))?;
 
     if let Some(input) = &input {
-        input.set_discrete_inputs(time, true, &fmu)?;
+        input.set_discrete_inputs(time, &fmu)?;
         input.set_continuous_inputs(time, true, &fmu)?;
     }
 
@@ -509,7 +509,7 @@ pub fn simulate_cs(
         }
 
         if !input_applied && let Some(input) = &input {
-            input.set_discrete_inputs(time, !event_mode_used, &fmu)?;
+            input.set_discrete_inputs(time, &fmu)?;
             input.set_continuous_inputs(time, !event_mode_used, &fmu)?;
         }
 
@@ -562,7 +562,7 @@ pub fn simulate_cs(
             call(fmu.enterEventMode())?;
 
             if input_event && let Some(input) = &input {
-                input.set_discrete_inputs(time, true, &fmu)?;
+                input.set_discrete_inputs(time, &fmu)?;
                 input.set_continuous_inputs(time, true, &fmu)?;
             }
 
@@ -652,7 +652,7 @@ pub fn simulate_me<S: SolverFactory>(
     ))?;
 
     if let Some(input) = &input {
-        input.set_discrete_inputs(time, false, &fmu)?;
+        input.set_discrete_inputs(time, &fmu)?;
         input.set_continuous_inputs(time, false, &fmu)?;
     }
 
@@ -855,7 +855,7 @@ pub fn simulate_me<S: SolverFactory>(
             call(fmu.enterEventMode())?;
 
             if is_input_event && let Some(input) = &input {
-                input.set_discrete_inputs(time, true, &fmu)?;
+                input.set_discrete_inputs(time, &fmu)?;
                 input.set_continuous_inputs(time, true, &fmu)?;
             }
 

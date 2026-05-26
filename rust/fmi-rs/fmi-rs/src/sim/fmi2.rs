@@ -229,7 +229,7 @@ pub fn simulate_cs(
     call(fmu.enterInitializationMode())?;
 
     if let Some(input) = &input {
-        input.set_discrete_inputs(time, true, &fmu)?;
+        input.set_discrete_inputs(time, &fmu)?;
         input.set_continuous_inputs(time, true, &fmu)?;
     }
 
@@ -263,7 +263,7 @@ pub fn simulate_cs(
         let communication_step_size = next_communication_point - time;
 
         if let Some(input) = &input {
-            input.set_discrete_inputs(time, true, &fmu)?;
+            input.set_discrete_inputs(time, &fmu)?;
             input.set_continuous_inputs(time, true, &fmu)?;
         }
 
@@ -348,7 +348,7 @@ pub fn simulate_me<S: SolverFactory>(
     call(fmu.enterInitializationMode())?;
 
     if let Some(input) = &input {
-        input.set_discrete_inputs(time, true, &fmu)?;
+        input.set_discrete_inputs(time, &fmu)?;
         input.set_continuous_inputs(time, true, &fmu)?;
     }
 
@@ -539,7 +539,7 @@ pub fn simulate_me<S: SolverFactory>(
             call(fmu.enterEventMode())?;
 
             if is_input_event && let Some(input) = &input {
-                input.set_discrete_inputs(time, true, &fmu)?;
+                input.set_discrete_inputs(time, &fmu)?;
                 input.set_continuous_inputs(time, true, &fmu)?;
             }
 

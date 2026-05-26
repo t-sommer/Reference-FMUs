@@ -189,9 +189,17 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
 
     let plot_height = 250 * trajectories.variables.len().max(1);
 
+    let mut x_axis = Axis::new()
+        .title("time [s]")
+        .zero_line_color(NamedColor::LightGrey);
+
+    if let (Some(first), Some(last)) = (trajectories.time.first(), trajectories.time.last()) {
+        x_axis = x_axis.range(AxisRange::new(*first, *last));
+    }
+
     let mut layout = Layout::new()
         .title(trajectories.model_description.modelName.clone())
-        .x_axis(Axis::new().title("time [s]").zero_line_color(NamedColor::LightGrey))
+        .x_axis(x_axis)
         .grid(
             LayoutGrid::new()
                 .rows(trajectories.variables.len())

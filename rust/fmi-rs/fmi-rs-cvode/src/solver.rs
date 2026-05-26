@@ -233,6 +233,8 @@ impl<'a> Solver for CVodeSolver<'a> {
             return Err(format!("Solver error: {flag}").into());
         }
 
+        (self.functions.set_time)(tret)?;
+
         Ok((tret, flag == CV_ROOT_RETURN))
     }
 }

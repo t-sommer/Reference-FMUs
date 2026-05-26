@@ -1,4 +1,5 @@
 use crate::cvode::CV_BDF;
+use crate::nvector_serial::{NV_DATA_S, NV_LENGTH_S};
 use crate::{
     cvode::{
         CV_NORMAL, CV_ROOT_RETURN, CVode, CVodeCreate, CVodeFree, CVodeInit, CVodeReInit,
@@ -127,16 +128,26 @@ impl SolverFactory for CVodeSolverFactory {
                 "Failed to set user data"
             );
 
-            let x = N_VNew_Serial(nx as sunindextype, sunctx);
+            let x = N_VNew_Serial(nx.max(1) as sunindextype, sunctx);
             expect_not_null!(x, "Failed to create N_Vector");
-            (functions.get_continuous_states)((*x).as_mut())?;
 
-            let abstol = N_VNew_Serial(nx as sunindextype, sunctx);
+            if nx > 0 {
+                (functions.get_continuous_states)((*x).as_mut())?;
+            } else {
+                (*x).as_mut().fill(0.0); // Dummy state for discrete systems
+            }
+
+            let abstol = N_VNew_Serial(NV_LENGTH_S(x), sunctx);
             expect_not_null!(abstol, "Failed to create N_Vector");
             let abstol_slice = (*abstol).as_mut();
-            (functions.get_nominals_of_continuous_states)(abstol_slice)?;
 
-            for i in 0..nx {
+            if nx > 0 {
+                (functions.get_nominals_of_continuous_states)(abstol_slice)?;
+            } else {
+                abstol_slice.fill(1.0); // Dummy tolerances for discrete systems
+            }
+            
+            for i in 0..abstol_slice.len() {
                 abstol_slice[i] *= rtol;
             }
 
@@ -150,7 +161,7 @@ impl SolverFactory for CVodeSolverFactory {
                 "Failed to set tolerances"
             );
 
-            let A = SUNDenseMatrix(nx as sunindextype, nx as sunindextype, sunctx);
+            let A = SUNDenseMatrix(NV_LENGTH_S(x), NV_LENGTH_S(x), sunctx);
             expect_not_null!(A, "Failed to create dense matrix");
 
             let LS = SUNLinSol_Dense(x, A, sunctx);
@@ -161,18 +172,20 @@ impl SolverFactory for CVodeSolverFactory {
                 "Failed to set linear solver"
             );
 
-            if functions.get_directional_derivative.is_some() {
+            if nx > 0 && functions.get_directional_derivative.is_some() {
                 expect_no_error!(
                     CVodeSetJacFn(cvode_mem, jac),
                     "Failed to set Jacobian function"
                 );
             }
 
-            expect_no_error!(
-                CVodeRootInit(cvode_mem, nz as i32, g),
-                "Failed to initialize rootfinding"
-            );
-
+            if nz > 0 {
+                expect_no_error!(
+                    CVodeRootInit(cvode_mem, nz as i32, g),
+                    "Failed to initialize rootfinding"
+                );
+            }
+            
             Ok(Box::new(CVodeSolver {
                 sunctx,
                 x,
@@ -189,16 +202,20 @@ impl SolverFactory for CVodeSolverFactory {
 impl<'a> Solver for CVodeSolver<'a> {
     fn reset(&mut self, time: f64) -> Result<(), Error> {
         unsafe {
-            (self.functions.get_continuous_states)((*self.x).as_mut())?;
-
-            let abstol_slice = (*self.abstol).as_mut();
-
-            (self.functions.get_nominals_of_continuous_states)(abstol_slice)?;
-
-            for i in 0..abstol_slice.len() {
-                abstol_slice[i] *= self.functions.rtol;
+            if self.functions.nx > 0 {
+                (self.functions.get_continuous_states)((*self.x).as_mut())?;
+                
+                let abstol_slice = (*self.abstol).as_mut();
+                
+                (self.functions.get_nominals_of_continuous_states)(abstol_slice)?;
+                
+                for i in 0..abstol_slice.len() {
+                    abstol_slice[i] *= self.functions.rtol;
+                }
+            } else {
+                (*self.x).as_mut().fill(0.0); // Dummy state for discrete systems
+                (*self.abstol).as_mut().fill(0.0); // Dummy tolerances for discrete systems
             }
-
             expect_no_error!(
                 CVodeReInit(self.cvode_mem, time, self.x),
                 "CVodeReInit failed"
@@ -238,12 +255,16 @@ extern "C" fn f(t: sunrealtype, y: N_Vector, ydot: N_Vector, user_data: *mut c_v
     unsafe {
         let functions: &Functions = &*(user_data as *const Functions);
 
-        expect_ok!((functions.set_time)(t));
-        expect_ok!((functions.set_continuous_inputs)(t));
-        expect_ok!((functions.set_continuous_states)((*y).as_mut()));
-        expect_ok!((functions.get_continuous_state_derivatives)(
-            (*ydot).as_mut()
-        ));
+        let ydot_slice = (*ydot).as_mut();
+
+        if functions.nx > 0 {
+            expect_ok!((functions.set_time)(t));
+            expect_ok!((functions.set_continuous_inputs)(t));
+            expect_ok!((functions.set_continuous_states)((*y).as_mut()));
+            expect_ok!((functions.get_continuous_state_derivatives)(ydot_slice));
+        } else {
+            ydot_slice.fill(0.0); // Dummy derivative for discrete systems
+        }
     }
 
     0
@@ -293,7 +314,7 @@ extern "C" fn jac(
             .as_ref()
             .expect("Directional derivative function not provided");
 
-        let mut seed_v = vec![0.0; functions.nx]; // The 'direction' vector
+        let mut seed_v = vec![0.0; NV_LENGTH_S(y) as usize]; // The 'direction' vector
 
         for j in 0..functions.nx {
             if j > 0 {
@@ -305,7 +326,7 @@ extern "C" fn jac(
 
             // copy the result into the SUNMatrix
             let column_j = SM_COLUMN_D(Jac, j);
-            let colmn_j_slice = from_raw_parts_mut(column_j, functions.nx);
+            let colmn_j_slice = from_raw_parts_mut(column_j, NV_LENGTH_S(y) as usize);
 
             // get the j-th column of the Jacobian
             expect_ok!(get_directional_derivative(

@@ -1798,9 +1798,12 @@ impl FMU3 {
         terminateSimulation: &mut fmi3Boolean,
         nominalsOfContinuousStatesChanged: &mut fmi3Boolean,
         valuesOfContinuousStatesChanged: &mut fmi3Boolean,
-        nextEventTimeDefined: &mut fmi3Boolean,
-        nextEventTime: &mut fmi3Float64,
+        nextEventTime: &mut Option<fmi3Float64>,
     ) -> fmi3Status {
+
+        let mut nextEventTimeDefined = false;
+        let mut nextEventTimeValue = 0.0;
+
         let status = unsafe {
             (self.fmi3UpdateDiscreteStates)(
                 self.instance,
@@ -1808,16 +1811,22 @@ impl FMU3 {
                 terminateSimulation,
                 nominalsOfContinuousStatesChanged,
                 valuesOfContinuousStatesChanged,
-                nextEventTimeDefined,
-                nextEventTime,
+                &mut nextEventTimeDefined,
+                &mut nextEventTimeValue,
             )
         };
 
         if self.logCalls {
             let message = format!(
-                "fmi3UpdateDiscreteStates(discreteStatesNeedUpdate={discreteStatesNeedUpdate}, terminateSimulation={terminateSimulation}, nominalsOfContinuousStatesChanged={nominalsOfContinuousStatesChanged}, valuesOfContinuousStatesChanged={valuesOfContinuousStatesChanged}, nextEventTimeDefined={nextEventTimeDefined}, nextEventTime={nextEventTime})"
+                "fmi3UpdateDiscreteStates(discreteStatesNeedUpdate={discreteStatesNeedUpdate}, terminateSimulation={terminateSimulation}, nominalsOfContinuousStatesChanged={nominalsOfContinuousStatesChanged}, valuesOfContinuousStatesChanged={valuesOfContinuousStatesChanged}, nextEventTimeDefined={nextEventTimeDefined}, nextEventTime={nextEventTimeValue})"
             );
             self.log_call(status, &message);
+        }
+
+        if nextEventTimeDefined {
+            *nextEventTime = Some(nextEventTimeValue);
+        } else {
+            *nextEventTime = None;
         }
 
         status

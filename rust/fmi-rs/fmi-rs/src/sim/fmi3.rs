@@ -449,21 +449,20 @@ pub fn simulate_cs(
             let mut terminateSimulation = false;
             let mut nominalsOfContinuousStatesChanged = false;
             let mut valuesOfContinuousStatesChanged = false;
-            let mut nextEventTimeDefined = false;
-            let mut nextEventTime = 0.0;
+            let mut nextEventTime = None;
 
             call(fmu.updateDiscreteStates(
                 &mut discreteStatesNeedUpdate,
                 &mut terminateSimulation,
                 &mut nominalsOfContinuousStatesChanged,
                 &mut valuesOfContinuousStatesChanged,
-                &mut nextEventTimeDefined,
                 &mut nextEventTime,
             ))?;
 
-            if nextEventTimeDefined && relative_le(nextEventTime, time)
-            {
-                return Err(format!("The next event time ({nextEventTime}) must be greater than the current time ({time}).").into());
+            if let Some(nextEventTime) = nextEventTime {
+                if relative_le(nextEventTime, time) {
+                    return Err(format!("The next event time ({nextEventTime}) must be greater than the current time ({time}).").into());
+                }
             }
 
             if terminateSimulation {
@@ -574,21 +573,20 @@ pub fn simulate_cs(
                 let mut terminateSimulation = false;
                 let mut nominalsOfContinuousStatesChanged = false;
                 let mut valuesOfContinuousStatesChanged = false;
-                let mut nextEventTimeDefined = false;
-                let mut nextEventTime = 0.0;
+                let mut nextEventTime = None;
 
                 call(fmu.updateDiscreteStates(
                     &mut discreteStatesNeedUpdate,
                     &mut terminateSimulation,
                     &mut nominalsOfContinuousStatesChanged,
                     &mut valuesOfContinuousStatesChanged,
-                    &mut nextEventTimeDefined,
                     &mut nextEventTime,
                 ))?;
 
-                if nextEventTimeDefined && relative_le(nextEventTime, time)
-                {
-                    return Err(format!("The next event time ({nextEventTime}) must be greater than the current time ({time}).").into());
+                if let Some(nextEventTime) = nextEventTime {
+                    if relative_le(nextEventTime, time) {
+                        return Err(format!("The next event time ({nextEventTime}) must be greater than the current time ({time}).").into());
+                    }
                 }
 
                 if terminateSimulation {
@@ -666,21 +664,20 @@ pub fn simulate_me<S: SolverFactory>(
 
     call(fmu.exitInitializationMode())?;
 
-    let mut discreteStatesNeedUpdate = false;
-    let mut terminateSimulation = false;
-    let mut nominalsOfContinuousStatesChanged = false;
-    let mut valuesOfContinuousStatesChanged = false;
-    let mut nextEventTimeDefined = false;
-    let mut nextEventTime = 0.0;
-
+    let mut nextEventTime = None;
+    
     // initial event iteration
     loop {
+        let mut discreteStatesNeedUpdate = false;
+        let mut terminateSimulation = false;
+        let mut nominalsOfContinuousStatesChanged = false;
+        let mut valuesOfContinuousStatesChanged = false;
+        
         call(fmu.updateDiscreteStates(
             &mut discreteStatesNeedUpdate,
             &mut terminateSimulation,
             &mut nominalsOfContinuousStatesChanged,
             &mut valuesOfContinuousStatesChanged,
-            &mut nextEventTimeDefined,
             &mut nextEventTime,
         ))?;
 
@@ -811,8 +808,8 @@ pub fn simulate_me<S: SolverFactory>(
             next_communication_point = next_input_event_time;
         }
 
-        if nextEventTimeDefined && relative_gt(next_communication_point, nextEventTime) {
-            next_communication_point = nextEventTime;
+        if let Some(next_event_time) = nextEventTime && relative_gt(next_communication_point, next_event_time) {
+            next_communication_point = next_event_time;
         }
 
         if relative_gt(next_communication_point, stop_time) {
@@ -825,8 +822,11 @@ pub fn simulate_me<S: SolverFactory>(
             false
         };
 
-        let is_time_event =
-            nextEventTimeDefined && relative_eq(nextEventTime, next_communication_point);
+        let is_time_event = if let Some(next_event_time) = nextEventTime && relative_eq(next_event_time, next_communication_point) {
+            true
+        } else {
+            false
+        };
 
         let (time_reached, is_state_event) = solver.step(next_communication_point)?;
 
@@ -867,29 +867,31 @@ pub fn simulate_me<S: SolverFactory>(
                 input.set_continuous_inputs(time, true, &fmu)?;
             }
 
-            let mut discreteStatesNeedUpdate = true;
-            let mut terminateSimulation = false;
-            let mut _nominalsOfContinuousStatesChanged = false;
-            let mut _valuesOfContinuousStatesChanged = false;
+            loop {
+                let mut discreteStatesNeedUpdate = false;
+                let mut terminateSimulation = false;
+                let mut nominalsOfContinuousStatesChanged = false;
+                let mut valuesOfContinuousStatesChanged = false;
 
-            while discreteStatesNeedUpdate {
                 call(fmu.updateDiscreteStates(
                     &mut discreteStatesNeedUpdate,
                     &mut terminateSimulation,
                     &mut nominalsOfContinuousStatesChanged,
                     &mut valuesOfContinuousStatesChanged,
-                    &mut nextEventTimeDefined,
                     &mut nextEventTime,
                 ))?;
 
-                if nextEventTimeDefined && relative_le(nextEventTime, time)
-                {
-                    return Err(format!("The next event time ({nextEventTime}) must be greater than the current time ({time}).").into());
+                if let Some(next_event_time) = nextEventTime && relative_le(next_event_time, time) {
+                    return Err(format!("The next event time ({next_event_time}) must be greater than the current time ({time}).").into());
                 }
 
                 if terminateSimulation {
                     call(fmu.terminate())?;
                     return Ok(());
+                }
+
+                if !discreteStatesNeedUpdate {
+                    break;
                 }
             }
 

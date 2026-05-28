@@ -3,6 +3,7 @@
 mod file;
 pub mod fmi2;
 pub mod fmi3;
+pub mod validation;
 
 use std::{error::Error, path::Path};
 

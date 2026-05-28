@@ -1,6 +1,20 @@
 fn main() {
+    // Tell Cargo to rebuild if any of these files change
+    println!("cargo:rerun-if-changed=src/c/src/logger_proxy.c");
+    println!("cargo:rerun-if-changed=src/c/src/variable_name_validator.c");
+    println!("cargo:rerun-if-changed=src/c/src/structured_variable_name.tab.c");
+    println!("cargo:rerun-if-changed=src/c/src/structured_variable_name.yy.c");
+    println!("cargo:rerun-if-changed=src/c/include/structured_variable_name.tab.h");
+
     cc::Build::new()
-        .file("src/c/src/logger_proxy.c")
         .include("src/c/include")
+        .file("src/c/src/logger_proxy.c")
         .compile("logger_proxy");
+    cc::Build::new()
+        .define("YY_NO_UNISTD_H", None)
+        .include("src/c/include")
+        .file("src/c/src/variable_name_validator.c")
+        .file("src/c/src/structured_variable_name.tab.c")
+        .file("src/c/src/structured_variable_name.yy.c")
+        .compile("variable_name_validator");
 }

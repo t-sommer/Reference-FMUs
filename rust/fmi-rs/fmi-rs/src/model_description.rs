@@ -7,6 +7,16 @@ pub mod validation;
 
 use std::{error::Error, path::Path};
 
+/// Position in text.
+///
+/// Position indicates a row/line and a column in the original text. Starting from 1:1.
+#[allow(missing_docs)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct TextPos {
+    pub row: u32,
+    pub col: u32,
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum FMIMajorVersion {
     V2 = 2,
@@ -18,6 +28,7 @@ pub struct Unit {
     pub name: String,
     pub baseUnit: Option<BaseUnit>,
     pub displayUnits: Vec<DisplayUnit>,
+    pub text_pos: TextPos,
 }
 
 #[derive(Debug)]
@@ -26,6 +37,7 @@ pub struct DisplayUnit {
     pub factor: f64,
     pub offset: f64,
     pub inverse: bool,
+    pub text_pos: TextPos,
 }
 
 #[derive(Debug)]
@@ -40,6 +52,7 @@ pub struct BaseUnit {
     pub rad: i32,
     pub factor: f64,
     pub offset: f64,
+    pub text_pos: TextPos,
 }
 
 pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {

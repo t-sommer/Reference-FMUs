@@ -4,7 +4,10 @@ pub mod validation;
 
 use std::str::FromStr;
 
-use crate::{model_description::Unit, types::fmiValueReference};
+use crate::{
+    model_description::{TextPos, Unit},
+    types::fmiValueReference,
+};
 
 pub type VariableIndex = u32;
 
@@ -162,6 +165,7 @@ pub struct Item {
     pub name: String,
     pub value: i32,
     pub description: Option<String>,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -177,6 +181,7 @@ pub enum SimpleType {
         max: Option<f32>,
         nominal: Option<f32>,
         unbounded: bool,
+        textPos: TextPos,
     },
     Integer {
         name: String,
@@ -184,20 +189,24 @@ pub enum SimpleType {
         quantity: Option<String>,
         min: Option<i32>,
         max: Option<i32>,
+        textPos: TextPos,
     },
     Boolean {
         name: String,
         description: Option<String>,
+        textPos: TextPos,
     },
     String {
         name: String,
         description: Option<String>,
+        textPos: TextPos,
     },
     Enumeration {
         name: String,
         description: Option<String>,
         items: Vec<Item>,
         quantity: Option<String>,
+        textPos: TextPos,
     },
 }
 
@@ -220,6 +229,7 @@ pub struct DefaultExperiment {
     pub stopTime: Option<String>,
     pub tolerance: Option<String>,
     pub stepSize: Option<String>,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -236,6 +246,7 @@ pub struct CoSimulation {
     pub canGetAndSetFMUstate: bool,
     pub canSerializeFMUstate: bool,
     pub providesDirectionalDerivative: bool,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -249,6 +260,7 @@ pub struct ModelExchange {
     pub canGetAndSetFMUstate: bool,
     pub canSerializeFMUstate: bool,
     pub providesDirectionalDerivative: bool,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -261,6 +273,7 @@ pub struct ScalarVariable {
     pub variability: Variability,
     pub initial: Initial,
     pub canHandleMultipleSetPerTimeInstant: bool,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -268,6 +281,7 @@ pub struct Unknown {
     pub index: VariableIndex,
     pub dependencies: Option<Vec<VariableIndex>>,
     pub dependenciesKind: Option<Vec<DependencyKind>>,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -296,7 +310,10 @@ pub struct ModelDescription {
 
 impl ModelDescription {
     /// Returns the first variable found with the given value reference.
-    pub fn get_variable_by_value_reference(&self, vr: fmiValueReference) -> Option<&ScalarVariable> {
+    pub fn get_variable_by_value_reference(
+        &self,
+        vr: fmiValueReference,
+    ) -> Option<&ScalarVariable> {
         self.modelVariables.iter().find(|v| v.valueReference == vr)
     }
 

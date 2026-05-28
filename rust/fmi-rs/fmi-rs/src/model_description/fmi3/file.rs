@@ -59,6 +59,7 @@ impl ModelDescription {
                 valueReference,
                 dependencies,
                 dependenciesKind,
+                textPos: child.text_pos(),
             });
         }
 
@@ -338,6 +339,7 @@ impl ModelDescription {
                     causality,
                     variability,
                     dimensions: Self::get_dimensions(&child)?,
+                    textPos: child.text_pos(),
                 })
             })
             .collect::<Result<Vec<_>, Box<dyn Error>>>()?;
@@ -436,6 +438,7 @@ impl TypeDefinition {
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
                 nominal: node.attribute_as("nominal")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("Float64Type") {
             Ok(TypeDefinition::Float64 {
@@ -449,6 +452,7 @@ impl TypeDefinition {
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
                 nominal: node.attribute_as("nominal")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("Int8Type") {
             Ok(TypeDefinition::Int8 {
@@ -457,6 +461,7 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("UInt8Type") {
             Ok(TypeDefinition::UInt8 {
@@ -465,6 +470,7 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("Int16Type") {
             Ok(TypeDefinition::Int16 {
@@ -473,6 +479,7 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("UInt16Type") {
             Ok(TypeDefinition::UInt16 {
@@ -481,6 +488,7 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("Int32Type") {
             Ok(TypeDefinition::Int32 {
@@ -489,6 +497,7 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("UInt32Type") {
             Ok(TypeDefinition::UInt32 {
@@ -497,6 +506,7 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("Int64Type") {
             Ok(TypeDefinition::Int64 {
@@ -505,6 +515,7 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("UInt64Type") {
             Ok(TypeDefinition::UInt64 {
@@ -513,11 +524,12 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("BooleanType") {
-            Ok(TypeDefinition::Boolean { name, description })
+            Ok(TypeDefinition::Boolean { name, description, textPos: node.text_pos() })
         } else if node.has_tag_name("StringType") {
-            Ok(TypeDefinition::String { name, description })
+            Ok(TypeDefinition::String { name, description, textPos: node.text_pos() })
         } else if node.has_tag_name("BinaryType") {
             Ok(TypeDefinition::Binary {
                 name,
@@ -527,6 +539,7 @@ impl TypeDefinition {
                     .unwrap_or("application/octet-stream")
                     .to_string(),
                 maxSize: node.attribute_as("maxSize")?,
+                textPos: node.text_pos(),
             })
         } else if node.has_tag_name("EnumerationType") {
             let mut items = vec![];
@@ -535,7 +548,6 @@ impl TypeDefinition {
                     items.push(Item::from_node(&child)?);
                 }
             }
-
             Ok(TypeDefinition::Enumeration {
                 name,
                 description,
@@ -543,6 +555,7 @@ impl TypeDefinition {
                 quantity: node.attribute_as("quantity")?,
                 min: node.attribute_as("min")?,
                 max: node.attribute_as("max")?,
+                textPos: node.text_pos(),
             })
         } else {
             Err(format!("Unknown type definition: {}", node.tag_name().name()).into())
@@ -557,6 +570,7 @@ impl DefaultExperiment {
             stopTime: node.attribute_as("stopTime")?,
             tolerance: node.attribute_as("tolerance")?,
             stepSize: node.attribute_as("stepSize")?,
+            textPos: node.text_pos(),
         })
     }
 }
@@ -590,6 +604,7 @@ impl ModelExchange {
             providesEvaluateDiscreteStates: node
                 .attribute_as("providesEvaluateDiscreteStates")?
                 .unwrap_or_default(),
+            textPos: node.text_pos(),
         })
     }
 }
@@ -640,6 +655,7 @@ impl CoSimulation {
             providesEvaluateDiscreteStates: node
                 .attribute_as("providesEvaluateDiscreteStates")?
                 .unwrap_or_default(),
+            textPos: node.text_pos(),
         })
     }
 }
@@ -667,6 +683,7 @@ impl ScheduledExecution {
             providesPerElementDependencies: node
                 .attribute_as("providesPerElementDependencies")?
                 .unwrap_or_default(),
+            textPos: node.text_pos(),
         })
     }
 }
@@ -677,6 +694,7 @@ impl Item {
             name: node.required_attribute("name")?,
             description: node.attribute_as("description")?,
             value: node.required_attribute("value")?.parse()?,
+            textPos: node.text_pos(),
         })
     }
 }

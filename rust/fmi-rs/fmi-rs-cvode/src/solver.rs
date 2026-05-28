@@ -212,7 +212,6 @@ impl<'a> Solver for CVodeSolver<'a> {
                 for value in abstol_slice.iter_mut() {
                     *value *= self.functions.rtol;
                 }
-
             } else {
                 (*self.x).as_mut().fill(0.0); // Dummy state for discrete systems
                 (*self.abstol).as_mut().fill(0.0); // Dummy tolerances for discrete systems

@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fs::File, path::{Path, PathBuf}};
+use std::{
+    collections::HashMap,
+    fs::File,
+    path::{Path, PathBuf},
+};
 
 use fmi::{
     model_description::fmi3::{TypeDefinition, VariableType},

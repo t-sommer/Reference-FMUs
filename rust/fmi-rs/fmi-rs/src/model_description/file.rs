@@ -2,7 +2,7 @@ use std::{any::TypeId, error::Error, str::FromStr};
 
 use roxmltree::Node;
 
-use crate::model_description::{BaseUnit, DisplayUnit, Unit};
+use crate::model_description::{BaseUnit, DisplayUnit, TextPos, Unit};
 
 pub(crate) trait NodeExt<'a, 'input> {
     fn get_child(&self, name: &str) -> Option<Node<'a, 'input>>;
@@ -11,9 +11,23 @@ pub(crate) trait NodeExt<'a, 'input> {
     fn required_attribute(&self, name: &str) -> Result<String, Box<dyn Error>>;
     fn attribute_as<T: FromStr + 'static>(&self, name: &str) -> Result<Option<T>, Box<dyn Error>>;
     fn required_attribute_as<T: FromStr + 'static>(&self, name: &str) -> Result<T, Box<dyn Error>>;
+    fn line_number(&self) -> u32;
+    fn text_pos(&self) -> TextPos;
 }
 
 impl<'a, 'input> NodeExt<'a, 'input> for Node<'a, 'input> {
+    fn line_number(&self) -> u32 {
+        self.document().text_pos_at(self.range().start).row
+    }
+
+    fn text_pos(&self) -> TextPos {
+        let pos = self.document().text_pos_at(self.range().start);
+        TextPos {
+            row: pos.row,
+            col: pos.col,
+        }
+    }
+
     fn get_child(&self, name: &str) -> Option<Node<'a, 'input>> {
         self.children().find(|n| n.has_tag_name(name))
     }
@@ -54,7 +68,8 @@ impl<'a, 'input> NodeExt<'a, 'input> for Node<'a, 'input> {
             };
             let result = normalized.parse::<T>().map_err(|_| {
                 format!(
-                    "Illegal value '{}' for attribute '{}' in <{}>.",
+                    "Line {}: Illegal value '{}' for attribute '{}' in <{}>.",
+                    self.line_number(),
                     literal,
                     name,
                     self.tag_name().name()
@@ -79,7 +94,8 @@ impl<'a, 'input> NodeExt<'a, 'input> for Node<'a, 'input> {
             };
             normalized.parse::<T>().map_err(|_| {
                 format!(
-                    "Illegal value '{}' for attribute '{}' in <{}>.",
+                    "Line {}: Illegal value '{}' for attribute '{}' in <{}>.",
+                    self.line_number(),
                     value,
                     name,
                     self.tag_name().name()
@@ -110,6 +126,7 @@ impl BaseUnit {
             rad: node.attribute_as("rad")?.unwrap_or_default(),
             factor: node.attribute_as("factor")?.unwrap_or(1.0),
             offset: node.attribute_as("offset")?.unwrap_or_default(),
+            text_pos: node.text_pos(),
         })
     }
 }
@@ -121,6 +138,7 @@ impl DisplayUnit {
             offset: node.attribute_as("offset")?.unwrap_or_default(),
             inverse: node.attribute_as("inverse")?.unwrap_or_default(),
             name: node.required_attribute("name")?,
+            text_pos: node.text_pos(),
         })
     }
 }
@@ -138,6 +156,7 @@ impl Unit {
                 .into_iter()
                 .map(|n| DisplayUnit::from_node(&n))
                 .collect::<Result<Vec<_>, _>>()?,
+            text_pos: node.text_pos(),
         })
     }
 }

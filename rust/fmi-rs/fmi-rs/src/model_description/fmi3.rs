@@ -4,7 +4,7 @@ pub mod validation;
 
 use std::str::FromStr;
 
-use crate::{model_description::Unit, types::fmiValueReference};
+use crate::{model_description::{TextPos, Unit}, types::fmiValueReference};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum VariableNamingConvention {
@@ -29,6 +29,7 @@ pub struct Item {
     pub name: String,
     pub value: i64,
     pub description: Option<String>,
+    textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -73,6 +74,7 @@ pub enum TypeDefinition {
         min: Option<f32>,
         max: Option<f32>,
         nominal: Option<f32>,
+        textPos: TextPos,
     },
     Float64 {
         // fmi3TypeDefinitionBase
@@ -88,6 +90,7 @@ pub enum TypeDefinition {
         min: Option<f64>,
         max: Option<f64>,
         nominal: Option<f64>,
+        textPos: TextPos,
     },
     Int8 {
         name: String,
@@ -95,6 +98,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i8>,
         max: Option<i8>,
+        textPos: TextPos,
     },
     UInt8 {
         name: String,
@@ -102,6 +106,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<u8>,
         max: Option<u8>,
+        textPos: TextPos,
     },
     Int16 {
         name: String,
@@ -109,6 +114,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i16>,
         max: Option<i16>,
+        textPos: TextPos,
     },
     UInt16 {
         name: String,
@@ -116,6 +122,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<u16>,
         max: Option<u16>,
+        textPos: TextPos,
     },
     Int32 {
         name: String,
@@ -123,6 +130,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i32>,
         max: Option<i32>,
+        textPos: TextPos,
     },
     UInt32 {
         name: String,
@@ -130,6 +138,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<u32>,
         max: Option<u32>,
+        textPos: TextPos,
     },
     Int64 {
         name: String,
@@ -137,6 +146,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i64>,
         max: Option<i64>,
+        textPos: TextPos,
     },
     UInt64 {
         name: String,
@@ -144,20 +154,24 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<u64>,
         max: Option<u64>,
+        textPos: TextPos,
     },
     Boolean {
         name: String,
         description: Option<String>,
+        textPos: TextPos,
     },
     String {
         name: String,
         description: Option<String>,
+        textPos: TextPos,
     },
     Binary {
         name: String,
         description: Option<String>,
         mimeType: String,
         maxSize: Option<u64>,
+        textPos: TextPos,
     },
     Enumeration {
         name: String,
@@ -166,6 +180,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i64>,
         max: Option<i64>,
+        textPos: TextPos,
     },
     Clock {
         name: String,
@@ -179,6 +194,7 @@ pub enum TypeDefinition {
         resolution: Option<u64>,
         intervalCounter: Option<u64>,
         shiftCounter: u64,
+        textPos: TextPos,
     },
 }
 
@@ -491,6 +507,7 @@ pub struct DefaultExperiment {
     pub stopTime: Option<String>,
     pub tolerance: Option<String>,
     pub stepSize: Option<String>,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -505,6 +522,7 @@ pub struct ModelExchange {
     pub providesPerElementDependencies: bool,
     pub needsCompletedIntegratorStep: bool,
     pub providesEvaluateDiscreteStates: bool,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -526,6 +544,7 @@ pub struct CoSimulation {
     pub canReturnEarlyAfterIntermediateUpdate: bool,
     pub hasEventMode: bool,
     pub providesEvaluateDiscreteStates: bool,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -538,6 +557,7 @@ pub struct ScheduledExecution {
     pub providesDirectionalDerivatives: bool,
     pub providesAdjointDerivatives: bool,
     pub providesPerElementDependencies: bool,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -555,6 +575,7 @@ pub struct ModelVariable {
     pub causality: Causality,
     pub variability: Variability,
     pub dimensions: Vec<Dimension>,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -562,6 +583,7 @@ pub struct Unknown {
     pub valueReference: fmiValueReference,
     pub dependencies: Option<Vec<fmiValueReference>>,
     pub dependenciesKind: Option<Vec<DependencyKind>>,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]

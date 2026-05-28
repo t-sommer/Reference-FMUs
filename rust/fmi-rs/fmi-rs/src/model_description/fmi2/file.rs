@@ -17,6 +17,7 @@ impl DefaultExperiment {
             stopTime: node.attribute_as("stopTime")?,
             tolerance: node.attribute_as("tolerance")?,
             stepSize: node.attribute_as("stepSize")?,
+            textPos: node.text_pos(),
         })
     }
 }
@@ -53,6 +54,7 @@ impl ModelExchange {
             providesDirectionalDerivative: node
                 .attribute_as("providesDirectionalDerivative")?
                 .unwrap_or_default(),
+            textPos: node.text_pos(),
         })
     }
 }
@@ -98,6 +100,7 @@ impl CoSimulation {
             providesDirectionalDerivative: node
                 .attribute_as("providesDirectionalDerivative")?
                 .unwrap_or_default(),
+            textPos: node.text_pos(),
         })
     }
 }
@@ -170,6 +173,7 @@ impl ModelDescription {
                 variability,
                 initial,
                 canHandleMultipleSetPerTimeInstant,
+                textPos: child.text_pos(),
             };
 
             modelVariables.push(variable);
@@ -336,6 +340,7 @@ impl ModelDescription {
                 index,
                 dependencies,
                 dependenciesKind,
+                textPos: child.text_pos(),
             });
         }
 
@@ -361,6 +366,7 @@ impl SimpleType {
                     min: child.attribute_as("min")?,
                     max: child.attribute_as("max")?,
                     nominal: child.attribute_as("nominal")?,
+                    textPos: node.text_pos(),
                 });
             } else if child.has_tag_name("Integer") {
                 return Ok(SimpleType::Integer {
@@ -369,11 +375,20 @@ impl SimpleType {
                     quantity: child.attribute_as("quantity")?,
                     min: child.attribute_as("min")?,
                     max: child.attribute_as("max")?,
+                    textPos: node.text_pos(),
                 });
             } else if child.has_tag_name("Boolean") {
-                return Ok(SimpleType::Boolean { name, description });
+                return Ok(SimpleType::Boolean {
+                    name,
+                    description,
+                    textPos: node.text_pos(),
+                });
             } else if child.has_tag_name("String") {
-                return Ok(SimpleType::String { name, description });
+                return Ok(SimpleType::String {
+                    name,
+                    description,
+                    textPos: node.text_pos(),
+                });
             } else if child.has_tag_name("Enumeration") {
                 let mut items = vec![];
                 for grand_child in child.children() {
@@ -386,6 +401,7 @@ impl SimpleType {
                     description,
                     items,
                     quantity: child.attribute_as("quantity")?,
+                    textPos: node.text_pos(),
                 });
             }
         }
@@ -400,6 +416,7 @@ impl Item {
             name: node.required_attribute("name")?,
             description: node.attribute_as("description")?,
             value: node.required_attribute_as("value")?,
+            textPos: node.text_pos(),
         })
     }
 }

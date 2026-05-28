@@ -1,7 +1,9 @@
 use crate::model_description::fmi2::{ModelDescription, Unknown, VariableType};
 
 impl ModelDescription {
-    /// Checks if the model description is valid according to the FMI 2.0 spec.
+    /// Checks if the model description is valid according to the FMI 2.0 specification.
+    /// Returns a list of problems found in the model description.
+    /// If the list is empty, the model description is valid.
     pub fn validate(&self) -> Vec<String> {
         let mut problems: Vec<String> = vec![];
 
@@ -20,7 +22,10 @@ impl ModelDescription {
             let derivative_variable = match self.get_variable_by_index(unknown.index) {
                 Some(variable) => variable,
                 None => {
-                    problems.push(format!("Illegal variable index: {}", unknown.index));
+                    problems.push(format!(
+                        "Illegal variable index in <Unknown index=\"{}\"> ({}:{})",
+                        unknown.index, unknown.textPos.row, unknown.textPos.col
+                    ));
                     continue;
                 }
             };
@@ -30,27 +35,31 @@ impl ModelDescription {
                     match self.get_variable_by_index(*derivative_index) {
                         Some(state_variable) => {
                             if !matches!(state_variable.variableType, VariableType::Real { .. }) {
-                                problems.push(format!("The continuous state variable {} referenced by the derivative {} is not a Real variable.", state_variable.name, derivative_variable.name));
+                                problems.push(format!("The continuous state variable {} ({}:{}) referenced by the derivative {} ({}:{}) is not a Real variable.", state_variable.name, state_variable.textPos.row, state_variable.textPos.col, derivative_variable.name, derivative_variable.textPos.row, derivative_variable.textPos.col));
                             }
                         }
                         None => {
                             problems.push(format!(
-                                "Attribute derivative of variable {} is not a valid variable index.",
-                                derivative_variable.name
+                                "Attribute derivative of variable {} ({}:{}) is not a valid variable index.",
+                                derivative_variable.name, derivative_variable.textPos.row, derivative_variable.textPos.col
                             ));
                             continue;
                         }
                     };
                 } else {
                     problems.push(format!(
-                        "Variable {} is not a derivative.",
-                        derivative_variable.name
+                        "Variable {} ({}:{}) is not a derivative.",
+                        derivative_variable.name,
+                        derivative_variable.textPos.row,
+                        derivative_variable.textPos.col
                     ));
                 }
             } else {
                 problems.push(format!(
-                    "Variable {} is not a real variable.",
-                    derivative_variable.name
+                    "Variable {} ({}:{}) is not a real variable.",
+                    derivative_variable.name,
+                    derivative_variable.textPos.row,
+                    derivative_variable.textPos.col
                 ));
             }
         }
@@ -67,15 +76,18 @@ impl ModelDescription {
         let mut problems = vec![];
 
         if !self.is_valid_variable_index(unknown.index) {
-            problems.push(format!("Illegal variable index: {}", unknown.index));
+            problems.push(format!(
+                "Illegal variable index in <Unknown index=\"{}\"> ({}:{})",
+                unknown.index, unknown.textPos.row, unknown.textPos.col
+            ));
         }
 
         if let Some(dependencies) = &unknown.dependencies {
             for dependency_index in dependencies {
                 if !self.is_valid_variable_index(*dependency_index) {
                     problems.push(format!(
-                        "Illegal variable index in dependencies of unknown with index {}: {}",
-                        unknown.index, dependency_index
+                        "Illegal variable index in dependencies of <Unknown index=\"{}\"> ({}:{}): {}",
+                        unknown.index, unknown.textPos.row, unknown.textPos.col, dependency_index
                     ));
                 }
             }
@@ -83,7 +95,7 @@ impl ModelDescription {
             if let Some(dependencies_kind) = &unknown.dependenciesKind
                 && dependencies.len() != dependencies_kind.len()
             {
-                problems.push(format!("The number of elements in dependenciesKind does not match the number of elements in dependencies of unknown with index {}.", unknown.index));
+                problems.push(format!("The number of elements in dependenciesKind does not match the number of elements in dependencies of <Unknown index=\"{}\"> ({}:{}).", unknown.index, unknown.textPos.row, unknown.textPos.col));
             }
         }
 

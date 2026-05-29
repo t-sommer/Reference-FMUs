@@ -21,7 +21,7 @@ fn test_read_model_description() {
         .join("resources")
         .join("fmi2")
         .join("Feedthrough");
-    ModelDescription::read(&unzipdir.join("modelDescription.xml")).unwrap();
+    ModelDescription::from_path(&unzipdir.join("modelDescription.xml")).unwrap();
 }
 
 fn create_fmu() -> FMU2<CS> {
@@ -64,7 +64,7 @@ fn test_csv_input() {
 
     let unzipdir = resources_dir.join("fmi2").join("Feedthrough");
 
-    let model_description = ModelDescription::read(&unzipdir.join("modelDescription.xml")).unwrap();
+    let model_description = ModelDescription::from_path(&unzipdir.join("modelDescription.xml")).unwrap();
 
     let settings = SimulationSettings {
         unzipdir: &unzipdir,

@@ -25,7 +25,7 @@ pub fn simulate_fmu(
     unzipdir: &tempfile::TempDir,
     xml_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let model_description = fmi::model_description::fmi3::ModelDescription::read(xml_path)?;
+    let model_description = fmi::model_description::fmi3::ModelDescription::from_path(xml_path)?;
 
     let output_variables: Vec<&fmi::model_description::fmi3::ModelVariable> =
         if args.output_variable.is_empty() {

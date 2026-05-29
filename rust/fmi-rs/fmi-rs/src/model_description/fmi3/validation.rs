@@ -15,13 +15,13 @@ impl ModelDescription {
         for variable in &self.modelVariables {
             if variable.name.is_empty() {
                 problems.push(ValidationError {
-                    range: vec![],
+                    range: vec![variable.range.clone()],
                     message: "Variable name cannot be empty.".to_string(),
                 });
             } else if self.variableNamingConvention == VariableNamingConvention::Structured {
                 if let Err(message) = validate_structured_variable_name(&variable.name) {
                     problems.push(ValidationError {
-                    range: vec![],
+                        range: vec![variable.range.clone()],
                         message: format!("Variable name '{}' does not conform to the structured naming convention: {}", variable.name, message),
                     });
                 }

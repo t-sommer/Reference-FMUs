@@ -22,12 +22,35 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
     
     println!("{}", "    Validating model description".green().bold());
 
+    let text = match std::fs::read_to_string(xml_path) {
+        Ok(content) => content,
+        Err(e) => { 
+            eprintln!("{}: Failed to read modelDescription.xml: {e}", "error".red().bold());
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let opt = roxmltree::ParsingOptions {
+        allow_dtd: true,
+        ..roxmltree::ParsingOptions::default()
+    };
+
+    let doc = match roxmltree::Document::parse_with_options(&text, opt) {
+        Ok(doc) => doc,
+        Err(e) => {
+            eprintln!("{}: Failed to parse modelDescription.xml: {e}", "error".red().bold());
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let root = doc.root_element();
+
     let mut problems = vec![]; // validate_model_description_against_xsd(&xml_path, fmi_major_version as i32);
 
     match &fmi_major_version {
         FMIMajorVersion::V2 => {
             let model_description =
-                match fmi::model_description::fmi2::ModelDescription::read(&xml_path) {
+                match fmi::model_description::fmi2::ModelDescription::from_node(&root) {
                     Ok(md) => md,
                     Err(e) => {
                         eprintln!(
@@ -41,7 +64,7 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
         }
         FMIMajorVersion::V3 => {
             let model_description =
-                match fmi::model_description::fmi3::ModelDescription::read(&xml_path) {
+                match fmi::model_description::fmi3::ModelDescription::from_node(&root) {
                     Ok(md) => md,
                     Err(e) => {
                         eprintln!(
@@ -54,15 +77,6 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
             problems.extend(model_description.validate());
         }
     };
-
-    let text = std::fs::read_to_string(xml_path).unwrap();
-
-    let opt = roxmltree::ParsingOptions {
-        allow_dtd: true,
-        ..roxmltree::ParsingOptions::default()
-    };
-
-    let doc = roxmltree::Document::parse_with_options(&text, opt).unwrap();
 
     let terminal_width = term_size::dimensions().map(|(w, _)| w).unwrap_or(120);
 

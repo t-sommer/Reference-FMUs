@@ -5,7 +5,7 @@ pub mod validation;
 use std::{ops::Range, str::FromStr};
 
 use crate::{
-    model_description::{TextPos, Unit},
+    model_description::{Unit},
     types::fmiValueReference,
 };
 
@@ -196,7 +196,7 @@ pub enum SimpleType {
         max: Option<f32>,
         nominal: Option<f32>,
         unbounded: bool,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     Integer {
         name: String,
@@ -204,24 +204,24 @@ pub enum SimpleType {
         quantity: Option<String>,
         min: Option<i32>,
         max: Option<i32>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     Boolean {
         name: String,
         description: Option<String>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     String {
         name: String,
         description: Option<String>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     Enumeration {
         name: String,
         description: Option<String>,
         items: Vec<Item>,
         quantity: Option<String>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
 }
 

@@ -292,21 +292,24 @@ impl ModelDescription {
         Ok(dimensions)
     }
 
-    pub fn read(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
+    pub fn from_path(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
         let text = match std::fs::read_to_string(path) {
             Ok(content) => content,
             Err(e) => return Err(format!("Failed to read XML file: {}", e).into()),
         };
-
+        Self::from_string(text.as_str())
+    }
+    
+    pub fn from_string(text: &str) -> Result<ModelDescription, Box<dyn Error>> {
         let opt = roxmltree::ParsingOptions {
             allow_dtd: true,
             ..roxmltree::ParsingOptions::default()
         };
-
         let doc = roxmltree::Document::parse_with_options(&text, opt)?;
-
-        let root = &doc.root_element();
-
+        Self::from_node(&doc.root_element())
+    }
+    
+    pub fn from_node(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
         let modelVariables: Vec<ModelVariable> = root
             .get_required_child("ModelVariables")?
             .children()

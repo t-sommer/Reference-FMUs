@@ -1,6 +1,6 @@
 use crate::model_description::file::NodeExt;
 use crate::model_description::{Unit, fmi2::SimpleType};
-use roxmltree::Node;
+use roxmltree::{Document, Node};
 use std::str::FromStr;
 use std::vec;
 use std::{error::Error, path::Path};
@@ -106,20 +106,25 @@ impl CoSimulation {
 }
 
 impl ModelDescription {
-    pub fn read(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
+
+    pub fn from_path(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
         let text = match std::fs::read_to_string(path) {
             Ok(content) => content,
             Err(e) => return Err(format!("Failed to read XML file: {}", e).into()),
         };
-
+        Self::from_string(text.as_str())
+    }
+    
+    pub fn from_string(text: &str) -> Result<ModelDescription, Box<dyn Error>> {
         let opt = roxmltree::ParsingOptions {
             allow_dtd: true,
             ..roxmltree::ParsingOptions::default()
         };
-
         let doc = roxmltree::Document::parse_with_options(&text, opt)?;
-
-        let root = &doc.root_element();
+        Self::from_node(&doc.root_element())
+    }
+    
+    pub fn from_node(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
 
         let mut modelVariables = vec![];
 
@@ -366,7 +371,7 @@ impl SimpleType {
                     min: child.attribute_as("min")?,
                     max: child.attribute_as("max")?,
                     nominal: child.attribute_as("nominal")?,
-                    textPos: node.text_pos(),
+                    range: node.range(),
                 });
             } else if child.has_tag_name("Integer") {
                 return Ok(SimpleType::Integer {
@@ -375,19 +380,19 @@ impl SimpleType {
                     quantity: child.attribute_as("quantity")?,
                     min: child.attribute_as("min")?,
                     max: child.attribute_as("max")?,
-                    textPos: node.text_pos(),
+                    range: node.range(),
                 });
             } else if child.has_tag_name("Boolean") {
                 return Ok(SimpleType::Boolean {
                     name,
                     description,
-                    textPos: node.text_pos(),
+                    range: node.range(),
                 });
             } else if child.has_tag_name("String") {
                 return Ok(SimpleType::String {
                     name,
                     description,
-                    textPos: node.text_pos(),
+                    range: node.range(),
                 });
             } else if child.has_tag_name("Enumeration") {
                 let mut items = vec![];
@@ -401,7 +406,7 @@ impl SimpleType {
                     description,
                     items,
                     quantity: child.attribute_as("quantity")?,
-                    textPos: node.text_pos(),
+                    range: node.range(),
                 });
             }
         }

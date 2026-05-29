@@ -4,7 +4,7 @@ pub mod validation;
 
 use std::{ops::Range, str::FromStr};
 
-use crate::{model_description::{TextPos, Unit}, types::fmiValueReference};
+use crate::{model_description::{Unit}, types::fmiValueReference};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum VariableNamingConvention {

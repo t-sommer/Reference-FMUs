@@ -29,7 +29,7 @@ pub fn show_fmu_info(args: &InfoArgs) -> ExitCode {
     match fmi_major_version {
         FMIMajorVersion::V2 => {
             let model_description =
-                match fmi::model_description::fmi2::ModelDescription::read(&xml_path) {
+                match fmi::model_description::fmi2::ModelDescription::from_path(&xml_path) {
                     Ok(md) => md,
                     Err(e) => {
                         eprintln!("Failed to parse modelDescription.xml: {e}");
@@ -105,7 +105,7 @@ pub fn show_fmu_info(args: &InfoArgs) -> ExitCode {
         }
         FMIMajorVersion::V3 => {
             let model_description =
-                match fmi::model_description::fmi3::ModelDescription::read(&xml_path) {
+                match fmi::model_description::fmi3::ModelDescription::from_path(&xml_path) {
                     Ok(md) => md,
                     Err(e) => {
                         eprintln!("Failed to parse modelDescription.xml: {e}");

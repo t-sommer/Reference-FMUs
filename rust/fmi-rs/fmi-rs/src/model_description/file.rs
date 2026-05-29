@@ -126,7 +126,7 @@ impl BaseUnit {
             rad: node.attribute_as("rad")?.unwrap_or_default(),
             factor: node.attribute_as("factor")?.unwrap_or(1.0),
             offset: node.attribute_as("offset")?.unwrap_or_default(),
-            text_pos: node.text_pos(),
+            textPos: node.text_pos(),
         })
     }
 }
@@ -138,7 +138,7 @@ impl DisplayUnit {
             offset: node.attribute_as("offset")?.unwrap_or_default(),
             inverse: node.attribute_as("inverse")?.unwrap_or_default(),
             name: node.required_attribute("name")?,
-            text_pos: node.text_pos(),
+            textPos: node.text_pos(),
         })
     }
 }
@@ -156,7 +156,7 @@ impl Unit {
                 .into_iter()
                 .map(|n| DisplayUnit::from_node(&n))
                 .collect::<Result<Vec<_>, _>>()?,
-            text_pos: node.text_pos(),
+            textPos: node.text_pos(),
         })
     }
 }

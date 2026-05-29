@@ -2,7 +2,7 @@
 pub mod file;
 pub mod validation;
 
-use std::str::FromStr;
+use std::{ops::Range, str::FromStr};
 
 use crate::{model_description::{TextPos, Unit}, types::fmiValueReference};
 
@@ -29,7 +29,8 @@ pub struct Item {
     pub name: String,
     pub value: i64,
     pub description: Option<String>,
-    textPos: TextPos,
+    range: Range<usize>
+,
 }
 
 #[derive(Debug)]
@@ -74,7 +75,8 @@ pub enum TypeDefinition {
         min: Option<f32>,
         max: Option<f32>,
         nominal: Option<f32>,
-        textPos: TextPos,
+        range: Range<usize>
+,
     },
     Float64 {
         // fmi3TypeDefinitionBase
@@ -90,7 +92,8 @@ pub enum TypeDefinition {
         min: Option<f64>,
         max: Option<f64>,
         nominal: Option<f64>,
-        textPos: TextPos,
+        range: Range<usize>
+,
     },
     Int8 {
         name: String,
@@ -98,7 +101,8 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i8>,
         max: Option<i8>,
-        textPos: TextPos,
+        range: Range<usize>
+,
     },
     UInt8 {
         name: String,
@@ -106,7 +110,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<u8>,
         max: Option<u8>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     Int16 {
         name: String,
@@ -114,7 +118,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i16>,
         max: Option<i16>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     UInt16 {
         name: String,
@@ -122,7 +126,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<u16>,
         max: Option<u16>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     Int32 {
         name: String,
@@ -130,7 +134,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i32>,
         max: Option<i32>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     UInt32 {
         name: String,
@@ -138,7 +142,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<u32>,
         max: Option<u32>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     Int64 {
         name: String,
@@ -146,7 +150,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i64>,
         max: Option<i64>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     UInt64 {
         name: String,
@@ -154,24 +158,25 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<u64>,
         max: Option<u64>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     Boolean {
         name: String,
         description: Option<String>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     String {
         name: String,
         description: Option<String>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     Binary {
         name: String,
         description: Option<String>,
         mimeType: String,
         maxSize: Option<u64>,
-        textPos: TextPos,
+        range: Range<usize>
+,
     },
     Enumeration {
         name: String,
@@ -180,7 +185,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i64>,
         max: Option<i64>,
-        textPos: TextPos,
+        range: Range<usize>,
     },
     Clock {
         name: String,
@@ -194,7 +199,7 @@ pub enum TypeDefinition {
         resolution: Option<u64>,
         intervalCounter: Option<u64>,
         shiftCounter: u64,
-        textPos: TextPos,
+        range: Range<usize>,
     },
 }
 
@@ -405,6 +410,29 @@ pub enum VariableType {
     },
 }
 
+impl VariableType {
+    /// Returns the name of the variable type regardless of the variant.
+    pub fn name(&self) -> &'static str {
+        match self {
+            VariableType::Float32 { .. } => "Float32",
+            VariableType::Float64 { .. } => "Float64",
+            VariableType::Int8 { .. } => "Int8",
+            VariableType::UInt8 { .. } => "UInt8",
+            VariableType::Int16 { .. } => "Int16",
+            VariableType::UInt16 { .. } => "UInt16",
+            VariableType::Int32 { .. } => "Int32",
+            VariableType::UInt32 { .. } => "UInt32",
+            VariableType::Int64 { .. } => "Int64",
+            VariableType::UInt64 { .. } => "UInt64",
+            VariableType::Boolean { .. } => "Boolean",
+            VariableType::String { .. } => "String",
+            VariableType::Binary { .. } => "Binary",
+            VariableType::Clock { .. } => "Clock",
+            VariableType::Enumeration { .. } => "Enumeration",
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Causality {
     Parameter,
@@ -507,7 +535,7 @@ pub struct DefaultExperiment {
     pub stopTime: Option<String>,
     pub tolerance: Option<String>,
     pub stepSize: Option<String>,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -522,7 +550,7 @@ pub struct ModelExchange {
     pub providesPerElementDependencies: bool,
     pub needsCompletedIntegratorStep: bool,
     pub providesEvaluateDiscreteStates: bool,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -544,7 +572,7 @@ pub struct CoSimulation {
     pub canReturnEarlyAfterIntermediateUpdate: bool,
     pub hasEventMode: bool,
     pub providesEvaluateDiscreteStates: bool,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -557,7 +585,7 @@ pub struct ScheduledExecution {
     pub providesDirectionalDerivatives: bool,
     pub providesAdjointDerivatives: bool,
     pub providesPerElementDependencies: bool,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -575,7 +603,7 @@ pub struct ModelVariable {
     pub causality: Causality,
     pub variability: Variability,
     pub dimensions: Vec<Dimension>,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -583,7 +611,7 @@ pub struct Unknown {
     pub valueReference: fmiValueReference,
     pub dependencies: Option<Vec<fmiValueReference>>,
     pub dependenciesKind: Option<Vec<DependencyKind>>,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]

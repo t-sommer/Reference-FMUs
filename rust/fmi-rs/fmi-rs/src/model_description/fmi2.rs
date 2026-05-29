@@ -51,6 +51,21 @@ pub enum VariableType {
     },
 }
 
+impl VariableType {
+    /// Returns the name of the variable type regardless of the variant.
+    pub fn name(&self) -> &'static str {
+        match self {
+            VariableType::Real { .. } => "Real",
+            VariableType::Integer { .. } => "Integer",
+            VariableType::Boolean { .. } => "Boolean",
+            VariableType::String { .. } => "String",
+            VariableType::Enumeration { .. } => "Enumeration",
+        }
+    }
+}
+
+
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Causality {
     Parameter,

@@ -5,7 +5,7 @@ pub mod fmi2;
 pub mod fmi3;
 pub mod validation;
 
-use std::{error::Error, path::Path};
+use std::{error::Error, ops::Range, path::Path};
 
 /// Position in text.
 ///
@@ -15,6 +15,13 @@ use std::{error::Error, path::Path};
 pub struct TextPos {
     pub row: u32,
     pub col: u32,
+}
+
+/// Represents a problem found during model description validation.
+#[derive(Debug)]
+pub struct ValidationError {
+    pub range: Vec<Range<usize>>,
+    pub message: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -28,7 +35,7 @@ pub struct Unit {
     pub name: String,
     pub baseUnit: Option<BaseUnit>,
     pub displayUnits: Vec<DisplayUnit>,
-    pub text_pos: TextPos,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -37,7 +44,7 @@ pub struct DisplayUnit {
     pub factor: f64,
     pub offset: f64,
     pub inverse: bool,
-    pub text_pos: TextPos,
+    pub textPos: TextPos,
 }
 
 #[derive(Debug)]
@@ -52,7 +59,7 @@ pub struct BaseUnit {
     pub rad: i32,
     pub factor: f64,
     pub offset: f64,
-    pub text_pos: TextPos,
+    pub textPos: TextPos,
 }
 
 pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {

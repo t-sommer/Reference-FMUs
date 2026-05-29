@@ -586,6 +586,7 @@ dependencies = [
  "fmi-rs-xsd",
  "libloading",
  "plotly",
+ "roxmltree",
  "rstest",
  "tempfile",
  "term_size",

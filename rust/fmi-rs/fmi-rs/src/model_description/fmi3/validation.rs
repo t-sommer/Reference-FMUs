@@ -1,11 +1,65 @@
+use std::collections::HashMap;
+
 use crate::{
-    model_description::fmi3::{ModelDescription, Unknown},
+    model_description::{ValidationError, fmi3::{Causality, ModelDescription, ModelVariable, Unknown, VariableNamingConvention, VariableType}, validation::validate_structured_variable_name},
     types::fmiValueReference,
 };
 
 impl ModelDescription {
-    pub fn validate(&self) -> Vec<String> {
-        let mut problems: Vec<String> = vec![];
+    pub fn validate(&self) -> Vec<ValidationError> {
+        let mut problems = vec![];
+
+        let mut value_references = std::collections::HashSet::new();
+        let mut variable_names: HashMap<&String, &ModelVariable> = std::collections::HashMap::new();
+
+        for variable in &self.modelVariables {
+            if variable.name.is_empty() {
+                problems.push(ValidationError {
+                    range: vec![],
+                    message: "Variable name cannot be empty.".to_string(),
+                });
+            } else if self.variableNamingConvention == VariableNamingConvention::Structured {
+                if let Err(message) = validate_structured_variable_name(&variable.name) {
+                    problems.push(ValidationError {
+                    range: vec![],
+                        message: format!("Variable name '{}' does not conform to the structured naming convention: {}", variable.name, message),
+                    });
+                }
+            }
+
+            if !value_references.insert(variable.valueReference) {
+                problems.push(ValidationError {
+                    range: vec![],
+                    message: format!("Duplicate value reference: {}", variable.valueReference),
+                });
+            }
+
+            if let Some(duplicate) = variable_names.get(&variable.name) {
+                problems.push(ValidationError {
+                    range: vec![duplicate.range.clone(), variable.range.clone()],
+                    message: format!("Duplicate variable name: '{}'", variable.name),
+                });
+            } else {
+                variable_names.insert(&variable.name, variable);
+            }
+        }
+
+        let independent_variables: Vec<_> = self.modelVariables.iter().filter(|v| v.causality == Causality::Independent).collect();
+
+        if independent_variables.len() == 1 {
+            let independent_variable = independent_variables[0];
+            if !matches!(independent_variable.variableType, VariableType::Float32 {..} | VariableType::Float64 {..}) {
+                problems.push(ValidationError {
+                    range: vec![],
+                    message: "The independent variable must be of type Float32 or Float64.".to_string(),
+                });
+            }
+        } else {
+            problems.push(ValidationError {
+                    range: vec![],
+                message: "There must be exactly one independent variable.".to_string(),
+            });
+        }
 
         for unknown in &self.outputs {
             problems.extend(self.validate_unknown(unknown));
@@ -20,30 +74,33 @@ impl ModelDescription {
         problems
     }
 
-    fn validate_unknown(&self, unknown: &Unknown) -> Vec<String> {
+    fn validate_unknown(&self, unknown: &Unknown) -> Vec<ValidationError> {
         let mut problems = vec![];
 
         if !self.is_valid_value_reference(unknown.valueReference) {
-            problems.push(format!(
-                "Illegal value reference: {}",
-                unknown.valueReference
-            ));
+            problems.push(ValidationError {
+                range: vec![unknown.range.clone()],
+                message: format!("Illegal value reference: {}", unknown.valueReference),
+            });
         }
 
         if let Some(dependencies) = &unknown.dependencies {
             for dependency_vr in dependencies {
                 if !self.is_valid_value_reference(*dependency_vr) {
-                    problems.push(format!(
-                        "Illegal value reference in dependencies of unknown: {}",
-                        dependency_vr
-                    ));
+                    problems.push(ValidationError {
+                        range: vec![unknown.range.clone()],
+                        message: format!("Illegal value reference in dependencies: {}", dependency_vr),
+                    });
                 }
             }
 
             if let Some(dependencies_kind) = &unknown.dependenciesKind
                 && dependencies.len() != dependencies_kind.len()
             {
-                problems.push(format!("The number of elements in dependenciesKind does not match the number of elements in dependencies for unknown VR {}.", unknown.valueReference));
+                problems.push(ValidationError {
+                    range: vec![unknown.range.clone()],
+                    message: "The number of elements in dependenciesKind does not match the number of elements in dependencies.".to_string(),
+                });
             }
         }
 

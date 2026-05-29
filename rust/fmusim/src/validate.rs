@@ -7,25 +7,33 @@ use fmi_rs_xsd::validate_model_description_against_xsd;
 use crate::{ValidateArgs, prepare_fmu};
 
 pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
-    println!("{}", "    Validating model description against XML schema".green().bold());
-    
+    println!(
+        "{}",
+        "    Validating model description against XML schema"
+            .green()
+            .bold()
+    );
+
     let (_unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
         Err(code) => return code,
     };
-    
+
     let problems = validate_model_description_against_xsd(&xml_path, fmi_major_version as i32);
-    
+
     for problem in problems.iter() {
         println!("{}: {}", "error".red().bold(), problem);
     }
-    
+
     println!("{}", "    Validating model description".green().bold());
 
     let text = match std::fs::read_to_string(xml_path) {
         Ok(content) => content,
-        Err(e) => { 
-            eprintln!("{}: Failed to read modelDescription.xml: {e}", "error".red().bold());
+        Err(e) => {
+            eprintln!(
+                "{}: Failed to read modelDescription.xml: {e}",
+                "error".red().bold()
+            );
             return ExitCode::FAILURE;
         }
     };
@@ -38,7 +46,10 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
     let doc = match roxmltree::Document::parse_with_options(&text, opt) {
         Ok(doc) => doc,
         Err(e) => {
-            eprintln!("{}: Failed to parse modelDescription.xml: {e}", "error".red().bold());
+            eprintln!(
+                "{}: Failed to parse modelDescription.xml: {e}",
+                "error".red().bold()
+            );
             return ExitCode::FAILURE;
         }
     };
@@ -87,7 +98,12 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
 
         if let Some(range) = problem.range.last() {
             let start_pos = doc.text_pos_at(range.start);
-            println!("     {} modelDescription.xml:{}:{}", "-->".cyan().bold(), start_pos.row, start_pos.col);            
+            println!(
+                "     {} modelDescription.xml:{}:{}",
+                "-->".cyan().bold(),
+                start_pos.row,
+                start_pos.col
+            );
         }
 
         for (j, range) in problem.range.iter().enumerate() {
@@ -103,9 +119,7 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
             }
 
             for (i, line) in text.lines().enumerate() {
-
                 if i >= start_line && i <= end_line {
-
                     let text = if line.len() > max_width {
                         let limit = max_width.saturating_sub(3);
                         format!("{line:.limit$}{}", "...".cyan().bold())
@@ -114,7 +128,11 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
                     };
 
                     let prefix = if i == start_line {
-                        format!("{:>5} {} ", (i + 1).to_string().cyan().bold(), "|".cyan().bold())
+                        format!(
+                            "{:>5} {} ",
+                            (i + 1).to_string().cyan().bold(),
+                            "|".cyan().bold()
+                        )
                     } else {
                         format!("      {} ", "|".cyan().bold())
                     };

@@ -1,7 +1,14 @@
 use std::collections::HashMap;
 
 use crate::{
-    model_description::{ValidationError, fmi3::{Causality, ModelDescription, ModelVariable, Unknown, VariableNamingConvention, VariableType}, validation::validate_structured_variable_name},
+    model_description::{
+        ValidationError,
+        fmi3::{
+            Causality, ModelDescription, ModelVariable, Unknown, VariableNamingConvention,
+            VariableType,
+        },
+        validation::validate_structured_variable_name,
+    },
     types::fmiValueReference,
 };
 
@@ -46,19 +53,27 @@ impl ModelDescription {
             }
         }
 
-        let independent_variables: Vec<_> = self.modelVariables.iter().filter(|v| v.causality == Causality::Independent).collect();
+        let independent_variables: Vec<_> = self
+            .modelVariables
+            .iter()
+            .filter(|v| v.causality == Causality::Independent)
+            .collect();
 
         if independent_variables.len() == 1 {
             let independent_variable = independent_variables[0];
-            if !matches!(independent_variable.variableType, VariableType::Float32 {..} | VariableType::Float64 {..}) {
+            if !matches!(
+                independent_variable.variableType,
+                VariableType::Float32 { .. } | VariableType::Float64 { .. }
+            ) {
                 problems.push(ValidationError {
                     range: vec![],
-                    message: "The independent variable must be of type Float32 or Float64.".to_string(),
+                    message: "The independent variable must be of type Float32 or Float64."
+                        .to_string(),
                 });
             }
         } else {
             problems.push(ValidationError {
-                    range: vec![],
+                range: vec![],
                 message: "There must be exactly one independent variable.".to_string(),
             });
         }
@@ -91,7 +106,10 @@ impl ModelDescription {
                 if !self.is_valid_value_reference(*dependency_vr) {
                     problems.push(ValidationError {
                         range: vec![unknown.range.clone()],
-                        message: format!("Illegal value reference in dependencies: {}", dependency_vr),
+                        message: format!(
+                            "Illegal value reference in dependencies: {}",
+                            dependency_vr
+                        ),
                     });
                 }
             }

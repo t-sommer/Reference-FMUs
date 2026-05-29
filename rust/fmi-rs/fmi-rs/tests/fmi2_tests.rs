@@ -64,7 +64,8 @@ fn test_csv_input() {
 
     let unzipdir = resources_dir.join("fmi2").join("Feedthrough");
 
-    let model_description = ModelDescription::from_path(&unzipdir.join("modelDescription.xml")).unwrap();
+    let model_description =
+        ModelDescription::from_path(&unzipdir.join("modelDescription.xml")).unwrap();
 
     let settings = SimulationSettings {
         unzipdir: &unzipdir,

@@ -4,10 +4,7 @@ pub mod validation;
 
 use std::{ops::Range, str::FromStr};
 
-use crate::{
-    model_description::{Unit},
-    types::fmiValueReference,
-};
+use crate::{model_description::Unit, types::fmiValueReference};
 
 pub type VariableIndex = u32;
 
@@ -63,8 +60,6 @@ impl VariableType {
         }
     }
 }
-
-
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Causality {

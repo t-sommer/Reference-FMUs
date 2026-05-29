@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
-use crate::model_description::fmi2::{ModelDescription, ScalarVariable, Unknown, VariableNamingConvention, VariableType};
 use crate::model_description::ValidationError;
+use crate::model_description::fmi2::{
+    ModelDescription, ScalarVariable, Unknown, VariableNamingConvention, VariableType,
+};
 use crate::model_description::validation::validate_structured_variable_name;
 
 impl ModelDescription {
@@ -82,14 +84,20 @@ impl ModelDescription {
                     };
                 } else {
                     problems.push(ValidationError {
-                    range: vec![derivative_variable.range.clone()],
-                        message: format!("Variable {} is not a derivative", derivative_variable.name),
+                        range: vec![derivative_variable.range.clone()],
+                        message: format!(
+                            "Variable {} is not a derivative",
+                            derivative_variable.name
+                        ),
                     });
                 }
             } else {
                 problems.push(ValidationError {
                     range: vec![derivative_variable.range.clone()],
-                    message: format!("Variable {} is not a real variable", derivative_variable.name),
+                    message: format!(
+                        "Variable {} is not a real variable",
+                        derivative_variable.name
+                    ),
                 });
             }
         }
@@ -117,7 +125,10 @@ impl ModelDescription {
                 if !self.is_valid_variable_index(*dependency_index) {
                     problems.push(ValidationError {
                         range: vec![],
-                        message: format!("Illegal variable index in dependencies: {}", dependency_index),
+                        message: format!(
+                            "Illegal variable index in dependencies: {}",
+                            dependency_index
+                        ),
                     });
                 }
             }

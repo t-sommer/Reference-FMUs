@@ -4,7 +4,7 @@ pub mod validation;
 
 use std::{ops::Range, str::FromStr};
 
-use crate::{model_description::{Unit}, types::fmiValueReference};
+use crate::{model_description::Unit, types::fmiValueReference};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum VariableNamingConvention {
@@ -29,8 +29,7 @@ pub struct Item {
     pub name: String,
     pub value: i64,
     pub description: Option<String>,
-    range: Range<usize>
-,
+    range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -75,8 +74,7 @@ pub enum TypeDefinition {
         min: Option<f32>,
         max: Option<f32>,
         nominal: Option<f32>,
-        range: Range<usize>
-,
+        range: Range<usize>,
     },
     Float64 {
         // fmi3TypeDefinitionBase
@@ -92,8 +90,7 @@ pub enum TypeDefinition {
         min: Option<f64>,
         max: Option<f64>,
         nominal: Option<f64>,
-        range: Range<usize>
-,
+        range: Range<usize>,
     },
     Int8 {
         name: String,
@@ -101,8 +98,7 @@ pub enum TypeDefinition {
         quantity: Option<String>,
         min: Option<i8>,
         max: Option<i8>,
-        range: Range<usize>
-,
+        range: Range<usize>,
     },
     UInt8 {
         name: String,
@@ -175,8 +171,7 @@ pub enum TypeDefinition {
         description: Option<String>,
         mimeType: String,
         maxSize: Option<u64>,
-        range: Range<usize>
-,
+        range: Range<usize>,
     },
     Enumeration {
         name: String,

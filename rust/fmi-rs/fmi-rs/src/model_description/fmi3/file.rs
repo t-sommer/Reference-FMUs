@@ -299,7 +299,7 @@ impl ModelDescription {
         };
         Self::from_string(text.as_str())
     }
-    
+
     pub fn from_string(text: &str) -> Result<ModelDescription, Box<dyn Error>> {
         let opt = roxmltree::ParsingOptions {
             allow_dtd: true,
@@ -308,7 +308,7 @@ impl ModelDescription {
         let doc = roxmltree::Document::parse_with_options(&text, opt)?;
         Self::from_node(&doc.root_element())
     }
-    
+
     pub fn from_node(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
         let modelVariables: Vec<ModelVariable> = root
             .get_required_child("ModelVariables")?
@@ -530,9 +530,17 @@ impl TypeDefinition {
                 range: node.range(),
             })
         } else if node.has_tag_name("BooleanType") {
-            Ok(TypeDefinition::Boolean { name, description, range: node.range() })
+            Ok(TypeDefinition::Boolean {
+                name,
+                description,
+                range: node.range(),
+            })
         } else if node.has_tag_name("StringType") {
-            Ok(TypeDefinition::String { name, description, range: node.range() })
+            Ok(TypeDefinition::String {
+                name,
+                description,
+                range: node.range(),
+            })
         } else if node.has_tag_name("BinaryType") {
             Ok(TypeDefinition::Binary {
                 name,

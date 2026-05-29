@@ -106,7 +106,6 @@ impl CoSimulation {
 }
 
 impl ModelDescription {
-
     pub fn from_path(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
         let text = match std::fs::read_to_string(path) {
             Ok(content) => content,
@@ -114,7 +113,7 @@ impl ModelDescription {
         };
         Self::from_string(text.as_str())
     }
-    
+
     pub fn from_string(text: &str) -> Result<ModelDescription, Box<dyn Error>> {
         let opt = roxmltree::ParsingOptions {
             allow_dtd: true,
@@ -123,9 +122,8 @@ impl ModelDescription {
         let doc = roxmltree::Document::parse_with_options(&text, opt)?;
         Self::from_node(&doc.root_element())
     }
-    
-    pub fn from_node(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
 
+    pub fn from_node(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
         let mut modelVariables = vec![];
 
         for child in root

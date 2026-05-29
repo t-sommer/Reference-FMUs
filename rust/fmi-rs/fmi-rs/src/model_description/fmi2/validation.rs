@@ -1,4 +1,6 @@
-use crate::model_description::fmi2::{ModelDescription, Unknown, VariableNamingConvention, VariableType};
+use std::collections::HashMap;
+
+use crate::model_description::fmi2::{ModelDescription, ScalarVariable, Unknown, VariableNamingConvention, VariableType};
 use crate::model_description::ValidationError;
 use crate::model_description::validation::validate_structured_variable_name;
 
@@ -9,12 +11,12 @@ impl ModelDescription {
     pub fn validate(&self) -> Vec<ValidationError> {
         let mut problems = vec![];
 
-        let mut variable_names = std::collections::HashSet::new();
+        let mut variable_names: HashMap<&String, &ScalarVariable> = HashMap::new();
 
         for variable in &self.modelVariables {
             if variable.name.is_empty() {
                 problems.push(ValidationError {
-                    range: vec![],
+                    range: vec![variable.range.clone()],
                     message: "Variable name cannot be empty.".to_string(),
                 });
             } else if self.variableNamingConvention == VariableNamingConvention::Structured {
@@ -26,11 +28,13 @@ impl ModelDescription {
                 }
             }
 
-            if !variable_names.insert(&variable.name) {
+            if let Some(duplicate) = variable_names.get(&variable.name) {
                 problems.push(ValidationError {
-                    range: vec![],
+                    range: vec![duplicate.range.clone(), variable.range.clone()],
                     message: format!("Duplicate variable name: '{}'", variable.name),
                 });
+            } else {
+                variable_names.insert(&variable.name, variable);
             }
         }
 
@@ -50,8 +54,8 @@ impl ModelDescription {
                 Some(variable) => variable,
                 None => {
                     problems.push(ValidationError {
-                        range: vec![],
-                        message: format!("Illegal variable index in <Unknown index=\"{}\">", unknown.index),
+                        range: vec![unknown.range.clone()],
+                        message: format!("Illegal variable index: {}", unknown.index),
                     });
                     continue;
                 }
@@ -63,29 +67,29 @@ impl ModelDescription {
                         Some(state_variable) => {
                             if !matches!(state_variable.variableType, VariableType::Real { .. }) {
                                 problems.push(ValidationError {
-                    range: vec![],
-                                    message: format!("The continuous state variable {} referenced by the derivative {} is not a Real variable.", state_variable.name, derivative_variable.name),
+                                    range: vec![derivative_variable.range.clone()],
+                                    message: format!("The continuous state variable {} referenced by the derivative {} is not a Real variable", state_variable.name, derivative_variable.name),
                                 });
                             }
                         }
                         None => {
                             problems.push(ValidationError {
-                    range: vec![],
-                                message: format!("Attribute derivative of variable {} is not a valid variable index.", derivative_variable.name),
+                                range: vec![derivative_variable.range.clone()],
+                                message: format!("Attribute derivative of variable {} is not a valid variable index", derivative_variable.name),
                             });
                             continue;
                         }
                     };
                 } else {
                     problems.push(ValidationError {
-                    range: vec![],
-                        message: format!("Variable {} is not a derivative.", derivative_variable.name),
+                    range: vec![derivative_variable.range.clone()],
+                        message: format!("Variable {} is not a derivative", derivative_variable.name),
                     });
                 }
             } else {
                 problems.push(ValidationError {
-                    range: vec![],
-                    message: format!("Variable {} is not a real variable.", derivative_variable.name),
+                    range: vec![derivative_variable.range.clone()],
+                    message: format!("Variable {} is not a real variable", derivative_variable.name),
                 });
             }
         }

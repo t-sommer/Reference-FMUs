@@ -9,8 +9,8 @@ impl ModelDescription {
     pub fn validate(&self) -> Vec<ValidationError> {
         let mut problems = vec![];
 
-        let mut value_references = std::collections::HashSet::new();
-        let mut variable_names: HashMap<&String, &ModelVariable> = std::collections::HashMap::new();
+        let mut value_references: HashMap<u32, &ModelVariable> = HashMap::new();
+        let mut variable_names: HashMap<&String, &ModelVariable> = HashMap::new();
 
         for variable in &self.modelVariables {
             if variable.name.is_empty() {
@@ -27,11 +27,13 @@ impl ModelDescription {
                 }
             }
 
-            if !value_references.insert(variable.valueReference) {
+            if let Some(duplicate) = value_references.get(&variable.valueReference) {
                 problems.push(ValidationError {
-                    range: vec![],
+                    range: vec![duplicate.range.clone(), variable.range.clone()],
                     message: format!("Duplicate value reference: {}", variable.valueReference),
                 });
+            } else {
+                value_references.insert(variable.valueReference, variable);
             }
 
             if let Some(duplicate) = variable_names.get(&variable.name) {

@@ -17,7 +17,7 @@ impl DefaultExperiment {
             stopTime: node.attribute_as("stopTime")?,
             tolerance: node.attribute_as("tolerance")?,
             stepSize: node.attribute_as("stepSize")?,
-            textPos: node.text_pos(),
+            range: node.range(),
         })
     }
 }
@@ -54,7 +54,7 @@ impl ModelExchange {
             providesDirectionalDerivative: node
                 .attribute_as("providesDirectionalDerivative")?
                 .unwrap_or_default(),
-            textPos: node.text_pos(),
+            range: node.range(),
         })
     }
 }
@@ -100,7 +100,7 @@ impl CoSimulation {
             providesDirectionalDerivative: node
                 .attribute_as("providesDirectionalDerivative")?
                 .unwrap_or_default(),
-            textPos: node.text_pos(),
+            range: node.range(),
         })
     }
 }
@@ -173,7 +173,7 @@ impl ModelDescription {
                 variability,
                 initial,
                 canHandleMultipleSetPerTimeInstant,
-                textPos: child.text_pos(),
+                range: child.range(),
             };
 
             modelVariables.push(variable);
@@ -340,7 +340,7 @@ impl ModelDescription {
                 index,
                 dependencies,
                 dependenciesKind,
-                textPos: child.text_pos(),
+                range: child.range(),
             });
         }
 
@@ -416,7 +416,7 @@ impl Item {
             name: node.required_attribute("name")?,
             description: node.attribute_as("description")?,
             value: node.required_attribute_as("value")?,
-            textPos: node.text_pos(),
+            range: node.range(),
         })
     }
 }

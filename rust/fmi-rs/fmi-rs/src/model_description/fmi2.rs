@@ -2,7 +2,7 @@
 pub mod file;
 pub mod validation;
 
-use std::str::FromStr;
+use std::{ops::Range, str::FromStr};
 
 use crate::{
     model_description::{TextPos, Unit},
@@ -180,7 +180,7 @@ pub struct Item {
     pub name: String,
     pub value: i32,
     pub description: Option<String>,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -244,7 +244,7 @@ pub struct DefaultExperiment {
     pub stopTime: Option<String>,
     pub tolerance: Option<String>,
     pub stepSize: Option<String>,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -261,7 +261,7 @@ pub struct CoSimulation {
     pub canGetAndSetFMUstate: bool,
     pub canSerializeFMUstate: bool,
     pub providesDirectionalDerivative: bool,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -275,7 +275,7 @@ pub struct ModelExchange {
     pub canGetAndSetFMUstate: bool,
     pub canSerializeFMUstate: bool,
     pub providesDirectionalDerivative: bool,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -288,7 +288,7 @@ pub struct ScalarVariable {
     pub variability: Variability,
     pub initial: Initial,
     pub canHandleMultipleSetPerTimeInstant: bool,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -296,7 +296,7 @@ pub struct Unknown {
     pub index: VariableIndex,
     pub dependencies: Option<Vec<VariableIndex>>,
     pub dependenciesKind: Option<Vec<DependencyKind>>,
-    pub textPos: TextPos,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug)]

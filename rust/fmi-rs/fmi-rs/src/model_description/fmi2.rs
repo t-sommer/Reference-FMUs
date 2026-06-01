@@ -2,7 +2,7 @@
 pub mod file;
 pub mod validation;
 
-use std::{ops::Range, str::FromStr};
+use std::{error::Error, ops::Range, str::FromStr};
 
 use crate::{model_description::Unit, types::fmiValueReference};
 
@@ -59,9 +59,20 @@ impl VariableType {
             VariableType::Enumeration { .. } => "Enumeration",
         }
     }
+
+    /// Returns true if the start attribute is set.
+    pub fn has_start(&self) -> bool {
+        match self {
+            VariableType::Real { start, .. } => start.is_some(),
+            VariableType::Integer { start, .. } => start.is_some(),
+            VariableType::Boolean { start, .. } => start.is_some(),
+            VariableType::String { start, .. } => start.is_some(),
+            VariableType::Enumeration { start, .. } => start.is_some(),
+        }
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum Causality {
     Parameter,
     CalculatedParameter,
@@ -86,7 +97,7 @@ impl FromStr for Causality {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum Variability {
     Constant,
     Fixed,
@@ -109,7 +120,7 @@ impl FromStr for Variability {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Initial {
     Exact,
     Approx,
@@ -124,6 +135,39 @@ impl FromStr for Initial {
             "approx" => Ok(Initial::Approx),
             "calculated" => Ok(Initial::Calculated),
             _ => Err(format!("Unknown intial: {}", s)),
+        }
+    }
+}
+
+impl Initial {
+
+    /// Default value for Initial derived from variability and causality
+    fn default(variability: Variability, causality: Causality) -> Result<Self, Box<dyn Error>> {
+        // # default values for 'initial' derived from variability and causality
+        // initial_defaults = {
+        //     'constant':   {'output': 'exact', 'local': 'exact'},
+        //     'fixed':      {'structuralParameter': 'exact', 'parameter': 'exact', 'calculatedParameter': 'calculated', 'local': 'calculated'},
+        //     'tunable':    {'structuralParameter': 'exact', 'parameter': 'exact', 'calculatedParameter': 'calculated', 'local': 'calculated'},
+        //     'discrete':   {'input': 'exact', 'output': 'calculated', 'local': 'calculated'},
+        //     'continuous': {'input': 'exact', 'output': 'calculated', 'local': 'calculated', 'independent': None},
+        // }
+
+        match (&variability, &causality) {
+            (Variability::Constant, Causality::Output) => Ok(Initial::Exact),
+            (Variability::Constant, Causality::Local) => Ok(Initial::Exact),
+            (Variability::Fixed, Causality::Parameter) => Ok(Initial::Exact),
+            (Variability::Fixed, Causality::CalculatedParameter) => Ok(Initial::Calculated),
+            (Variability::Fixed, Causality::Local) => Ok(Initial::Calculated),
+            (Variability::Tunable, Causality::Parameter) => Ok(Initial::Exact),
+            (Variability::Tunable, Causality::CalculatedParameter) => Ok(Initial::Calculated),
+            (Variability::Tunable, Causality::Local) => Ok(Initial::Calculated),
+            (Variability::Discrete, Causality::Input) => Ok(Initial::Exact),
+            (Variability::Discrete, Causality::Output) => Ok(Initial::Calculated),
+            (Variability::Discrete, Causality::Local) => Ok(Initial::Calculated),
+            (Variability::Continuous, Causality::Input) => Ok(Initial::Exact),
+            (Variability::Continuous, Causality::Output) => Ok(Initial::Calculated),
+            (Variability::Continuous, Causality::Local) => Ok(Initial::Calculated),
+            _ => Err(format!("Illegal combination of variability and causality: {:?} {:?}", variability, causality).into()),
         }
     }
 }
@@ -281,7 +325,7 @@ pub struct ScalarVariable {
     pub description: Option<String>,
     pub causality: Causality,
     pub variability: Variability,
-    pub initial: Initial,
+    pub initial: Option<Initial>,
     pub canHandleMultipleSetPerTimeInstant: bool,
     pub range: Range<usize>,
 }

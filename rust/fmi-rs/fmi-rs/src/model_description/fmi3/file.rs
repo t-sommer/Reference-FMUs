@@ -9,7 +9,7 @@ use crate::model_description::fmi3::VariableNamingConvention;
 use crate::model_description::fmi3::{
     Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability,
     Item, ModelDescription, ModelExchange, ModelVariable, ScheduledExecution, TypeDefinition,
-    Unknown, Variability, VariableType,
+    Unknown, Variability, VariableType, Initial
 };
 
 impl ModelDescription {
@@ -67,12 +67,12 @@ impl ModelDescription {
     }
 
     fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
+
         if node.has_tag_name("Float32") {
             return Ok(VariableType::Float32 {
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 declaredType: node.attribute_as("declaredType")?,
-                initial: node.attribute_as("initial")?,
                 quantity: node.attribute_as("quantity")?,
                 unit: node.attribute_as("unit")?,
                 displayUnit: node.attribute_as("displayUnit")?,
@@ -99,7 +99,6 @@ impl ModelDescription {
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 declaredType: node.attribute_as("declaredType")?,
-                initial: node.attribute_as("initial")?,
                 quantity: node.attribute_as("quantity")?,
                 unit: node.attribute_as("unit")?,
                 displayUnit: node.attribute_as("displayUnit")?,
@@ -124,7 +123,6 @@ impl ModelDescription {
         } else if node.has_tag_name("Int8") {
             return Ok(VariableType::Int8 {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
@@ -135,7 +133,6 @@ impl ModelDescription {
         } else if node.has_tag_name("UInt8") {
             return Ok(VariableType::UInt8 {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
@@ -146,7 +143,6 @@ impl ModelDescription {
         } else if node.has_tag_name("Int16") {
             return Ok(VariableType::Int16 {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
@@ -157,7 +153,6 @@ impl ModelDescription {
         } else if node.has_tag_name("UInt16") {
             return Ok(VariableType::UInt16 {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
@@ -168,7 +163,6 @@ impl ModelDescription {
         } else if node.has_tag_name("Int32") {
             return Ok(VariableType::Int32 {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
@@ -180,7 +174,6 @@ impl ModelDescription {
         } else if node.has_tag_name("UInt32") {
             return Ok(VariableType::UInt32 {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 // dimensions: get_dimensions(node)?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
@@ -192,9 +185,7 @@ impl ModelDescription {
         } else if node.has_tag_name("Int64") {
             return Ok(VariableType::Int64 {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
-                // dimensions: get_dimensions(node)?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 quantity: node.attribute_as("quantity")?,
@@ -204,9 +195,7 @@ impl ModelDescription {
         } else if node.has_tag_name("UInt64") {
             return Ok(VariableType::UInt64 {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
-                // dimensions: get_dimensions(node)?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
                 quantity: node.attribute_as("quantity")?,
@@ -216,32 +205,60 @@ impl ModelDescription {
         } else if node.has_tag_name("Boolean") {
             return Ok(VariableType::Boolean {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
             });
         } else if node.has_tag_name("String") {
+            let start_values = node.get_children("Start")
+                .into_iter()
+                .map(|n| n.required_attribute_as("value"))
+                .collect::<Result<Vec<String>, _>>()?;
+
             return Ok(VariableType::String {
-                start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
+                start: start_values,
                 declaredType: node.attribute_as("declaredType")?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
             });
         } else if node.has_tag_name("Binary") {
+
+            let start_values = node.get_children("Start")
+                .into_iter()
+                .map(|n| {
+                    let hex_str = n.required_attribute("value")?;
+
+                    if hex_str.len() % 2 != 0 {
+                        return Err(format!("Invalid hex string length: {}", hex_str).into());
+                    }
+
+                    let mut bytes = Vec::new();
+
+                    for i in (0..hex_str.len()).step_by(2) {
+                        let byte_str = &hex_str[i..i + 2];
+                        match u8::from_str_radix(byte_str, 16) {
+                            Ok(byte) => bytes.push(byte),
+                            Err(e) => {
+                                return Err(
+                                    format!("Invalid hex byte '{}': {}", byte_str, e).into()
+                                );
+                            }
+                        }
+                    }
+
+                    Ok(bytes)
+                })
+                .collect::<Result<Vec<_>, Box<dyn Error>>>()?;
+
             return Ok(VariableType::Binary {
-                start: None, // TODO: node.optional_attribute_as("start"),
-                initial: node.attribute_as("initial")?,
+                start: start_values,
                 declaredType: node.attribute_as("declaredType")?,
-                // dimensions: get_dimensions(node)?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
             });
         } else if node.has_tag_name("Clock") {
             return Ok(VariableType::Clock {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.attribute_as("declaredType")?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
@@ -260,7 +277,6 @@ impl ModelDescription {
         } else if node.has_tag_name("Enumeration") {
             return Ok(VariableType::Enumeration {
                 start: node.attribute_as("start")?,
-                initial: node.attribute_as("initial")?,
                 declaredType: node.required_attribute("declaredType")?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,
@@ -318,21 +334,41 @@ impl ModelDescription {
                 let variable_type = Self::get_variable_type(&child)?;
                 let causality = child.attribute_as("causality")?.unwrap_or(Causality::Local);
                 let variability = child.attribute_as("variability")?.unwrap_or({
-                    if matches!(
+                    if matches!(causality, Causality::Parameter | Causality::StructuralParameter | Causality::CalculatedParameter) {
+                        Variability::Fixed
+                    } else if matches!(
                         variable_type,
                         VariableType::Float32 { .. } | VariableType::Float64 { .. }
-                    ) && matches!(
-                        causality,
-                        Causality::Input
-                            | Causality::Output
-                            | Causality::Independent
-                            | Causality::Local
-                    ) {
+                    ) && !matches!(causality, Causality::Parameter | Causality::StructuralParameter | Causality::CalculatedParameter) {
                         Variability::Continuous
                     } else {
                         Variability::Discrete
                     }
                 });
+
+                let mut initial = child.attribute_as("initial")?;
+
+                if initial.is_none() && causality != Causality::Independent {
+                    initial =  match (&variability, &causality) {
+                        (Variability::Constant, Causality::Output) => Some(Initial::Exact),
+                        (Variability::Constant, Causality::Local) => Some(Initial::Exact),
+                        (Variability::Fixed, Causality::StructuralParameter) => Some(Initial::Exact),
+                        (Variability::Fixed, Causality::Parameter) => Some(Initial::Exact),
+                        (Variability::Fixed, Causality::CalculatedParameter) => Some(Initial::Calculated),
+                        (Variability::Fixed, Causality::Local) => Some(Initial::Calculated),
+                        (Variability::Tunable, Causality::StructuralParameter) => Some(Initial::Exact),
+                        (Variability::Tunable, Causality::Parameter) => Some(Initial::Exact),
+                        (Variability::Tunable, Causality::CalculatedParameter) => Some(Initial::Calculated),
+                        (Variability::Tunable, Causality::Local) => Some(Initial::Calculated),
+                        (Variability::Discrete, Causality::Input) => Some(Initial::Exact),
+                        (Variability::Discrete, Causality::Output) => Some(Initial::Calculated),
+                        (Variability::Discrete, Causality::Local) => Some(Initial::Calculated),
+                        (Variability::Continuous, Causality::Input) => Some(Initial::Exact),
+                        (Variability::Continuous, Causality::Output) => Some(Initial::Calculated),
+                        (Variability::Continuous, Causality::Local) => Some(Initial::Calculated),
+                        _ => return Err(format!("Illegal combination of variability and causality: {:?} {:?}", variability, causality).into()),
+                    };
+                }
 
                 Ok(ModelVariable {
                     variableType: variable_type,
@@ -341,6 +377,7 @@ impl ModelDescription {
                     description: child.attribute_as("description")?,
                     causality,
                     variability,
+                    initial: initial,
                     dimensions: Self::get_dimensions(&child)?,
                     range: child.range(),
                 })

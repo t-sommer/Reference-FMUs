@@ -32,7 +32,7 @@ pub struct Item {
     range: Range<usize>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum IntervalVariability {
     Constant,
     Fixed,
@@ -220,7 +220,7 @@ impl TypeDefinition {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum VariableType {
     Float32 {
         // fmi3Float32
@@ -232,7 +232,6 @@ pub enum VariableType {
         // fmi3TypedArrayableVariable
         declaredType: Option<String>,
         // fmi3InitializableVariable
-        initial: Option<Initial>,
         // fmi3RealBaseAttributes
         quantity: Option<String>,
         unit: Option<String>,
@@ -257,7 +256,6 @@ pub enum VariableType {
         // fmi3TypedArrayableVariable
         declaredType: Option<String>,
         // fmi3InitializableVariable
-        initial: Option<Initial>,
         // fmi3RealBaseAttributes
         quantity: Option<String>,
         unit: Option<String>,
@@ -274,7 +272,6 @@ pub enum VariableType {
     },
     Int8 {
         start: Option<i8>,
-        initial: Option<Initial>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -284,7 +281,6 @@ pub enum VariableType {
     },
     UInt8 {
         start: Option<u8>,
-        initial: Option<Initial>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -294,7 +290,6 @@ pub enum VariableType {
     },
     Int16 {
         start: Option<i16>,
-        initial: Option<Initial>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -304,7 +299,6 @@ pub enum VariableType {
     },
     UInt16 {
         start: Option<u16>,
-        initial: Option<Initial>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -316,7 +310,6 @@ pub enum VariableType {
         // fmi3Int8
         start: Option<i32>,
         // fmi3InitializableVariable
-        initial: Option<Initial>,
         // fmi3TypedArrayableVariable
         declaredType: Option<String>,
         // fmi3ArrayableVariable
@@ -331,7 +324,6 @@ pub enum VariableType {
     },
     UInt32 {
         start: Option<u32>,
-        initial: Option<Initial>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -341,7 +333,6 @@ pub enum VariableType {
     },
     Int64 {
         start: Option<i64>,
-        initial: Option<Initial>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -351,7 +342,6 @@ pub enum VariableType {
     },
     UInt64 {
         start: Option<u64>,
-        initial: Option<Initial>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -361,28 +351,24 @@ pub enum VariableType {
     },
     Boolean {
         start: Option<bool>,
-        initial: Option<Initial>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
     },
     String {
-        start: Option<String>,
-        initial: Option<Initial>,
+        start: Vec<String>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
     },
     Binary {
-        start: Option<Vec<u8>>,
-        initial: Option<Initial>,
+        start: Vec<Vec<u8>>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
     },
     Clock {
         start: Option<bool>,
-        initial: Option<Initial>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -398,7 +384,6 @@ pub enum VariableType {
     },
     Enumeration {
         start: Option<i64>,
-        initial: Option<Initial>,
         declaredType: String,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -424,6 +409,27 @@ impl VariableType {
             VariableType::Binary { .. } => "Binary",
             VariableType::Clock { .. } => "Clock",
             VariableType::Enumeration { .. } => "Enumeration",
+        }
+    }
+
+    /// Returns true if the start attribute is set.
+    pub fn has_start(&self) -> bool {
+        match self {
+            VariableType::Float32 { start, .. } => start.is_some(),
+            VariableType::Float64 { start, .. } => start.is_some(),
+            VariableType::Int8 { start, .. } => start.is_some(),
+            VariableType::UInt8 { start, .. } => start.is_some(),
+            VariableType::Int16 { start, .. } => start.is_some(),
+            VariableType::UInt16 { start, .. } => start.is_some(),
+            VariableType::Int32 { start, .. } => start.is_some(),
+            VariableType::UInt32 { start, .. } => start.is_some(),
+            VariableType::Int64 { start, .. } => start.is_some(),
+            VariableType::UInt64 { start, .. } => start.is_some(),
+            VariableType::Boolean { start, .. } => start.is_some(),
+            VariableType::String { start, .. } => !start.is_empty(),
+            VariableType::Binary { start, .. } => !start.is_empty(),
+            VariableType::Clock { start, .. } => start.is_some(),
+            VariableType::Enumeration { start, .. } => start.is_some(),
         }
     }
 }
@@ -480,7 +486,7 @@ impl FromStr for Variability {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Initial {
     Exact,
     Approx,
@@ -597,6 +603,7 @@ pub struct ModelVariable {
     pub description: Option<String>,
     pub causality: Causality,
     pub variability: Variability,
+    pub initial: Option<Initial>,
     pub dimensions: Vec<Dimension>,
     pub range: Range<usize>,
 }

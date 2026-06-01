@@ -148,24 +148,33 @@ impl ModelDescription {
                 .transpose()?
                 .unwrap_or(Causality::Local);
 
-            let variability = if let Some(causality) = child.attribute("variability") {
-                Variability::from_str(causality)?
-            } else if matches!(variableType, VariableType::Real { .. })
-                && !matches!(
-                    causality,
-                    Causality::Parameter | Causality::CalculatedParameter
-                )
-            {
-                Variability::Continuous
-            } else {
-                Variability::Discrete
-            };
+            let variability = child.attribute("variability").map(Variability::from_str).transpose()?
+                .unwrap_or(Variability::Continuous);
 
-            let initial = child
+            let mut initial = child
                 .attribute("initial")
                 .map(Initial::from_str)
-                .transpose()?
-                .unwrap_or(Initial::Exact);
+                .transpose()?;
+
+            if initial.is_none() && causality != Causality::Independent {
+                initial =  match (&variability, &causality) {
+                    (Variability::Constant, Causality::Output) => Some(Initial::Exact),
+                    (Variability::Constant, Causality::Local) => Some(Initial::Exact),
+                    (Variability::Fixed, Causality::Parameter) => Some(Initial::Exact),
+                    (Variability::Fixed, Causality::CalculatedParameter) => Some(Initial::Calculated),
+                    (Variability::Fixed, Causality::Local) => Some(Initial::Calculated),
+                    (Variability::Tunable, Causality::Parameter) => Some(Initial::Exact),
+                    (Variability::Tunable, Causality::CalculatedParameter) => Some(Initial::Calculated),
+                    (Variability::Tunable, Causality::Local) => Some(Initial::Calculated),
+                    (Variability::Discrete, Causality::Input) => Some(Initial::Exact),
+                    (Variability::Discrete, Causality::Output) => Some(Initial::Calculated),
+                    (Variability::Discrete, Causality::Local) => Some(Initial::Calculated),
+                    (Variability::Continuous, Causality::Input) => Some(Initial::Exact),
+                    (Variability::Continuous, Causality::Output) => Some(Initial::Calculated),
+                    (Variability::Continuous, Causality::Local) => Some(Initial::Calculated),
+                    _ => return Err(format!("Illegal combination of variability and causality: {:?} {:?}", variability, causality).into()),
+                };
+            }
 
             let variable = ScalarVariable {
                 variableType,

@@ -189,9 +189,12 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
 
     let plot_height = 250 * trajectories.variables.len().max(1);
 
+    let grid_color = "rgba(211, 211, 211, 0.5)";
+
     let mut x_axis = Axis::new()
         .title("time [s]")
-        .zero_line_color(NamedColor::LightGrey);
+        .zero_line_color(grid_color)
+        .grid_color(grid_color);
 
     if let (Some(first), Some(last)) = (trajectories.time.first(), trajectories.time.last()) {
         x_axis = x_axis.range(AxisRange::new(*first, *last));
@@ -220,7 +223,8 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
 
         let mut y_axis = Axis::new()
             .title(axis_title.as_str())
-            .zero_line_color(NamedColor::LightGrey);
+            .zero_line_color(grid_color)
+            .grid_color(grid_color);
 
         if matches!(variable.variableType, VariableType::Boolean { .. }) {
             y_axis = y_axis

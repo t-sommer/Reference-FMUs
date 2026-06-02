@@ -55,6 +55,14 @@ impl ModelDescription {
                 variable_names.insert(&variable.name, variable);
             }
 
+            // assert no start for variability "calculated"
+            if let Some(Initial::Calculated) = variable.initial && variable.variableType.has_start() {
+                problems.push(ValidationError {
+                    range: vec![variable.range.clone()],
+                    message: "The variable '{}' is calculated but provides a start value.".to_string(),
+                });
+            }
+
             // assert required start values
             if !matches!(variable.variableType, VariableType::Clock { .. }) {
                 let is_exact_or_approx = matches!(

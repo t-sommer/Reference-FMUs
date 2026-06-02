@@ -7,9 +7,9 @@ use crate::model_description::file::NodeExt;
 
 use crate::model_description::fmi3::VariableNamingConvention;
 use crate::model_description::fmi3::{
-    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, IntervalVariability,
-    Item, ModelDescription, ModelExchange, ModelVariable, ScheduledExecution, TypeDefinition,
-    Unknown, Variability, VariableType, Initial
+    Causality, CoSimulation, DefaultExperiment, DependencyKind, Dimension, Initial,
+    IntervalVariability, Item, ModelDescription, ModelExchange, ModelVariable, ScheduledExecution,
+    TypeDefinition, Unknown, Variability, VariableType,
 };
 
 impl ModelDescription {
@@ -67,7 +67,6 @@ impl ModelDescription {
     }
 
     fn get_variable_type(node: &Node) -> Result<VariableType, Box<dyn Error>> {
-
         if node.has_tag_name("Float32") {
             return Ok(VariableType::Float32 {
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
@@ -210,7 +209,8 @@ impl ModelDescription {
                 previous: node.attribute_as("previous")?,
             });
         } else if node.has_tag_name("String") {
-            let start_values = node.get_children("Start")
+            let start_values = node
+                .get_children("Start")
                 .into_iter()
                 .map(|n| n.required_attribute_as("value"))
                 .collect::<Result<Vec<String>, _>>()?;
@@ -222,8 +222,8 @@ impl ModelDescription {
                 previous: node.attribute_as("previous")?,
             });
         } else if node.has_tag_name("Binary") {
-
-            let start_values = node.get_children("Start")
+            let start_values = node
+                .get_children("Start")
                 .into_iter()
                 .map(|n| {
                     let hex_str = n.required_attribute("value")?;
@@ -334,12 +334,22 @@ impl ModelDescription {
                 let variable_type = Self::get_variable_type(&child)?;
                 let causality = child.attribute_as("causality")?.unwrap_or(Causality::Local);
                 let variability = child.attribute_as("variability")?.unwrap_or({
-                    if matches!(causality, Causality::Parameter | Causality::StructuralParameter | Causality::CalculatedParameter) {
+                    if matches!(
+                        causality,
+                        Causality::Parameter
+                            | Causality::StructuralParameter
+                            | Causality::CalculatedParameter
+                    ) {
                         Variability::Fixed
                     } else if matches!(
                         variable_type,
                         VariableType::Float32 { .. } | VariableType::Float64 { .. }
-                    ) && !matches!(causality, Causality::Parameter | Causality::StructuralParameter | Causality::CalculatedParameter) {
+                    ) && !matches!(
+                        causality,
+                        Causality::Parameter
+                            | Causality::StructuralParameter
+                            | Causality::CalculatedParameter
+                    ) {
                         Variability::Continuous
                     } else {
                         Variability::Discrete
@@ -349,16 +359,24 @@ impl ModelDescription {
                 let mut initial = child.attribute_as("initial")?;
 
                 if initial.is_none() && causality != Causality::Independent {
-                    initial =  match (&variability, &causality) {
+                    initial = match (&variability, &causality) {
                         (Variability::Constant, Causality::Output) => Some(Initial::Exact),
                         (Variability::Constant, Causality::Local) => Some(Initial::Exact),
-                        (Variability::Fixed, Causality::StructuralParameter) => Some(Initial::Exact),
+                        (Variability::Fixed, Causality::StructuralParameter) => {
+                            Some(Initial::Exact)
+                        }
                         (Variability::Fixed, Causality::Parameter) => Some(Initial::Exact),
-                        (Variability::Fixed, Causality::CalculatedParameter) => Some(Initial::Calculated),
+                        (Variability::Fixed, Causality::CalculatedParameter) => {
+                            Some(Initial::Calculated)
+                        }
                         (Variability::Fixed, Causality::Local) => Some(Initial::Calculated),
-                        (Variability::Tunable, Causality::StructuralParameter) => Some(Initial::Exact),
+                        (Variability::Tunable, Causality::StructuralParameter) => {
+                            Some(Initial::Exact)
+                        }
                         (Variability::Tunable, Causality::Parameter) => Some(Initial::Exact),
-                        (Variability::Tunable, Causality::CalculatedParameter) => Some(Initial::Calculated),
+                        (Variability::Tunable, Causality::CalculatedParameter) => {
+                            Some(Initial::Calculated)
+                        }
                         (Variability::Tunable, Causality::Local) => Some(Initial::Calculated),
                         (Variability::Discrete, Causality::Input) => Some(Initial::Exact),
                         (Variability::Discrete, Causality::Output) => Some(Initial::Calculated),
@@ -366,7 +384,13 @@ impl ModelDescription {
                         (Variability::Continuous, Causality::Input) => Some(Initial::Exact),
                         (Variability::Continuous, Causality::Output) => Some(Initial::Calculated),
                         (Variability::Continuous, Causality::Local) => Some(Initial::Calculated),
-                        _ => return Err(format!("Illegal combination of variability and causality: {:?} {:?}", variability, causality).into()),
+                        _ => {
+                            return Err(format!(
+                                "Illegal combination of variability and causality: {:?} {:?}",
+                                variability, causality
+                            )
+                            .into());
+                        }
                     };
                 }
 

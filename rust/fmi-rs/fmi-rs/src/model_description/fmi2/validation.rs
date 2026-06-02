@@ -2,7 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use crate::model_description::ValidationError;
 use crate::model_description::fmi2::{
-    Causality, Initial, ModelDescription, ScalarVariable, Unknown, Variability, VariableNamingConvention, VariableType
+    Causality, Initial, ModelDescription, ScalarVariable, Unknown, Variability,
+    VariableNamingConvention, VariableType,
 };
 use crate::model_description::validation::validate_structured_variable_name;
 
@@ -18,7 +19,6 @@ impl ModelDescription {
         let mut variable_names: HashMap<&String, &ScalarVariable> = HashMap::new();
 
         for variable in &self.modelVariables {
-
             // check variable name
             if variable.name.is_empty() {
                 problems.push(ValidationError {
@@ -46,7 +46,6 @@ impl ModelDescription {
 
             // check independent variable
             if variable.causality == Causality::Independent {
-
                 if let Some(independent_variable) = independent_variable {
                     problems.push(ValidationError {
                         range: vec![independent_variable.range.clone(), variable.range.clone()],
@@ -55,12 +54,12 @@ impl ModelDescription {
                 } else {
                     independent_variable = Some(variable);
                 }
-            
-                if !matches!(variable.variableType, VariableType::Real {..}) {
-                     problems.push(ValidationError {
-                            range: vec![variable.range.clone()],
-                            message: "The independent variable must be a Real variable.".to_string(),
-                        });
+
+                if !matches!(variable.variableType, VariableType::Real { .. }) {
+                    problems.push(ValidationError {
+                        range: vec![variable.range.clone()],
+                        message: "The independent variable must be a Real variable.".to_string(),
+                    });
                 }
 
                 if variable.variability != Variability::Continuous {
@@ -73,13 +72,17 @@ impl ModelDescription {
                 if variable.variableType.has_start() {
                     problems.push(ValidationError {
                         range: vec![variable.range.clone()],
-                        message: "The independent variable must not have a start value.".to_string(),
+                        message: "The independent variable must not have a start value."
+                            .to_string(),
                     });
                 }
             }
 
             // assert required start values
-            let is_exact_or_approx = matches!(variable.initial, Some(Initial::Exact) | Some(Initial::Approx));
+            let is_exact_or_approx = matches!(
+                variable.initial,
+                Some(Initial::Exact) | Some(Initial::Approx)
+            );
 
             if (is_exact_or_approx || variable.causality == Causality::Input)
                 && !variable.variableType.has_start()
@@ -91,7 +94,9 @@ impl ModelDescription {
             }
 
             // check variability
-            if !matches!(variable.variableType, VariableType::Real {..}) && variable.variability == Variability::Continuous {
+            if !matches!(variable.variableType, VariableType::Real { .. })
+                && variable.variability == Variability::Continuous
+            {
                 problems.push(ValidationError {
                     range: vec![variable.range.clone()],
                     message: format!("Only Real variables can be continuous."),
@@ -99,12 +104,21 @@ impl ModelDescription {
             }
 
             // check combination of causality and variability, and initial
-            match (&variable.causality, &variable.variability, &variable.initial) {
+            match (
+                &variable.causality,
+                &variable.variability,
+                &variable.initial,
+            ) {
                 (Causality::Parameter, Variability::Fixed, Some(Initial::Exact)) => {}
                 (Causality::Parameter, Variability::Tunable, Some(Initial::Exact)) => {}
-                (Causality::CalculatedParameter, Variability::Fixed, Some(Initial::Calculated)) => {}
+                (Causality::CalculatedParameter, Variability::Fixed, Some(Initial::Calculated)) => {
+                }
                 (Causality::CalculatedParameter, Variability::Fixed, Some(Initial::Approx)) => {}
-                (Causality::CalculatedParameter, Variability::Tunable, Some(Initial::Calculated)) => {}
+                (
+                    Causality::CalculatedParameter,
+                    Variability::Tunable,
+                    Some(Initial::Calculated),
+                ) => {}
                 (Causality::CalculatedParameter, Variability::Tunable, Some(Initial::Approx)) => {}
                 (Causality::Input, Variability::Discrete, Some(Initial::Exact)) => {}
                 (Causality::Input, Variability::Continuous, Some(Initial::Exact)) => {}

@@ -140,18 +140,8 @@ impl FromStr for Initial {
 }
 
 impl Initial {
-
     /// Default value for Initial derived from variability and causality
     fn default(variability: Variability, causality: Causality) -> Result<Self, Box<dyn Error>> {
-        // # default values for 'initial' derived from variability and causality
-        // initial_defaults = {
-        //     'constant':   {'output': 'exact', 'local': 'exact'},
-        //     'fixed':      {'structuralParameter': 'exact', 'parameter': 'exact', 'calculatedParameter': 'calculated', 'local': 'calculated'},
-        //     'tunable':    {'structuralParameter': 'exact', 'parameter': 'exact', 'calculatedParameter': 'calculated', 'local': 'calculated'},
-        //     'discrete':   {'input': 'exact', 'output': 'calculated', 'local': 'calculated'},
-        //     'continuous': {'input': 'exact', 'output': 'calculated', 'local': 'calculated', 'independent': None},
-        // }
-
         match (&variability, &causality) {
             (Variability::Constant, Causality::Output) => Ok(Initial::Exact),
             (Variability::Constant, Causality::Local) => Ok(Initial::Exact),
@@ -167,7 +157,11 @@ impl Initial {
             (Variability::Continuous, Causality::Input) => Ok(Initial::Exact),
             (Variability::Continuous, Causality::Output) => Ok(Initial::Calculated),
             (Variability::Continuous, Causality::Local) => Ok(Initial::Calculated),
-            _ => Err(format!("Illegal combination of variability and causality: {:?} {:?}", variability, causality).into()),
+            _ => Err(format!(
+                "Illegal combination of variability and causality: {:?} {:?}",
+                variability, causality
+            )
+            .into()),
         }
     }
 }

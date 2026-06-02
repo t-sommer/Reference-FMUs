@@ -321,7 +321,7 @@ impl ModelDescription {
             allow_dtd: true,
             ..roxmltree::ParsingOptions::default()
         };
-        let doc = roxmltree::Document::parse_with_options(&text, opt)?;
+        let doc = roxmltree::Document::parse_with_options(text, opt)?;
         Self::from_node(&doc.root_element())
     }
 
@@ -401,7 +401,7 @@ impl ModelDescription {
                     description: child.attribute_as("description")?,
                     causality,
                     variability,
-                    initial: initial,
+                    initial,
                     dimensions: Self::get_dimensions(&child)?,
                     range: child.range(),
                 })

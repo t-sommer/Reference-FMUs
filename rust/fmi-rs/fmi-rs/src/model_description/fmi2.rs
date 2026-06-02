@@ -2,7 +2,7 @@
 pub mod file;
 pub mod validation;
 
-use std::{error::Error, ops::Range, str::FromStr};
+use std::{ops::Range, str::FromStr};
 
 use crate::{model_description::Unit, types::fmiValueReference};
 

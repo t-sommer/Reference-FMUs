@@ -29,7 +29,7 @@ pub struct Item {
     pub name: String,
     pub value: i64,
     pub description: Option<String>,
-    range: Range<usize>,
+    pub range: Range<usize>,
 }
 
 #[derive(Debug, Clone, Copy)]

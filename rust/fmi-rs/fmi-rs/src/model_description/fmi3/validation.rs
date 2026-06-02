@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::{
     model_description::{
@@ -27,14 +27,13 @@ impl ModelDescription {
                     range: vec![variable.range.clone()],
                     message: "Variable name cannot be empty.".to_string(),
                 });
-            } else if self.variableNamingConvention == VariableNamingConvention::Structured {
-                if let Err(message) = validate_structured_variable_name(&variable.name) {
+            } else if self.variableNamingConvention == VariableNamingConvention::Structured
+                && let Err(message) = validate_structured_variable_name(&variable.name) {
                     problems.push(ValidationError {
                         range: vec![variable.range.clone()],
                         message: format!("Variable name '{}' does not conform to the structured naming convention: {}", variable.name, message),
                     });
                 }
-            }
 
             // check for duplicate value references
             if let Some(duplicate) = value_references.get(&variable.valueReference) {

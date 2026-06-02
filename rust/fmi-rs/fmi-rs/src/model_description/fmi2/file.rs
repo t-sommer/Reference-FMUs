@@ -1,6 +1,6 @@
 use crate::model_description::file::NodeExt;
 use crate::model_description::{Unit, fmi2::SimpleType};
-use roxmltree::{Document, Node};
+use roxmltree::Node;
 use std::str::FromStr;
 use std::vec;
 use std::{error::Error, path::Path};
@@ -119,7 +119,7 @@ impl ModelDescription {
             allow_dtd: true,
             ..roxmltree::ParsingOptions::default()
         };
-        let doc = roxmltree::Document::parse_with_options(&text, opt)?;
+        let doc = roxmltree::Document::parse_with_options(text, opt)?;
         Self::from_node(&doc.root_element())
     }
 

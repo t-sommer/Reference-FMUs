@@ -63,7 +63,7 @@ pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
         ..roxmltree::ParsingOptions::default()
     };
 
-    let doc = roxmltree::Document::parse_with_options(&text, opt).unwrap();
+    let doc = roxmltree::Document::parse_with_options(&text, opt)?;
 
     let root = doc.root_element();
 

@@ -7,7 +7,7 @@ pub mod recorder;
 use crate::{
     fmi2::{
         self, CS, FMU2, ME,
-        types::{fmi2Boolean, fmi2False, fmi2Integer, fmi2Real, fmi2True},
+        types::{fmi2Boolean, fmi2False, fmi2Integer, fmi2Real, fmi2Status, fmi2True},
     },
     model_description::fmi2::{ModelDescription, ScalarVariable, VariableType},
     sim::{
@@ -16,7 +16,6 @@ use crate::{
         relative_eq, relative_ge, relative_gt, relative_le, relative_lt,
     },
     types::{
-        fmiStatus::{self, fmiOK, fmiWarning},
         fmiValueReference,
     },
 };
@@ -110,8 +109,8 @@ impl<'a> Trajectories<'a> {
     }
 }
 
-fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
-    if matches!(status, fmiOK | fmiWarning) {
+fn call(status: fmi2Status) -> Result<fmi2Status, Box<dyn Error>> {
+    if matches!(status, fmi2Status::fmi2OK | fmi2Status::fmi2Warning) {
         Ok(status)
     } else {
         Err(format!("FMI call failed with status: {:?}", status).into())
@@ -143,7 +142,7 @@ pub fn set_variable_value<T>(
     fmu: &FMU2<T>,
     value_reference: fmiValueReference,
     value: &VariableValue,
-) -> Result<fmiStatus, Box<dyn Error>> {
+) -> Result<fmi2Status, Box<dyn Error>> {
     match value {
         VariableValue::Real(value) => call(fmu.setReal(&[value_reference], &[*value])),
         VariableValue::Integer(value) => call(fmu.setInteger(&[value_reference], &[*value])),
@@ -156,7 +155,7 @@ fn set_start_values<T>(
     start_values: &Vec<(String, String)>,
     model_description: &ModelDescription,
     fmu: &FMU2<T>,
-) -> Result<fmiStatus, Box<dyn Error>> {
+) -> Result<fmi2Status, Box<dyn Error>> {
     let variable_map: HashMap<&str, &ScalarVariable> = model_description
         .modelVariables
         .iter()
@@ -179,7 +178,7 @@ fn set_start_values<T>(
         }
     }
 
-    Ok(fmiOK)
+    Ok(fmi2Status::fmi2OK)
 }
 
 pub fn simulate_cs(
@@ -271,7 +270,7 @@ pub fn simulate_cs(
 
         let mut terminate_simulation = 0;
 
-        if do_step_status == fmiStatus::fmiDiscard {
+        if do_step_status == fmi2Status::fmi2Discard {
             call(fmu.getRealStatus(
                 &fmi2::types::fmi2StatusKind::fmi2LastSuccessfulTime,
                 &mut time,

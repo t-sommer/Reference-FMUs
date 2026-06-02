@@ -18,13 +18,32 @@ pub type fmi2ComponentEnvironment = *mut c_void;
 pub const fmi2True: fmi2Boolean = 1;
 pub const fmi2False: fmi2Boolean = 0;
 
-pub type fmi2Status = fmiStatus;
+#[repr(i32)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Eq, Ord, Copy)]
+pub enum fmi2Status {
+    fmi2OK = 0,
+    fmi2Warning = 1,
+    fmi2Discard = 2,
+    fmi2Error = 3,
+    fmi2Fatal = 4,
+    fmi2Pending = 5,
+}
 
-pub use crate::types::fmiStatus::fmiError as fmi2Error;
-pub use crate::types::fmiStatus::fmiFatal as fmi2Fatal;
-pub use crate::types::fmiStatus::fmiOK as fmi2OK;
-pub use crate::types::fmiStatus::fmiPending as fmi2Pending;
-pub use crate::types::fmiStatus::fmiWarning as fmi2Warning;
+impl TryFrom<i32> for fmi2Status {
+    type Error = ();
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(fmi2Status::fmi2OK),
+            1 => Ok(fmi2Status::fmi2Warning),
+            2 => Ok(fmi2Status::fmi2Discard),
+            3 => Ok(fmi2Status::fmi2Error),
+            4 => Ok(fmi2Status::fmi2Fatal),
+            5 => Ok(fmi2Status::fmi2Pending),
+            _ => Err(()),
+        }
+    }
+}
 
 #[repr(i32)]
 #[derive(Debug, PartialEq, Clone, Copy)]

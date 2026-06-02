@@ -132,7 +132,7 @@ impl<T> Drop for FMU2<T> {
         if !self.component.is_null() {
             unsafe { (self.fmi2FreeInstance)(self.component) };
             if self.logCalls {
-                self.log_call(fmi2OK, "fmi2FreeInstance()");
+                self.log_call(fmi2Status::fmi2OK, "fmi2FreeInstance()");
             }
         }
     }
@@ -217,8 +217,8 @@ pub extern "C" fn logger(
 
     if componentEnvironment.is_null() {
         let prefix = match status {
-            fmi2OK => "ok".green().bold(),
-            fmi2Warning => "warning".yellow().bold(),
+            fmi2Status::fmi2OK => "ok".green().bold(),
+            fmi2Status::fmi2Warning => "warning".yellow().bold(),
             _ => "error".red().bold(),
         };
         eprintln!("{prefix}: {message_str}");
@@ -395,7 +395,7 @@ impl<T> FMU2<T> {
         };
         if self.logCalls {
             let message = format!("fmi2GetVersion() -> \"{version}\"");
-            self.log_call(fmi2OK, message.as_str());
+            self.log_call(fmi2Status::fmi2OK, message.as_str());
         }
         version
     }
@@ -407,7 +407,7 @@ impl<T> FMU2<T> {
         };
         if self.logCalls {
             let message = format!("fmi2GetTypesPlatform() -> {types_platform}");
-            self.log_call(fmi2OK, message.as_str());
+            self.log_call(fmi2Status::fmi2OK, message.as_str());
         }
         types_platform
     }
@@ -504,9 +504,9 @@ impl<T> FMU2<T> {
             );
 
             if component.is_null() {
-                self.log_call(fmi2Error, &message);
+                self.log_call(fmi2Status::fmi2Error, &message);
             } else {
-                self.log_call(fmi2OK, &message);
+                self.log_call(fmi2Status::fmi2OK, &message);
             }
         }
 
@@ -754,7 +754,7 @@ impl<T> FMU2<T> {
             self.log_call(status, message.as_str());
         }
 
-        if status != fmi2OK {
+        if status != fmi2Status::fmi2OK {
             return status;
         }
 
@@ -1223,7 +1223,7 @@ impl FMU2<CS> {
         let mut buffer: fmi2String = ptr::null();
         let status =
             unsafe { (self.interfaceType.fmi2GetStringStatus)(self.component, *s, &mut buffer) };
-        if status == fmi2OK && !buffer.is_null() {
+        if status == fmi2Status::fmi2OK && !buffer.is_null() {
             *value = unsafe { CStr::from_ptr(buffer).to_string_lossy().into_owned() };
         }
         if self.logCalls {

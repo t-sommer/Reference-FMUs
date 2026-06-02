@@ -16,7 +16,6 @@ use crate::{
 };
 use crate::{
     model_description::fmi3::{Causality, ModelDescription},
-    types::fmiStatus::{self, fmiOK, fmiWarning},
 };
 
 use std::path::{Path, PathBuf};
@@ -294,7 +293,7 @@ pub fn set_variable_value(
     fmu: &FMU3,
     value_reference: fmiValueReference,
     value: &VariableValue,
-) -> fmiStatus {
+) -> fmi3Status {
     match value {
         VariableValue::Float32(values) => fmu.setFloat32(&[value_reference], values),
         VariableValue::Float64(values) => fmu.setFloat64(&[value_reference], values),
@@ -315,8 +314,8 @@ pub fn set_variable_value(
     }
 }
 
-pub fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
-    if matches!(status, fmiOK | fmiWarning) {
+pub fn call(status: fmi3Status) -> Result<fmi3Status, Box<dyn Error>> {
+    if matches!(status, fmi3Status::fmi3OK | fmi3Status::fmi3Warning) {
         Ok(status)
     } else {
         Err(format!("FMI call failed with status: {:?}", status).into())
@@ -327,7 +326,7 @@ fn set_start_values(
     start_values: &Vec<(String, String)>,
     model_description: &ModelDescription,
     fmu: &FMU3,
-) -> Result<fmiStatus, Box<dyn Error>> {
+) -> Result<fmi3Status, Box<dyn Error>> {
     let mut configuration_mode = false;
 
     // Create a map for quick lookup of variables by name
@@ -388,7 +387,7 @@ fn set_start_values(
         }
     }
 
-    Ok(fmiOK)
+    Ok(fmi3Status::fmi3OK)
 }
 
 pub fn simulate_cs(
@@ -770,7 +769,7 @@ pub fn simulate_me<S: SolverFactory>(
         if model_exchange.providesDirectionalDerivatives {
             Some(Box::new(|unknowns, knowns, seed, sensitivity| {
                 let status = fmu.getDirectionalDerivative(unknowns, knowns, seed, sensitivity);
-                if status == fmiOK {
+                if status == fmi3Status::fmi3OK {
                     Ok(())
                 } else {
                     Err("Failed to get directional derivative".into())

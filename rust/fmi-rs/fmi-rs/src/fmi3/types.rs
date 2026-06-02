@@ -28,13 +28,32 @@ pub type fmi3InstanceEnvironment = fmiInstanceEnvironment;
 pub const fmi3True: fmi3Boolean = true;
 pub const fmi3False: fmi3Boolean = false;
 
-pub type fmi3Status = fmiStatus;
+#[repr(i32)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Eq, Ord, Copy)]
+pub enum fmi3Status {
+    fmi3OK = 0,
+    fmi3Warning = 1,
+    fmi3Discard = 2,
+    fmi3Error = 3,
+    fmi3Fatal = 4,
+    fmi3Pending = 5,
+}
 
-pub use crate::types::fmiStatus::fmiError as fmi3Error;
-pub use crate::types::fmiStatus::fmiFatal as fmi3Fatal;
-pub use crate::types::fmiStatus::fmiOK as fmi3OK;
-pub use crate::types::fmiStatus::fmiPending as fmi3Pending;
-pub use crate::types::fmiStatus::fmiWarning as fmi3Warning;
+impl TryFrom<i32> for fmi3Status {
+    type Error = ();
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(fmi3Status::fmi3OK),
+            1 => Ok(fmi3Status::fmi3Warning),
+            2 => Ok(fmi3Status::fmi3Discard),
+            3 => Ok(fmi3Status::fmi3Error),
+            4 => Ok(fmi3Status::fmi3Fatal),
+            5 => Ok(fmi3Status::fmi3Pending),
+            _ => Err(()),
+        }
+    }
+}
 
 #[repr(i32)]
 #[derive(Debug, PartialEq, Clone, Copy)]

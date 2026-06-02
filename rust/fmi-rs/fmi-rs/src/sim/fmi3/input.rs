@@ -1,17 +1,16 @@
 use std::error::Error;
 
 use crate::{
-    fmi3::FMU3,
+    fmi3::{FMU3, types::fmi3Status},
     model_description::fmi3::Variability,
     sim::{
         fmi3::{Trajectories, VariableValue, set_variable_value},
         relative_eq,
     },
-    types::*,
 };
 
-fn call(status: fmiStatus) -> Result<fmiStatus, Box<dyn Error>> {
-    if matches!(status, fmiStatus::fmiOK | fmiStatus::fmiWarning) {
+fn call(status: fmi3Status) -> Result<fmi3Status, Box<dyn Error>> {
+    if matches!(status, fmi3Status::fmi3OK | fmi3Status::fmi3Warning) {
         Ok(status)
     } else {
         Err(format!("FMI call failed with status: {:?}", status).into())

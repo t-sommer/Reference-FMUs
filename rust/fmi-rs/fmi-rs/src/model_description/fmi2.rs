@@ -139,33 +139,6 @@ impl FromStr for Initial {
     }
 }
 
-impl Initial {
-    /// Default value for Initial derived from variability and causality
-    fn default(variability: Variability, causality: Causality) -> Result<Self, Box<dyn Error>> {
-        match (&variability, &causality) {
-            (Variability::Constant, Causality::Output) => Ok(Initial::Exact),
-            (Variability::Constant, Causality::Local) => Ok(Initial::Exact),
-            (Variability::Fixed, Causality::Parameter) => Ok(Initial::Exact),
-            (Variability::Fixed, Causality::CalculatedParameter) => Ok(Initial::Calculated),
-            (Variability::Fixed, Causality::Local) => Ok(Initial::Calculated),
-            (Variability::Tunable, Causality::Parameter) => Ok(Initial::Exact),
-            (Variability::Tunable, Causality::CalculatedParameter) => Ok(Initial::Calculated),
-            (Variability::Tunable, Causality::Local) => Ok(Initial::Calculated),
-            (Variability::Discrete, Causality::Input) => Ok(Initial::Exact),
-            (Variability::Discrete, Causality::Output) => Ok(Initial::Calculated),
-            (Variability::Discrete, Causality::Local) => Ok(Initial::Calculated),
-            (Variability::Continuous, Causality::Input) => Ok(Initial::Exact),
-            (Variability::Continuous, Causality::Output) => Ok(Initial::Calculated),
-            (Variability::Continuous, Causality::Local) => Ok(Initial::Calculated),
-            _ => Err(format!(
-                "Illegal combination of variability and causality: {:?} {:?}",
-                variability, causality
-            )
-            .into()),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum DependencyKind {
     Dependent,

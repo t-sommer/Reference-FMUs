@@ -236,6 +236,7 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
         if let Some(unit) = trajectories.model_description.get_unit(variable) {
             axis_title.push_str(format!(" [{unit}]").as_str());
         }
+
         let mut y_axis = Axis::new()
             .title(axis_title.as_str())
             .zero_line_color(grid_color)
@@ -298,37 +299,40 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
 
         let mut color_iter = COLORS.iter().cycle();
 
-        let size = trajectories.rows[0][i].len();
-
-        for j in 0..size {
-            let scalar_values: Vec<f64> = trajectories
-                .rows
-                .iter()
-                .map(|row| row[i].as_f64()[j])
-                .collect();
-            let name = if size > 1 {
-                format!("{}[{}]", name, j)
-            } else {
-                name.clone()
-            };
-            let current_color = color_iter.next().unwrap_or(&COLORS[0]);
-
-            let mut trace = Scatter::new(time.clone(), scalar_values).name(name);
-            // Use the shared x-axis ("x") for all subplots
-            trace = trace
-                .x_axis("x")
-                .y_axis(format!("y{row}"))
-                .line(Line::new().width(1.5).color(*current_color));
-
-            if show_markers {
-                trace = trace.mode(Mode::LinesMarkers);
+        if let Some(first_row) = trajectories.rows.first() && let Some(value) = first_row.get(i) {
+            
+            let size = value.len();
+            
+            for j in 0..size {
+                let scalar_values: Vec<f64> = trajectories
+                    .rows
+                    .iter()
+                    .map(|row| row[i].as_f64()[j])
+                    .collect();
+                let name = if size > 1 {
+                    format!("{}[{}]", name, j)
+                } else {
+                    name.clone()
+                };
+                let current_color = color_iter.next().unwrap_or(&COLORS[0]);
+    
+                let mut trace = Scatter::new(time.clone(), scalar_values).name(name);
+                // Use the shared x-axis ("x") for all subplots
+                trace = trace
+                    .x_axis("x")
+                    .y_axis(format!("y{row}"))
+                    .line(Line::new().width(1.5).color(*current_color));
+    
+                if show_markers {
+                    trace = trace.mode(Mode::LinesMarkers);
+                }
+    
+                if matches!(variable.variableType, VariableType::Boolean { .. }) {
+                    trace = trace.fill(Fill::ToZeroY).fill_color(NamedColor::AliceBlue);
+                }
+    
+                plot.add_trace(trace);
             }
-
-            if matches!(variable.variableType, VariableType::Boolean { .. }) {
-                trace = trace.fill(Fill::ToZeroY).fill_color(NamedColor::AliceBlue);
-            }
-
-            plot.add_trace(trace);
         }
     }
 

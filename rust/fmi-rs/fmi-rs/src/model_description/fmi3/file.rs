@@ -258,7 +258,6 @@ impl ModelDescription {
             });
         } else if node.has_tag_name("Clock") {
             return Ok(VariableType::Clock {
-                start: node.attribute_as("start")?,
                 declaredType: node.attribute_as("declaredType")?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
                 previous: node.attribute_as("previous")?,

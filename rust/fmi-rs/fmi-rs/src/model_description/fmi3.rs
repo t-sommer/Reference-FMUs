@@ -223,55 +223,39 @@ impl TypeDefinition {
 #[derive(Debug, Clone)]
 pub enum VariableType {
     Float32 {
-        // fmi3Float32
-        start: Option<f32>,
-        // fmi3ArrayableVariable
-        // dimensions: Vec<Dimension>,
+        start: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
-        // fmi3TypedArrayableVariable
         declaredType: Option<String>,
-        // fmi3InitializableVariable
-        // fmi3RealBaseAttributes
         quantity: Option<String>,
         unit: Option<String>,
         displayUnit: Option<String>,
         relativeQuantity: bool,
         unbounded: bool,
-        // fmi3Float64Attributes
         min: Option<f32>,
         max: Option<f32>,
         nominal: Option<f32>,
-        // fmi3RealVariableAttributes
         derivative: Option<fmi3ValueReference>,
         reinit: bool,
     },
     Float64 {
-        // fmi3Float64
-        start: Option<f64>,
-        // fmi3ArrayableVariable
-        // dimensions: Vec<Dimension>,
+        start: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
-        // fmi3TypedArrayableVariable
         declaredType: Option<String>,
-        // fmi3InitializableVariable
-        // fmi3RealBaseAttributes
         quantity: Option<String>,
         unit: Option<String>,
         displayUnit: Option<String>,
         relativeQuantity: bool,
         unbounded: bool,
-        // fmi3Float64Attributes
         min: Option<f64>,
         max: Option<f64>,
         nominal: Option<f64>,
-        // fmi3RealVariableAttributes
         derivative: Option<fmi3ValueReference>,
         reinit: bool,
     },
     Int8 {
-        start: Option<i8>,
+        start: Option<String>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -280,7 +264,7 @@ pub enum VariableType {
         max: Option<i8>,
     },
     UInt8 {
-        start: Option<u8>,
+        start: Option<String>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -289,7 +273,7 @@ pub enum VariableType {
         max: Option<u8>,
     },
     Int16 {
-        start: Option<i16>,
+        start: Option<String>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -298,7 +282,7 @@ pub enum VariableType {
         max: Option<i16>,
     },
     UInt16 {
-        start: Option<u16>,
+        start: Option<String>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -307,23 +291,16 @@ pub enum VariableType {
         max: Option<u16>,
     },
     Int32 {
-        // fmi3Int8
-        start: Option<i32>,
-        // fmi3InitializableVariable
-        // fmi3TypedArrayableVariable
+        start: Option<String>,
         declaredType: Option<String>,
-        // fmi3ArrayableVariable
-        // dimensions: Vec<Dimension>,
         intermediateUpdate: bool,
         previous: Option<u32>,
-        // fmi3IntegerBaseAttributes
         quantity: Option<String>,
-        // fmi3Int8Attributes
         min: Option<i32>,
         max: Option<i32>,
     },
     UInt32 {
-        start: Option<u32>,
+        start: Option<String>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -332,7 +309,7 @@ pub enum VariableType {
         max: Option<u32>,
     },
     Int64 {
-        start: Option<i64>,
+        start: Option<String>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -341,7 +318,7 @@ pub enum VariableType {
         max: Option<i64>,
     },
     UInt64 {
-        start: Option<u64>,
+        start: Option<String>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -350,7 +327,7 @@ pub enum VariableType {
         max: Option<u64>,
     },
     Boolean {
-        start: Option<bool>,
+        start: Option<String>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -368,7 +345,6 @@ pub enum VariableType {
         previous: Option<u32>,
     },
     Clock {
-        start: Option<bool>,
         declaredType: Option<String>,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -383,7 +359,7 @@ pub enum VariableType {
         shiftCounter: u64,
     },
     Enumeration {
-        start: Option<i64>,
+        start: Option<String>,
         declaredType: String,
         intermediateUpdate: bool,
         previous: Option<u32>,
@@ -428,7 +404,7 @@ impl VariableType {
             VariableType::Boolean { start, .. } => start.is_some(),
             VariableType::String { start, .. } => !start.is_empty(),
             VariableType::Binary { start, .. } => !start.is_empty(),
-            VariableType::Clock { start, .. } => start.is_some(),
+            VariableType::Clock { .. } => false,
             VariableType::Enumeration { start, .. } => start.is_some(),
         }
     }

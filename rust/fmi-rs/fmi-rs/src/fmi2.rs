@@ -395,7 +395,7 @@ impl<T> FMU2<T> {
             CStr::from_ptr(version_cstr).to_string_lossy().into_owned()
         };
         if self.logCalls {
-            let message = format!("fmi2GetVersion() -> \"{version}\"");
+            let message = format!("fmi2GetVersion() -> {version:?}");
             self.log_call(fmi2Status::fmi2OK, message.as_str());
         }
         version
@@ -407,7 +407,7 @@ impl<T> FMU2<T> {
             CStr::from_ptr(platform_cstr).to_string_lossy().into_owned()
         };
         if self.logCalls {
-            let message = format!("fmi2GetTypesPlatform() -> {types_platform}");
+            let message = format!("fmi2GetTypesPlatform() -> {types_platform:?}");
             self.log_call(fmi2Status::fmi2OK, message.as_str());
         }
         types_platform

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::model_description::ValidationError;
 use crate::model_description::fmi2::{
@@ -164,17 +164,37 @@ impl ModelDescription {
             }
         }
 
-        // check outputs
+        // validate outputs
         for unknown in &self.outputs {
             problems.extend(self.validate_unknown(unknown));
         }
 
-        // check derivatives
+        let expected_output_indices = self
+            .modelVariables
+            .iter()
+            .enumerate()
+            .filter(|i| i.1.causality == Causality::Output)
+            .map(|i| (i.0 + 1) as u32)
+            .collect::<HashSet<u32>>();
+
+        let actual_output_indices = self
+            .outputs
+            .iter()
+            .map(|u| u.index)
+            .collect::<HashSet<u32>>();
+
+        if expected_output_indices != actual_output_indices {
+            problems.push(ValidationError {
+                range: vec![],
+                message: format!("The the outputs do not match the expected set of variables. Expected: {:?}, Actual: {:?}", expected_output_indices, actual_output_indices),
+            });
+        }
+
+        // validate continuous state derivatives
         for unknown in &self.derivatives {
             problems.extend(self.validate_unknown(unknown));
         }
 
-        // check continuous states
         for unknown in &self.derivatives {
             let derivative_variable = match self.get_variable_by_index(unknown.index) {
                 Some(variable) => variable,
@@ -226,9 +246,62 @@ impl ModelDescription {
             }
         }
 
-        // check initial unknowns
+        // validate initial unknowns
         for unknown in &self.initialUnknowns {
             problems.extend(self.validate_unknown(unknown));
+        }
+
+        let mut expected_initial_unknown_indices = self
+            .modelVariables
+            .iter()
+            .enumerate()
+            .filter(|i| {
+                (i.1.causality == Causality::Output
+                    && matches!(
+                        i.1.initial,
+                        Some(Initial::Approx) | Some(Initial::Calculated)
+                    ))
+                    || i.1.causality == Causality::CalculatedParameter
+            })
+            .map(|i| (i.0 + 1) as u32)
+            .collect::<HashSet<u32>>();
+
+        for derivative in &self.derivatives {
+            expected_initial_unknown_indices.insert(derivative.index);
+
+            if let Some(derivative_variable) = self.get_variable_by_index(derivative.index) {
+                if matches!(
+                    derivative_variable.initial,
+                    Some(Initial::Approx) | Some(Initial::Calculated)
+                ) {
+                    expected_initial_unknown_indices.insert(derivative.index);
+                }
+
+                if let VariableType::Real { derivative, .. } = &derivative_variable.variableType
+                    && let Some(continuous_state_index) = derivative
+                    && let Some(continuous_state_variable) =
+                        self.get_variable_by_index(*continuous_state_index)
+                    && matches!(
+                        continuous_state_variable.initial,
+                        Some(Initial::Approx) | Some(Initial::Calculated)
+                    )
+                {
+                    expected_initial_unknown_indices.insert(*continuous_state_index);
+                }
+            }
+        }
+
+        let actual_initial_unknown_indices = self
+            .initialUnknowns
+            .iter()
+            .map(|u| u.index)
+            .collect::<HashSet<u32>>();
+
+        if expected_initial_unknown_indices != actual_initial_unknown_indices {
+            problems.push(ValidationError {
+                range: vec![],
+                message: format!("The initial unknowns do not match the expected set of variables. Expected: {:?}, Actual: {:?}", expected_initial_unknown_indices, actual_initial_unknown_indices),
+            });
         }
 
         problems

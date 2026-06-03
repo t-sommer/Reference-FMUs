@@ -180,14 +180,6 @@ impl ModelDescription {
             problems.extend(self.validate_unknown(unknown));
         }
 
-        let mut expected_output_vrs = HashSet::new();
-
-        for variable in &self.modelVariables {
-            if variable.causality == Causality::Output {
-                expected_output_vrs.insert(variable.valueReference);
-            }
-        }
-
         let expected_output_vrs = self
             .modelVariables
             .iter()
@@ -285,18 +277,14 @@ impl ModelDescription {
 
                 if let VariableType::Float64 { derivative, .. }
                 | VariableType::Float32 { derivative, .. } = &derivative_variable.variableType
+                    && let Some(continuous_state_vr) = derivative
+                    && let Some(continuous_state_variable) = self.get_variable(*continuous_state_vr)
+                    && matches!(
+                        continuous_state_variable.initial,
+                        Some(Initial::Approx) | Some(Initial::Calculated)
+                    )
                 {
-                    if let Some(continuous_state_vr) = derivative {
-                        if let Some(continuous_state_variable) =
-                            self.get_variable(*continuous_state_vr)
-                            && matches!(
-                                continuous_state_variable.initial,
-                                Some(Initial::Approx) | Some(Initial::Calculated)
-                            )
-                        {
-                            expected_initial_unknown_vrs.insert(*continuous_state_vr);
-                        }
-                    }
+                    expected_initial_unknown_vrs.insert(*continuous_state_vr);
                 }
             }
         }

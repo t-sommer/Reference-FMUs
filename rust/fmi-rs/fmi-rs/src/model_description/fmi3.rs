@@ -347,7 +347,6 @@ pub enum VariableType {
     Clock {
         declaredType: Option<String>,
         intermediateUpdate: bool,
-        previous: Option<u32>,
         canBeDeactivated: bool,
         priority: Option<u32>,
         intervalVariability: IntervalVariability,
@@ -406,6 +405,26 @@ impl VariableType {
             VariableType::Binary { start, .. } => !start.is_empty(),
             VariableType::Clock { .. } => false,
             VariableType::Enumeration { start, .. } => start.is_some(),
+        }
+    }
+
+    pub fn previous(&self) -> Option<u32> {
+        match self {
+            VariableType::Float32 { previous, .. } => *previous,
+            VariableType::Float64 { previous, .. } => *previous,
+            VariableType::Int8 { previous, .. } => *previous,
+            VariableType::UInt8 { previous, .. } => *previous,
+            VariableType::Int16 { previous, .. } => *previous,
+            VariableType::UInt16 { previous, .. } => *previous,
+            VariableType::Int32 { previous, .. } => *previous,
+            VariableType::UInt32 { previous, .. } => *previous,
+            VariableType::Int64 { previous, .. } => *previous,
+            VariableType::UInt64 { previous, .. } => *previous,
+            VariableType::Boolean { previous, .. } => *previous,
+            VariableType::String { previous, .. } => *previous,
+            VariableType::Binary { previous, .. } => *previous,
+            VariableType::Clock { .. } => None,
+            VariableType::Enumeration { previous, .. } => *previous,
         }
     }
 }

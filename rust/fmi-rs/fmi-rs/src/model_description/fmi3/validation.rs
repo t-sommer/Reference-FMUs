@@ -175,23 +175,11 @@ impl ModelDescription {
             }
         }
 
+        // validate outputs
         for unknown in &self.outputs {
             problems.extend(self.validate_unknown(unknown));
         }
 
-        for unknown in &self.derivatives {
-            problems.extend(self.validate_unknown(unknown));
-        }
-
-        for unknown in &self.initialUnknowns {
-            problems.extend(self.validate_unknown(unknown));
-        }
-
-        for unknown in &self.eventIndicators {
-            problems.extend(self.validate_unknown(unknown));
-        }
-
-        // validate outputs
         let mut expected_output_vrs = HashSet::new();
 
         for variable in &self.modelVariables {
@@ -220,7 +208,55 @@ impl ModelDescription {
             });
         }
 
+        // validate continuous state derivatives
+        for unknown in &self.derivatives {
+            problems.extend(self.validate_unknown(unknown));
+            if let Some(derivative_variable) = self.get_variable(unknown.valueReference) {
+                if !matches!(derivative_variable.variability, Variability::Continuous) {
+                    problems.push(ValidationError {
+                        range: vec![unknown.range.clone()],
+                        message: "Event indicators must be continuous variables of type Float32 or Float64.".to_string(),
+                    });
+                }
+            }
+        }
+
+        // validate clocked states
+        for unknown in &self.clockedStates {
+            problems.extend(self.validate_unknown(unknown));
+
+            if let Some(clocked_state_variable) = self.get_variable(unknown.valueReference) {
+                if clocked_state_variable.clocks.is_empty() {
+                    problems.push(ValidationError {
+                        range: vec![unknown.range.clone()],
+                        message: "Clocked states must have at least one clock.".to_string(),
+                    });
+                }
+
+                if clocked_state_variable.variableType.previous().is_none() {
+                    problems.push(ValidationError {
+                        range: vec![clocked_state_variable.range.clone(), unknown.range.clone()],
+                        message: "Clocked states must have a previous value.".to_string(),
+                    });
+                }
+
+                if matches!(
+                    clocked_state_variable.variableType,
+                    VariableType::Clock { .. }
+                ) {
+                    problems.push(ValidationError {
+                        range: vec![unknown.range.clone()],
+                        message: "Clocked states must not be clock variables.".to_string(),
+                    });
+                }
+            }
+        }
+
         // validate initial unknowns
+        for unknown in &self.initialUnknowns {
+            problems.extend(self.validate_unknown(unknown));
+        }
+
         let mut expected_initial_unknown_vrs = HashSet::new();
 
         for variable in &self.modelVariables {
@@ -280,6 +316,8 @@ impl ModelDescription {
 
         // validate event indicators
         for unknown in self.eventIndicators.iter() {
+            problems.extend(self.validate_unknown(unknown));
+
             if let Some(event_indicator_variable) = self.get_variable(unknown.valueReference) {
                 if !matches!(
                     event_indicator_variable.variableType,

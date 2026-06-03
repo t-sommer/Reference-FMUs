@@ -260,7 +260,6 @@ impl ModelDescription {
             return Ok(VariableType::Clock {
                 declaredType: node.attribute_as("declaredType")?,
                 intermediateUpdate: node.attribute_as("intermediateUpdate")?.unwrap_or_default(),
-                previous: node.attribute_as("previous")?,
                 canBeDeactivated: node.attribute_as("canBeDeactivated")?.unwrap_or_default(),
                 priority: node.attribute_as("priority")?,
                 intervalVariability: IntervalVariability::from_str(

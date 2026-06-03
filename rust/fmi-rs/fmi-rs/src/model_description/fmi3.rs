@@ -4,7 +4,7 @@ pub mod validation;
 
 use std::{ops::Range, str::FromStr};
 
-use crate::{model_description::Unit, types::fmiValueReference};
+use crate::{fmi3::types::fmi3ValueReference, model_description::Unit};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum VariableNamingConvention {
@@ -243,7 +243,7 @@ pub enum VariableType {
         max: Option<f32>,
         nominal: Option<f32>,
         // fmi3RealVariableAttributes
-        derivative: Option<fmiValueReference>,
+        derivative: Option<fmi3ValueReference>,
         reinit: bool,
     },
     Float64 {
@@ -267,7 +267,7 @@ pub enum VariableType {
         max: Option<f64>,
         nominal: Option<f64>,
         // fmi3RealVariableAttributes
-        derivative: Option<fmiValueReference>,
+        derivative: Option<fmi3ValueReference>,
         reinit: bool,
     },
     Int8 {
@@ -592,14 +592,14 @@ pub struct ScheduledExecution {
 #[derive(Debug)]
 pub enum Dimension {
     Fixed { start: usize },
-    Variable { valueReference: fmiValueReference },
+    Variable { valueReference: fmi3ValueReference },
 }
 
 #[derive(Debug)]
 pub struct ModelVariable {
     pub variableType: VariableType,
     pub name: String,
-    pub valueReference: fmiValueReference,
+    pub valueReference: fmi3ValueReference,
     pub description: Option<String>,
     pub causality: Causality,
     pub variability: Variability,
@@ -610,8 +610,8 @@ pub struct ModelVariable {
 
 #[derive(Debug)]
 pub struct Unknown {
-    pub valueReference: fmiValueReference,
-    pub dependencies: Option<Vec<fmiValueReference>>,
+    pub valueReference: fmi3ValueReference,
+    pub dependencies: Option<Vec<fmi3ValueReference>>,
     pub dependenciesKind: Option<Vec<DependencyKind>>,
     pub range: Range<usize>,
 }
@@ -645,7 +645,7 @@ pub struct ModelDescription {
 
 impl ModelDescription {
     /// Returns the variable with the given value reference.
-    pub fn get_variable(&self, vr: fmiValueReference) -> Option<&ModelVariable> {
+    pub fn get_variable(&self, vr: fmi3ValueReference) -> Option<&ModelVariable> {
         self.modelVariables.iter().find(|v| v.valueReference == vr)
     }
 

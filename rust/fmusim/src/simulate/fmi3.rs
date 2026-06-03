@@ -299,10 +299,11 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
 
         let mut color_iter = COLORS.iter().cycle();
 
-        if let Some(first_row) = trajectories.rows.first() && let Some(value) = first_row.get(i) {
-            
+        if let Some(first_row) = trajectories.rows.first()
+            && let Some(value) = first_row.get(i)
+        {
             let size = value.len();
-            
+
             for j in 0..size {
                 let scalar_values: Vec<f64> = trajectories
                     .rows
@@ -315,22 +316,22 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
                     name.clone()
                 };
                 let current_color = color_iter.next().unwrap_or(&COLORS[0]);
-    
+
                 let mut trace = Scatter::new(time.clone(), scalar_values).name(name);
                 // Use the shared x-axis ("x") for all subplots
                 trace = trace
                     .x_axis("x")
                     .y_axis(format!("y{row}"))
                     .line(Line::new().width(1.5).color(*current_color));
-    
+
                 if show_markers {
                     trace = trace.mode(Mode::LinesMarkers);
                 }
-    
+
                 if matches!(variable.variableType, VariableType::Boolean { .. }) {
                     trace = trace.fill(Fill::ToZeroY).fill_color(NamedColor::AliceBlue);
                 }
-    
+
                 plot.add_trace(trace);
             }
         }

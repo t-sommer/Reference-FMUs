@@ -4,7 +4,7 @@ pub mod validation;
 
 use std::{ops::Range, str::FromStr};
 
-use crate::{model_description::Unit, types::fmiValueReference};
+use crate::{fmi2::types::fmi2ValueReference, model_description::Unit};
 
 pub type VariableIndex = u32;
 
@@ -288,7 +288,7 @@ pub struct ModelExchange {
 pub struct ScalarVariable {
     pub variableType: VariableType,
     pub name: String,
-    pub valueReference: fmiValueReference,
+    pub valueReference: fmi2ValueReference,
     pub description: Option<String>,
     pub causality: Causality,
     pub variability: Variability,
@@ -333,7 +333,7 @@ impl ModelDescription {
     /// Returns the first variable found with the given value reference.
     pub fn get_variable_by_value_reference(
         &self,
-        vr: fmiValueReference,
+        vr: fmi2ValueReference,
     ) -> Option<&ScalarVariable> {
         self.modelVariables.iter().find(|v| v.valueReference == vr)
     }

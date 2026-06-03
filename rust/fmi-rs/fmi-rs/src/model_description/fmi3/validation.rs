@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    fmi3::types::fmi3ValueReference,
     model_description::{
         ValidationError,
         fmi3::{
@@ -9,7 +10,6 @@ use crate::{
         },
         validation::validate_structured_variable_name,
     },
-    types::fmiValueReference,
 };
 
 impl ModelDescription {
@@ -28,12 +28,13 @@ impl ModelDescription {
                     message: "Variable name cannot be empty.".to_string(),
                 });
             } else if self.variableNamingConvention == VariableNamingConvention::Structured
-                && let Err(message) = validate_structured_variable_name(&variable.name) {
-                    problems.push(ValidationError {
+                && let Err(message) = validate_structured_variable_name(&variable.name)
+            {
+                problems.push(ValidationError {
                         range: vec![variable.range.clone()],
                         message: format!("Variable name '{}' does not conform to the structured naming convention: {}", variable.name, message),
                     });
-                }
+            }
 
             // check for duplicate value references
             if let Some(duplicate) = value_references.get(&variable.valueReference) {
@@ -56,10 +57,13 @@ impl ModelDescription {
             }
 
             // assert no start for variability "calculated"
-            if let Some(Initial::Calculated) = variable.initial && variable.variableType.has_start() {
+            if let Some(Initial::Calculated) = variable.initial
+                && variable.variableType.has_start()
+            {
                 problems.push(ValidationError {
                     range: vec![variable.range.clone()],
-                    message: "The variable '{}' is calculated but provides a start value.".to_string(),
+                    message: "The variable '{}' is calculated but provides a start value."
+                        .to_string(),
                 });
             }
 
@@ -219,7 +223,7 @@ impl ModelDescription {
         problems
     }
 
-    fn is_valid_value_reference(&self, valueReference: fmiValueReference) -> bool {
+    fn is_valid_value_reference(&self, valueReference: fmi3ValueReference) -> bool {
         self.modelVariables
             .iter()
             .any(|v| v.valueReference == valueReference)

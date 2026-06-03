@@ -7,16 +7,15 @@ pub mod recorder;
 use crate::{
     fmi2::{
         self, CS, FMU2, ME,
-        types::{fmi2Boolean, fmi2False, fmi2Integer, fmi2Real, fmi2Status, fmi2True},
+        types::{
+            fmi2Boolean, fmi2False, fmi2Integer, fmi2Real, fmi2Status, fmi2True, fmi2ValueReference,
+        },
     },
     model_description::fmi2::{ModelDescription, ScalarVariable, VariableType},
     sim::{
         SolverFactory,
         fmi2::{input::StaticInput, recorder::Recorder},
         relative_eq, relative_ge, relative_gt, relative_le, relative_lt,
-    },
-    types::{
-        fmiValueReference,
     },
 };
 
@@ -140,7 +139,7 @@ pub fn parse_variable_value(
 
 pub fn set_variable_value<T>(
     fmu: &FMU2<T>,
-    value_reference: fmiValueReference,
+    value_reference: fmi2ValueReference,
     value: &VariableValue,
 ) -> Result<fmi2Status, Box<dyn Error>> {
     match value {

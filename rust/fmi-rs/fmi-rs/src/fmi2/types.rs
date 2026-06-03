@@ -1,6 +1,5 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use crate::types::*;
 use std::os::raw::{c_char, c_void};
 
 // FMI 2.0 Basic Types
@@ -10,7 +9,7 @@ pub type fmi2Boolean = i32;
 pub type fmi2Char = c_char;
 pub type fmi2String = *const c_char;
 pub type fmi2Byte = u8;
-pub type fmi2ValueReference = fmiValueReference;
+pub type fmi2ValueReference = u32;
 pub type fmi2FMUstate = *mut c_void;
 pub type fmi2Component = *mut c_void;
 pub type fmi2ComponentEnvironment = *mut c_void;

@@ -1309,8 +1309,7 @@ impl FMU3 {
         if self.logCalls {
             let message = format!(
                 "fmi3GetVariableDependencies(valueReference={}) -> {:?}",
-                valueReference,
-                status,
+                valueReference, status,
             );
             self.log_call(status, &message);
         }
@@ -1358,10 +1357,7 @@ impl FMU3 {
             unsafe { (self.fmi3SerializedFMUStateSize)(self.instance, fmuState, &mut size) };
 
         if self.logCalls {
-            let message = format!(
-                "fmi3SerializedFMUStateSize(size={}) -> {:?}",
-                size, status
-            );
+            let message = format!("fmi3SerializedFMUStateSize(size={}) -> {:?}", size, status);
             self.log_call(status, &message);
         }
 
@@ -1387,7 +1383,10 @@ impl FMU3 {
         };
 
         if self.logCalls {
-            let message = format!("fmi3SerializeFMUState(size={}) -> {status:?}", serializedState.len());
+            let message = format!(
+                "fmi3SerializeFMUState(size={}) -> {status:?}",
+                serializedState.len()
+            );
             self.log_call(status, &message);
         }
         status
@@ -1408,7 +1407,10 @@ impl FMU3 {
         };
 
         if self.logCalls {
-            let message = format!("fmi3DeserializeFMUState(size={}) -> {status:?}", serializedState.len(),);
+            let message = format!(
+                "fmi3DeserializeFMUState(size={}) -> {status:?}",
+                serializedState.len(),
+            );
             self.log_call(status, &message);
         }
 

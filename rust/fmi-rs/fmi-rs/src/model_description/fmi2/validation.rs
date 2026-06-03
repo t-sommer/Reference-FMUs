@@ -26,12 +26,13 @@ impl ModelDescription {
                     message: "Variable name cannot be empty.".to_string(),
                 });
             } else if self.variableNamingConvention == VariableNamingConvention::Structured
-                && let Err(message) = validate_structured_variable_name(&variable.name) {
-                    problems.push(ValidationError {
+                && let Err(message) = validate_structured_variable_name(&variable.name)
+            {
+                problems.push(ValidationError {
                         range: vec![variable.range.clone()],
                         message: format!("Variable name '{}' does not conform to the structured naming convention: {}", variable.name, message),
                     });
-                }
+            }
 
             // check for duplicate variable names
             if let Some(duplicate) = variable_names.get(&variable.name) {
@@ -78,10 +79,13 @@ impl ModelDescription {
             }
 
             // assert no start for variability "calculated"
-            if let Some(Initial::Calculated) = variable.initial && variable.variableType.has_start() {
+            if let Some(Initial::Calculated) = variable.initial
+                && variable.variableType.has_start()
+            {
                 problems.push(ValidationError {
                     range: vec![variable.range.clone()],
-                    message: "The variable '{}' is calculated but provides a start value.".to_string(),
+                    message: "The variable '{}' is calculated but provides a start value."
+                        .to_string(),
                 });
             }
 

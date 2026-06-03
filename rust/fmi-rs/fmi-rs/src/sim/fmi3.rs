@@ -4,6 +4,7 @@ pub mod recorder;
 
 use std::{collections::HashMap, error::Error};
 
+use crate::model_description::fmi3::{Causality, ModelDescription};
 use crate::{
     fmi3::{FMU3, types::*},
     model_description::fmi3::{ModelVariable, VariableType},
@@ -12,10 +13,6 @@ use crate::{
         fmi3::{input::StaticInput, recorder::Recorder},
         relative_eq, relative_ge, relative_gt, relative_le, relative_lt,
     },
-    types::*,
-};
-use crate::{
-    model_description::fmi3::{Causality, ModelDescription},
 };
 
 use std::path::{Path, PathBuf};
@@ -201,57 +198,57 @@ pub fn parse_variable_value(
 ) -> Result<VariableValue, Box<dyn Error>> {
     match variable_type {
         VariableType::Float32 { .. } => {
-            let values: Result<Vec<fmiFloat32>, _> =
+            let values: Result<Vec<fmi3Float32>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Float32(values?))
         }
         VariableType::Float64 { .. } => {
-            let values: Result<Vec<fmiFloat64>, _> =
+            let values: Result<Vec<fmi3Float64>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Float64(values?))
         }
         VariableType::Int8 { .. } => {
-            let values: Result<Vec<fmiInt8>, _> =
+            let values: Result<Vec<fmi3Int8>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Int8(values?))
         }
         VariableType::UInt8 { .. } => {
-            let values: Result<Vec<fmiUInt8>, _> =
+            let values: Result<Vec<fmi3UInt8>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt8(values?))
         }
         VariableType::Int16 { .. } => {
-            let values: Result<Vec<fmiInt16>, _> =
+            let values: Result<Vec<fmi3Int16>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Int16(values?))
         }
         VariableType::UInt16 { .. } => {
-            let values: Result<Vec<fmiUInt16>, _> =
+            let values: Result<Vec<fmi3UInt16>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt16(values?))
         }
         VariableType::Int32 { .. } => {
-            let values: Result<Vec<fmiInt32>, _> =
+            let values: Result<Vec<fmi3Int32>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Int32(values?))
         }
         VariableType::UInt32 { .. } => {
-            let values: Result<Vec<fmiUInt32>, _> =
+            let values: Result<Vec<fmi3UInt32>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt32(values?))
         }
         VariableType::Int64 { .. } | VariableType::Enumeration { .. } => {
-            let values: Result<Vec<fmiInt64>, _> =
+            let values: Result<Vec<fmi3Int64>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Int64(values?))
         }
         VariableType::UInt64 { .. } => {
-            let values: Result<Vec<fmiUInt64>, _> =
+            let values: Result<Vec<fmi3UInt64>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::UInt64(values?))
         }
         VariableType::Boolean { .. } | VariableType::Clock { .. } => {
-            let values: Result<Vec<fmiBoolean>, _> =
+            let values: Result<Vec<fmi3Boolean>, _> =
                 literal.split_whitespace().map(|v| v.parse()).collect();
             Ok(VariableValue::Boolean(values?))
         }
@@ -260,7 +257,7 @@ pub fn parse_variable_value(
             Ok(VariableValue::String(values))
         }
         VariableType::Binary { .. } => {
-            let values: Result<Vec<Vec<fmiByte>>, Box<dyn Error>> = literal
+            let values: Result<Vec<Vec<fmi3Byte>>, Box<dyn Error>> = literal
                 .split_whitespace()
                 .map(|hex_str| {
                     if hex_str.len() % 2 != 0 {
@@ -291,7 +288,7 @@ pub fn parse_variable_value(
 
 pub fn set_variable_value(
     fmu: &FMU3,
-    value_reference: fmiValueReference,
+    value_reference: fmi3ValueReference,
     value: &VariableValue,
 ) -> fmi3Status {
     match value {

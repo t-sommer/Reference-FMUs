@@ -1,29 +1,27 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-use std::os::raw::{c_char, c_uint};
+use std::os::raw::{c_char, c_uint, c_void};
 
-use crate::types::*;
-
-pub type fmi3Float32 = fmiFloat32;
-pub type fmi3Float64 = fmiFloat64;
-pub type fmi3Int8 = fmiInt8;
-pub type fmi3UInt8 = fmiUInt8;
-pub type fmi3Int16 = fmiInt16;
-pub type fmi3UInt16 = fmiUInt16;
-pub type fmi3Int32 = fmiInt32;
-pub type fmi3UInt32 = fmiUInt32;
-pub type fmi3Int64 = fmiInt64;
-pub type fmi3UInt64 = fmiUInt64;
-pub type fmi3Boolean = fmiBoolean;
-pub type fmi3Char = fmiChar;
-pub type fmi3String = fmiString;
-pub type fmi3Byte = fmiByte;
-pub type fmi3Binary = fmiBinary;
-pub type fmi3Clock = fmiClock;
-pub type fmi3ValueReference = fmiValueReference;
-pub type fmi3FMUState = fmiFMUState;
-pub type fmi3Instance = fmiInstance;
-pub type fmi3InstanceEnvironment = fmiInstanceEnvironment;
+pub type fmi3Float32 = f32;
+pub type fmi3Float64 = f64;
+pub type fmi3Int8 = i8;
+pub type fmi3UInt8 = u8;
+pub type fmi3Int16 = i16;
+pub type fmi3UInt16 = u16;
+pub type fmi3Int32 = i32;
+pub type fmi3UInt32 = u32;
+pub type fmi3Int64 = i64;
+pub type fmi3UInt64 = u64;
+pub type fmi3Boolean = bool;
+pub type fmi3Char = c_char;
+pub type fmi3String = *const c_char;
+pub type fmi3Byte = u8;
+pub type fmi3Binary = *const fmi3Byte;
+pub type fmi3Clock = bool;
+pub type fmi3ValueReference = u32;
+pub type fmi3FMUState = *mut c_void;
+pub type fmi3Instance = *mut c_void;
+pub type fmi3InstanceEnvironment = *mut c_void;
 
 pub const fmi3True: fmi3Boolean = true;
 pub const fmi3False: fmi3Boolean = false;

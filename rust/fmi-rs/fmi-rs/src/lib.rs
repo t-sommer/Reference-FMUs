@@ -6,11 +6,11 @@ pub mod sim;
 #[cfg(feature = "zip")]
 pub mod util;
 
-#[cfg(all(target_os = "linux"))]
+#[cfg(target_os = "linux")]
 pub const SHARED_LIBRARY_EXTENSION: &str = ".so";
 
-#[cfg(all(target_os = "macos"))]
+#[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXTENSION: &str = ".dylib";
 
-#[cfg(all(target_os = "windows"))]
+#[cfg(target_os = "windows")]
 pub const SHARED_LIBRARY_EXTENSION: &str = ".dll";

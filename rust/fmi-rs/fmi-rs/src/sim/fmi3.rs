@@ -70,6 +70,24 @@ impl VariableValue {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        match self {
+            VariableValue::Float32(v) => v.is_empty(),
+            VariableValue::Float64(v) => v.is_empty(),
+            VariableValue::Int8(v) => v.is_empty(),
+            VariableValue::UInt8(v) => v.is_empty(),
+            VariableValue::Int16(v) => v.is_empty(),
+            VariableValue::UInt16(v) => v.is_empty(),
+            VariableValue::Int32(v) => v.is_empty(),
+            VariableValue::UInt32(v) => v.is_empty(),
+            VariableValue::Int64(v) => v.is_empty(),
+            VariableValue::UInt64(v) => v.is_empty(),
+            VariableValue::Boolean(v) => v.is_empty(),
+            VariableValue::String(v) => v.is_empty(),
+            VariableValue::Binary(v) => v.is_empty(),
+        }
+    }
+
     pub fn to_literal(&self) -> String {
         match self {
             VariableValue::Float32(v) => v

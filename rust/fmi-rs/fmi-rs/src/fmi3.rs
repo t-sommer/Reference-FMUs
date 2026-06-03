@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types, non_snake_case, dead_code)]
+#![allow(non_camel_case_types, non_snake_case, dead_code, clippy::too_many_arguments)]
 
 pub mod types;
 
@@ -95,7 +95,7 @@ macro_rules! fmi_set {
     }};
 }
 
-impl<'lib> Drop for FMU3 {
+impl Drop for FMU3 {
     fn drop(&mut self) {
         if !self.instance.is_null() {
             unsafe { (self.fmi3FreeInstance)(self.instance) };
@@ -211,6 +211,7 @@ pub struct FMU3 {
 }
 
 #[unsafe(no_mangle)]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn logMessage(
     instanceEnvironment: fmi3InstanceEnvironment,
     status: fmi3Status,

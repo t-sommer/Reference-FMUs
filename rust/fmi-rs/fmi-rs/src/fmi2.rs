@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types, non_snake_case, dead_code)]
+#![allow(non_camel_case_types, non_snake_case, dead_code, clippy::too_many_arguments)]
 
 pub mod types;
 
@@ -196,6 +196,7 @@ pub struct FMU2<T> {
 }
 
 #[unsafe(no_mangle)]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn logger(
     componentEnvironment: fmi2ComponentEnvironment,
     _instanceName: fmi2String,

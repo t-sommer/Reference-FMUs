@@ -393,6 +393,10 @@ impl ModelDescription {
                     };
                 }
 
+                let canHandleMultipleSetPerTimeInstant = child
+                    .attribute_as("canHandleMultipleSetPerTimeInstant")?
+                    .unwrap_or_default();
+
                 Ok(ModelVariable {
                     variableType: variable_type,
                     name: child.required_attribute("name")?,
@@ -400,6 +404,8 @@ impl ModelDescription {
                     description: child.attribute_as("description")?,
                     causality,
                     variability,
+                    canHandleMultipleSetPerTimeInstant,
+                    clocks: vec![],
                     initial,
                     dimensions: Self::get_dimensions(&child)?,
                     range: child.range(),

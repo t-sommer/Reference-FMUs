@@ -579,6 +579,8 @@ pub struct ModelVariable {
     pub description: Option<String>,
     pub causality: Causality,
     pub variability: Variability,
+    pub canHandleMultipleSetPerTimeInstant: bool,
+    pub clocks: Vec<fmi3ValueReference>,
     pub initial: Option<Initial>,
     pub dimensions: Vec<Dimension>,
     pub range: Range<usize>,

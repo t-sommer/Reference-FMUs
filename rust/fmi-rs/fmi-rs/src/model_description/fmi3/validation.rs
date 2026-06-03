@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     fmi3::types::fmi3ValueReference,
@@ -20,6 +20,7 @@ impl ModelDescription {
         let mut value_references: HashMap<u32, &ModelVariable> = HashMap::new();
         let mut variable_names: HashMap<&String, &ModelVariable> = HashMap::new();
 
+        // validate model variables
         for variable in &self.modelVariables {
             // validate variable name
             if variable.name.is_empty() {
@@ -177,16 +178,127 @@ impl ModelDescription {
         for unknown in &self.outputs {
             problems.extend(self.validate_unknown(unknown));
         }
+
         for unknown in &self.derivatives {
             problems.extend(self.validate_unknown(unknown));
         }
+
         for unknown in &self.initialUnknowns {
             problems.extend(self.validate_unknown(unknown));
+        }
+
+        for unknown in &self.eventIndicators {
+            problems.extend(self.validate_unknown(unknown));
+        }
+
+        // validate outputs
+        let mut expected_output_vrs = HashSet::new();
+
+        for variable in &self.modelVariables {
+            if variable.causality == Causality::Output {
+                expected_output_vrs.insert(variable.valueReference);
+            }
+        }
+
+        let expected_output_vrs = self
+            .modelVariables
+            .iter()
+            .filter(|v| v.causality == Causality::Output)
+            .map(|v| v.valueReference)
+            .collect::<HashSet<u32>>();
+
+        let actual_output_vrs = self
+            .outputs
+            .iter()
+            .map(|u| u.valueReference)
+            .collect::<HashSet<u32>>();
+
+        if expected_output_vrs != actual_output_vrs {
+            problems.push(ValidationError {
+                range: vec![],
+                message: format!("The the outputs do not match the expected set of variables. Expected: {:?}, Actual: {:?}", expected_output_vrs, actual_output_vrs),
+            });
+        }
+
+        // validate initial unknowns
+        let mut expected_initial_unknown_vrs = HashSet::new();
+
+        for variable in &self.modelVariables {
+            if (variable.causality == Causality::Output
+                && matches!(
+                    variable.initial,
+                    Some(Initial::Approx) | Some(Initial::Calculated)
+                )
+                && variable.clocks.is_empty())
+                || variable.causality == Causality::CalculatedParameter
+            {
+                expected_initial_unknown_vrs.insert(variable.valueReference);
+            }
+        }
+
+        for derivative in &self.derivatives {
+            expected_initial_unknown_vrs.insert(derivative.valueReference);
+
+            if let Some(derivative_variable) = self.get_variable(derivative.valueReference) {
+                if matches!(
+                    derivative_variable.initial,
+                    Some(Initial::Approx) | Some(Initial::Calculated)
+                ) {
+                    expected_initial_unknown_vrs.insert(derivative_variable.valueReference);
+                }
+
+                if let VariableType::Float64 { derivative, .. }
+                | VariableType::Float32 { derivative, .. } = &derivative_variable.variableType
+                {
+                    if let Some(continuous_state_vr) = derivative {
+                        if let Some(continuous_state_variable) =
+                            self.get_variable(*continuous_state_vr)
+                            && matches!(
+                                continuous_state_variable.initial,
+                                Some(Initial::Approx) | Some(Initial::Calculated)
+                            )
+                        {
+                            expected_initial_unknown_vrs.insert(*continuous_state_vr);
+                        }
+                    }
+                }
+            }
+        }
+
+        let actual_initial_unknown_vrs = self
+            .initialUnknowns
+            .iter()
+            .map(|u| u.valueReference)
+            .collect::<HashSet<u32>>();
+
+        if expected_initial_unknown_vrs != actual_initial_unknown_vrs {
+            problems.push(ValidationError {
+                range: vec![],
+                message: format!("The initial unknowns do not match the expected set of variables. Expected: {:?}, Actual: {:?}", expected_initial_unknown_vrs, actual_initial_unknown_vrs),
+            });
+        }
+
+        // validate event indicators
+        for unknown in self.eventIndicators.iter() {
+            if let Some(event_indicator_variable) = self.get_variable(unknown.valueReference) {
+                if !matches!(
+                    event_indicator_variable.variableType,
+                    VariableType::Float32 { .. } | VariableType::Float64 { .. }
+                ) {
+                    problems.push(ValidationError {
+                        range: vec![unknown.range.clone()],
+                        message:
+                            "The variable type of the event indicators must be Float32 or Float64"
+                                .to_string(),
+                    });
+                }
+            }
         }
 
         problems
     }
 
+    /// validate the value reference, dependencies, and dependencies kind
     fn validate_unknown(&self, unknown: &Unknown) -> Vec<ValidationError> {
         let mut problems = vec![];
 

@@ -6,7 +6,7 @@ use std::{
 
 use fmi::{
     model_description::fmi3::{TypeDefinition, VariableType},
-    sim::{euler::ForwardEulerFactory, fmi3::Trajectories},
+    sim::{euler::ForwardEulerFactory, fmi3::{Trajectories, csv::read_csv}},
 };
 use fmi_rs_cvode::solver::CVodeSolverFactory;
 use plotly::{
@@ -169,8 +169,15 @@ pub fn simulate_fmu(
     }
 
     if args.show_plot {
-        let plot =
-            crate::simulate::fmi3::plot_result(&trajectories, args.show_markers, args.show_events);
+
+        let ref_trajectories = if let Some(path) = &args.reference_file {            
+            let reader = File::open(path)?;
+            Some(read_csv(reader, &model_description)?)
+        } else {
+            None
+        };
+
+        let plot = plot_result(&trajectories, ref_trajectories.as_ref(), args.show_markers, args.show_events);
 
         // Generate a unique path in the temp directory starting with the model name
         let temp_path = tempfile::Builder::new()
@@ -189,7 +196,7 @@ pub fn simulate_fmu(
     result
 }
 
-pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_events: bool) -> Plot {
+pub fn plot_result(trajectories: &Trajectories<'_>, ref_trajectories: Option<&Trajectories<'_>>, show_markers: bool, show_events: bool) -> Plot {
     let mut plot = Plot::new();
 
     const COLORS: [&str; 8] = [
@@ -310,14 +317,38 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
                     .iter()
                     .map(|row| row[i].as_f64()[j])
                     .collect();
+                
                 let name = if size > 1 {
                     format!("{}[{}]", name, j)
                 } else {
                     name.clone()
                 };
+
                 let current_color = color_iter.next().unwrap_or(&COLORS[0]);
 
+                if let Some(ref_trajectories) = ref_trajectories    
+                {
+                    let scalar_ref_values: Vec<f64> = ref_trajectories
+                        .rows
+                        .iter()
+                        .map(|row| row[i].as_f64()[j])
+                        .collect();
+
+                    let mut ref_trace =
+                        Scatter::new(ref_trajectories.time.clone(), scalar_ref_values).name(name.clone());
+
+                    let ref_line = Line::new().width(3.0).color(format!("{current_color}44"));
+
+                    ref_trace = ref_trace
+                        .x_axis("x")
+                        .y_axis(format!("y{row}"))
+                        .line(ref_line);
+
+                    plot.add_trace(ref_trace);
+                }
+
                 let mut trace = Scatter::new(time.clone(), scalar_values).name(name);
+                
                 // Use the shared x-axis ("x") for all subplots
                 trace = trace
                     .x_axis("x")

@@ -121,6 +121,10 @@ struct SimulateArgs {
     #[arg(long)]
     show_events: bool,
 
+    /// CSV file to read the reference output from
+    #[arg(long)]
+    reference_file: Option<String>,
+
     /// Set start values for variables (format: variable_name=value)
     #[arg(long = "start-value", value_parser = parse_start_value)]
     start_values: Vec<(String, String)>,

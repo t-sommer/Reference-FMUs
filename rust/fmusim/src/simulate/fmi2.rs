@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use fmi::model_description::fmi2::{SimpleType, Variability, VariableType};
 use fmi::sim::euler::ForwardEulerFactory;
 use fmi::sim::fmi2::Trajectories;
+use fmi::sim::fmi2::csv::read_csv;
 use fmi_rs_cvode::solver::CVodeSolverFactory;
 use plotly::layout::AxisRange;
 use plotly::{
@@ -164,8 +165,20 @@ pub fn simulate_fmu(
     }
 
     if args.show_plot {
-        let plot =
-            crate::simulate::fmi2::plot_result(&trajectories, args.show_markers, args.show_events);
+
+        let reference = if let Some(path) = &args.reference_file {            
+            let reader = File::open(path)?;
+            Some(read_csv(reader, &model_description)?)
+        } else {
+            None
+        };
+
+        let plot = plot_result(
+            &trajectories,
+            reference.as_ref(),
+            args.show_markers,
+            args.show_events,
+        );
 
         // Generate a unique path in the temp directory starting with the model name
         let temp_path = tempfile::Builder::new()
@@ -184,7 +197,12 @@ pub fn simulate_fmu(
     result
 }
 
-pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_events: bool) -> Plot {
+pub fn plot_result(
+    trajectories: &Trajectories<'_>,
+    reference: Option<&Trajectories<'_>>,
+    show_markers: bool,
+    show_events: bool,
+) -> Plot {
     let mut plot = Plot::new();
 
     let plot_height = 250 * trajectories.variables.len().max(1);
@@ -288,6 +306,34 @@ pub fn plot_result(trajectories: &Trajectories<'_>, show_markers: bool, show_eve
 
         if variable.variability == Variability::Discrete {
             line = line.shape(LineShape::Hv);
+        }
+
+        if let Some(ref_trajectories) = reference
+            && let Some(index) = ref_trajectories
+                .variables
+                .iter()
+                .enumerate()
+                .filter(|i| i.1.name == variable.name)
+                .next()
+                .map(|i| i.0)
+        {
+            let ref_values: Vec<f64> = ref_trajectories
+                .rows
+                .iter()
+                .map(|row| row[index].to_f64())
+                .collect();
+
+            let mut ref_trace =
+                Scatter::new(ref_trajectories.time.clone(), ref_values).name(name.clone());
+
+            let ref_line = Line::new().width(3.0).color("#229beb44");
+
+            ref_trace = ref_trace
+                .x_axis("x")
+                .y_axis(format!("y{row}"))
+                .line(ref_line);
+
+            plot.add_trace(ref_trace);
         }
 
         let mut trace = Scatter::new(time, values).name(name);

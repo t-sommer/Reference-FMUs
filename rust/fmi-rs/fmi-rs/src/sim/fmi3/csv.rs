@@ -72,7 +72,15 @@ pub fn read_csv<'a, R: Read>(
         let mut row = vec![];
         let mut it = record.iter();
 
-        time.push(it.next().ok_or("Missing time value")?.parse()?);
+        let next_time = it.next().ok_or("Missing time value")?.parse()?;
+
+        if let Some(last_time) = time.last()
+            && next_time < *last_time
+        {
+            return Err(format!("The time in row {} is decreasing.", i + 2).into());
+        }
+
+        time.push(next_time);
 
         for (j, literal) in it.enumerate() {
             row.push(

@@ -203,14 +203,13 @@ impl ModelDescription {
         // validate continuous state derivatives
         for unknown in &self.derivatives {
             problems.extend(self.validate_unknown(unknown));
-            if let Some(derivative_variable) = self.get_variable(unknown.valueReference) {
-                if !matches!(derivative_variable.variability, Variability::Continuous) {
+            if let Some(derivative_variable) = self.get_variable(unknown.valueReference)
+                && !matches!(derivative_variable.variability, Variability::Continuous) {
                     problems.push(ValidationError {
                         range: vec![unknown.range.clone()],
                         message: "Event indicators must be continuous variables of type Float32 or Float64.".to_string(),
                     });
                 }
-            }
         }
 
         // validate clocked states
@@ -306,8 +305,8 @@ impl ModelDescription {
         for unknown in self.eventIndicators.iter() {
             problems.extend(self.validate_unknown(unknown));
 
-            if let Some(event_indicator_variable) = self.get_variable(unknown.valueReference) {
-                if !matches!(
+            if let Some(event_indicator_variable) = self.get_variable(unknown.valueReference)
+                && !matches!(
                     event_indicator_variable.variableType,
                     VariableType::Float32 { .. } | VariableType::Float64 { .. }
                 ) {
@@ -318,7 +317,6 @@ impl ModelDescription {
                                 .to_string(),
                     });
                 }
-            }
         }
 
         problems

@@ -316,9 +316,7 @@ pub fn plot_result(
             && let Some(index) = ref_trajectories
                 .variables
                 .iter()
-                .enumerate()
-                .filter(|i| i.1.name == variable.name)
-                .next()
+                .enumerate().find(|i| i.1.name == variable.name)
                 .map(|i| i.0)
         {
             let ref_values: Vec<f64> = ref_trajectories

@@ -50,7 +50,7 @@
                 // "--start-value", "RequesteTorqueInNm=150",
                 // "--start-value", "U_DC=800",
                 // "--output-file=Rectifier3_out.csv",
-                "--reference-file=Rectifier3_out2.csv",
+                "--reference-file=Rectifier3_out.csv",
                 // "--reference-file=CoupledClutches_out.csv",
                 "--show-plot",
                 // "--show-markers",

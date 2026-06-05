@@ -310,7 +310,12 @@ impl ModelDescription {
         let text = std::fs::read_to_string(path)
             .map_err(|e| format!("Failed to read XML file '{}': {}", path.display(), e))?;
         Self::from_string(&text).map_err(|e| {
-            format!("Failed to load model description from '{}': {}", path.display(), e).into()
+            format!(
+                "Failed to load model description from '{}': {}",
+                path.display(),
+                e
+            )
+            .into()
         })
     }
 

@@ -70,24 +70,20 @@ pub fn read_csv<'a, R: Read>(
         match result {
             Ok(record) => {
                 let mut row = vec![];
-
                 let mut it = record.iter();
 
-                time.push(it.next().unwrap().parse().unwrap());
+                time.push(it.next().ok_or("Missing time value")?.parse()?);
 
                 for (j, literal) in it.enumerate() {
-                    let variable: &ScalarVariable = variables[j];
-
-                    match parse_variable_value(&variable.variableType, literal) {
-                        Ok(v) => row.push(v),
-                        Err(e) => {
-                            return Err(format!(
-                                "Failed to parse {literal:?} (row {i}, column {}). {e}",
-                                j + 1
+                    row.push(
+                        parse_variable_value(&variables[j].variableType, literal).map_err(|e| {
+                            format!(
+                                "Failed to parse {literal:?} (row {}, column {}). {e}",
+                                i + 2,
+                                j + 2
                             )
-                            .into());
-                        }
-                    }
+                        })?,
+                    );
                 }
 
                 rows.push(row);

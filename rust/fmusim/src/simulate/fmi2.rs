@@ -125,8 +125,8 @@ pub fn simulate_fmu(
     };
 
     let input = if let Some(path) = &args.input_file {
-        let file = File::open(path)
-            .map_err(|e| format!("Failed to open input file '{}': {}", path, e))?;
+        let file =
+            File::open(path).map_err(|e| format!("Failed to open input file '{}': {}", path, e))?;
         let trajectories = fmi::sim::fmi2::csv::read_csv(&file, settings.model_description)
             .map_err(|e| format!("Failed to read input CSV '{}': {}", path, e))?;
         Some(fmi::sim::fmi2::input::StaticInput::new(trajectories))
@@ -166,12 +166,13 @@ pub fn simulate_fmu(
     }
 
     if args.show_plot {
-
-        let reference = if let Some(path) = &args.reference_file {            
+        let reference = if let Some(path) = &args.reference_file {
             let reader = File::open(path)
                 .map_err(|e| format!("Failed to open reference file '{}': {}", path, e))?;
-            Some(read_csv(reader, &model_description)
-                .map_err(|e| format!("Failed to parse reference file '{}': {}", path, e))?)
+            Some(
+                read_csv(reader, &model_description)
+                    .map_err(|e| format!("Failed to parse reference file '{}': {}", path, e))?,
+            )
         } else {
             None
         };

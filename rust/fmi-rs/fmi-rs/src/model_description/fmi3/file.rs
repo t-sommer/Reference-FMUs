@@ -307,11 +307,11 @@ impl ModelDescription {
     }
 
     pub fn from_path(path: &Path) -> Result<ModelDescription, Box<dyn Error>> {
-        let text = match std::fs::read_to_string(path) {
-            Ok(content) => content,
-            Err(e) => return Err(format!("Failed to read XML file: {}", e).into()),
-        };
-        Self::from_string(text.as_str())
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| format!("Failed to read XML file '{}': {}", path.display(), e))?;
+        Self::from_string(&text).map_err(|e| {
+            format!("Failed to load model description from '{}': {}", path.display(), e).into()
+        })
     }
 
     pub fn from_string(text: &str) -> Result<ModelDescription, Box<dyn Error>> {

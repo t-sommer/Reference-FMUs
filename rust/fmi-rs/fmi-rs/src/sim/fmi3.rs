@@ -196,6 +196,41 @@ impl<'a> Trajectories<'a> {
         }
     }
 
+    /// Validates the structural integrity and data consistency of the trajectories.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.time.len() != self.rows.len() {
+            return Err(format!(
+                "Time vector length ({}) does not match rows length ({}).",
+                self.time.len(),
+                self.rows.len()
+            ));
+        }
+
+        for (i, window) in self.time.windows(2).enumerate() {
+            if window[1] < window[0] {
+                return Err(format!(
+                    "Time is decreasing at row {} ({} -> {}).",
+                    i + 2,
+                    window[0],
+                    window[1]
+                ));
+            }
+        }
+
+        for (i, row) in self.rows.iter().enumerate() {
+            if row.len() != self.variables.len() {
+                return Err(format!(
+                    "Row {} has {} columns, but {} variables are defined.",
+                    i,
+                    row.len(),
+                    self.variables.len()
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
     /// Return a list of all event times
     pub fn events(&self) -> Vec<f64> {
         let mut events = vec![];

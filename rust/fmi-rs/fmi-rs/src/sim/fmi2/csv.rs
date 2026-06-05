@@ -85,12 +85,6 @@ pub fn read_csv<'a, R: Read>(
                         )
                     })?;
 
-                if let Some(last_time) = time.last()
-                    && next_time < *last_time
-                {
-                    return Err(format!("The time in row {} is decreasing.", i + 2).into());
-                }
-
                 time.push(next_time);
 
                 for (j, literal) in it.enumerate() {
@@ -113,10 +107,14 @@ pub fn read_csv<'a, R: Read>(
         }
     }
 
-    Ok(Trajectories {
+    let trajectories = Trajectories {
         model_description,
         time,
         variables,
         rows,
-    })
+    };
+
+    trajectories.validate()?;
+
+    Ok(trajectories)
 }

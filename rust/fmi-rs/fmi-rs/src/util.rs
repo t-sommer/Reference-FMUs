@@ -35,3 +35,21 @@ pub fn extract_fmu(fmu_path: &str) -> Result<TempDir, Box<dyn std::error::Error>
 
     Ok(temp_dir)
 }
+
+/// Returns all entries of the ZIP archive
+pub fn get_zip_contents(fmu_path: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    // Open the FMU file (which is a ZIP archive)
+    let file = File::open(fmu_path)?;
+    let mut archive = ZipArchive::new(file)?;
+
+    let mut entries = vec![];
+
+    for i in 0..archive.len() {
+        let file = archive.by_index(i)?;
+        if let Some(path) = file.enclosed_name() {
+            entries.push(path.to_str().unwrap().to_string());
+        }
+    }
+
+    Ok(entries)
+}

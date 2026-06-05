@@ -1,12 +1,40 @@
-use std::process::ExitCode;
+use std::{process::ExitCode, vec};
 
 use colored::Colorize;
-use fmi::model_description::FMIMajorVersion;
+use fmi::{model_description::FMIMajorVersion, util::get_zip_contents};
 use fmi_rs_xsd::validate_model_description_against_xsd;
 
 use crate::{ValidateArgs, prepare_fmu};
 
+/// Validate ZIP archive
+fn validate_zip_archive(fmu_file: &str) -> Vec<String> {
+    let mut problems = vec![];
+
+    if let Ok(contents) = get_zip_contents(fmu_file) {
+        for entry in contents {
+            if entry.starts_with(&['.', '/']) {
+                problems.push(format!(
+                    "Path '{entry}' starts with a dot ('.') or slash ('/')"
+                ));
+            }
+            if entry.contains(r"\") {
+                problems.push(format!("Path '{entry}' contains a backslash ('\\')"));
+            }
+        }
+    } else {
+        problems.push(format!("Failed to read ZIP archive: {fmu_file}"));
+    }
+
+    problems
+}
+
 pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
+    println!("{}", "    Validating ZIP archive".green().bold());
+
+    for problem in validate_zip_archive(&args.fmu_file) {
+        println!("{}: {}", "error".red().bold(), problem);
+    }
+
     println!(
         "{}",
         "    Validating model description against XML schema"
@@ -56,7 +84,7 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
 
     let root = doc.root_element();
 
-    let mut problems = vec![]; // validate_model_description_against_xsd(&xml_path, fmi_major_version as i32);
+    let mut problems = vec![];
 
     match &fmi_major_version {
         FMIMajorVersion::V2 => {

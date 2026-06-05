@@ -72,7 +72,18 @@ pub fn read_csv<'a, R: Read>(
                 let mut row = vec![];
                 let mut it = record.iter();
 
-                let next_time = it.next().ok_or("Missing time value")?.parse()?;
+                let next_time: f64 = it
+                    .next()
+                    .ok_or_else(|| format!("Missing time value in row {}.", i + 2))?
+                    .parse()
+                    .map_err(|e| {
+                        format!(
+                            "Failed to parse time value '{}' in row {}: {}",
+                            record.get(0).unwrap_or(""),
+                            i + 2,
+                            e
+                        )
+                    })?;
 
                 if let Some(last_time) = time.last()
                     && next_time < *last_time

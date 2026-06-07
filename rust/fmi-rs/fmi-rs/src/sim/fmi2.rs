@@ -53,7 +53,7 @@ impl VariableValue {
             VariableValue::Real(value) => *value,
             VariableValue::Integer(value) => *value as f64,
             VariableValue::Boolean(value) => {
-                if *value != 1 {
+                if *value != fmi2False {
                     1.0
                 } else {
                     0.0

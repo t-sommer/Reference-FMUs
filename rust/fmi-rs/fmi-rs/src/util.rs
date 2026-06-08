@@ -1,8 +1,8 @@
-use std::fs::File;
+use std::{fs::File, path::Path};
 use tempfile::TempDir;
 use zip::ZipArchive;
 
-pub fn extract_fmu(fmu_path: &str) -> Result<TempDir, Box<dyn std::error::Error>> {
+pub fn extract_fmu<P: AsRef<Path>>(fmu_path: P) -> Result<TempDir, Box<dyn std::error::Error>> {
     // Create temporary directory
     let temp_dir = TempDir::new()?;
 

@@ -48,7 +48,7 @@
                 // "--output-variable=U_DC",
                 "--early-return-allowed",
                 "--event-mode-used",
-                "--start-value", "hs=1.5",
+                "--start-value", "h=1.5",
                 // "--start-value", "RequesteTorqueInNm=150",
                 // "--start-value", "U_DC=800",
                 // "--output-file=BouncingBall_out.csv",

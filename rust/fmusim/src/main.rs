@@ -9,7 +9,7 @@ use fmi::{
     model_description::{FMIMajorVersion, peak_fmi_major_version},
     util::extract_fmu,
 };
-use std::process::ExitCode;
+use std::{path::Path, process::ExitCode};
 
 #[derive(ValueEnum, Clone, Debug)]
 enum InterfaceType {
@@ -174,8 +174,8 @@ fn main() -> ExitCode {
 }
 
 /// Common logic to extract an FMU and the detect its FMI major version
-fn prepare_fmu(
-    fmu_path: &str,
+fn prepare_fmu<P: AsRef<Path>>(
+    fmu_path: P,
 ) -> Result<(tempfile::TempDir, std::path::PathBuf, FMIMajorVersion), ExitCode> {
     let unzipdir = match extract_fmu(fmu_path) {
         Ok(dir) => dir,

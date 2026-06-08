@@ -203,7 +203,8 @@ impl ModelDescription {
         // validate continuous state derivatives
         for unknown in &self.derivatives {
             problems.extend(self.validate_unknown(unknown));
-            if let Some(derivative_variable) = self.get_variable(unknown.valueReference)
+            if let Some(derivative_variable) =
+                self.get_variable_by_value_reference(unknown.valueReference)
                 && !matches!(derivative_variable.variability, Variability::Continuous)
             {
                 problems.push(ValidationError {
@@ -219,7 +220,9 @@ impl ModelDescription {
         for unknown in &self.clockedStates {
             problems.extend(self.validate_unknown(unknown));
 
-            if let Some(clocked_state_variable) = self.get_variable(unknown.valueReference) {
+            if let Some(clocked_state_variable) =
+                self.get_variable_by_value_reference(unknown.valueReference)
+            {
                 if clocked_state_variable.clocks.is_empty() {
                     problems.push(ValidationError {
                         range: vec![unknown.range.clone()],
@@ -269,7 +272,9 @@ impl ModelDescription {
         for derivative in &self.derivatives {
             expected_initial_unknown_vrs.insert(derivative.valueReference);
 
-            if let Some(derivative_variable) = self.get_variable(derivative.valueReference) {
+            if let Some(derivative_variable) =
+                self.get_variable_by_value_reference(derivative.valueReference)
+            {
                 if matches!(
                     derivative_variable.initial,
                     Some(Initial::Approx) | Some(Initial::Calculated)
@@ -280,7 +285,8 @@ impl ModelDescription {
                 if let VariableType::Float64 { derivative, .. }
                 | VariableType::Float32 { derivative, .. } = &derivative_variable.variableType
                     && let Some(continuous_state_vr) = derivative
-                    && let Some(continuous_state_variable) = self.get_variable(*continuous_state_vr)
+                    && let Some(continuous_state_variable) =
+                        self.get_variable_by_value_reference(*continuous_state_vr)
                     && matches!(
                         continuous_state_variable.initial,
                         Some(Initial::Approx) | Some(Initial::Calculated)
@@ -308,7 +314,8 @@ impl ModelDescription {
         for unknown in self.eventIndicators.iter() {
             problems.extend(self.validate_unknown(unknown));
 
-            if let Some(event_indicator_variable) = self.get_variable(unknown.valueReference)
+            if let Some(event_indicator_variable) =
+                self.get_variable_by_value_reference(unknown.valueReference)
                 && !matches!(
                     event_indicator_variable.variableType,
                     VariableType::Float32 { .. } | VariableType::Float64 { .. }

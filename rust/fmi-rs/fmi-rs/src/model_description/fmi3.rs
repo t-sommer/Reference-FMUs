@@ -642,8 +642,16 @@ pub struct ModelDescription {
 
 impl ModelDescription {
     /// Returns the variable with the given value reference.
-    pub fn get_variable(&self, vr: fmi3ValueReference) -> Option<&ModelVariable> {
+    pub fn get_variable_by_value_reference(
+        &self,
+        vr: fmi3ValueReference,
+    ) -> Option<&ModelVariable> {
         self.modelVariables.iter().find(|v| v.valueReference == vr)
+    }
+
+    /// Returns the variable with the given name.
+    pub fn get_variable_by_name(&self, name: &str) -> Option<&ModelVariable> {
+        self.modelVariables.iter().find(|v| v.name == name)
     }
 
     pub fn get_unit<'a>(&'a self, variable: &'a ModelVariable) -> Option<&'a str> {

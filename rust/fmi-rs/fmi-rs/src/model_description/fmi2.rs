@@ -338,10 +338,12 @@ impl ModelDescription {
         self.modelVariables.iter().find(|v| v.valueReference == vr)
     }
 
+    /// Returns the first variable found with the given name.
     pub fn get_variable_by_name(&self, name: &str) -> Option<&ScalarVariable> {
         self.modelVariables.iter().find(|v| v.name == name)
     }
 
+    /// Returns the first variable found with the given index.
     pub fn get_variable_by_index(&self, index: VariableIndex) -> Option<&ScalarVariable> {
         self.modelVariables.get((index - 1) as usize)
     }

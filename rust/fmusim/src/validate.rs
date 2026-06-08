@@ -41,7 +41,7 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
     };
 
     println!("{}", "    Validating model description".green().bold());
-    
+
     let problems = validate_model_description_against_xsd(&xml_path, fmi_major_version as i32);
 
     for problem in problems.iter() {

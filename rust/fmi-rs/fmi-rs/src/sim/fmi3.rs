@@ -379,16 +379,11 @@ fn set_start_values(
 ) -> Result<fmi3Status, Box<dyn Error>> {
     let mut configuration_mode = false;
 
-    // Create a map for quick lookup of variables by name
-    let variable_map: HashMap<&str, &ModelVariable> = model_description
-        .modelVariables
-        .iter()
-        .map(|var| (var.name.as_str(), var))
-        .collect();
+    let mut non_structural_start_values = vec![];
 
     // set structural parameters first
     for (var_name, value) in start_values {
-        if let Some(variable) = variable_map.get(var_name.as_str())
+        if let Some(variable) = model_description.get_variable_by_name(var_name)
             && variable.causality == Causality::StructuralParameter
         {
             if !configuration_mode {
@@ -400,7 +395,7 @@ fn set_start_values(
             let values: Result<Vec<u64>, _> = value.split_whitespace().map(|v| v.parse()).collect();
             match values {
                 Ok(vals) => {
-                    fmu.setUInt64(&value_references, &vals);
+                    call(fmu.setUInt64(&value_references, &vals))?;
                 }
                 Err(_) => {
                     return Err(format!(
@@ -409,6 +404,8 @@ fn set_start_values(
                     .into());
                 }
             }
+        } else {
+            non_structural_start_values.push((var_name.clone(), value.clone()));
         }
     }
 
@@ -416,16 +413,14 @@ fn set_start_values(
         call(fmu.exitConfigurationMode())?;
     }
 
-    // then the remaining start values
-    for (var_name, literal) in start_values {
-        if let Some(variable) = variable_map.get(var_name.as_str()) {
-            if variable.causality == Causality::StructuralParameter {
-                continue;
-            }
+    let mut remaining_start_values = vec![];
 
+    // then the non-structural start values
+    for (var_name, literal) in non_structural_start_values.iter() {
+        if let Some(variable) = model_description.get_variable_by_name(var_name) {
             match parse_variable_value(&variable.variableType, literal) {
                 Ok(value) => {
-                    set_variable_value(fmu, variable.valueReference, &value);
+                    call(set_variable_value(fmu, variable.valueReference, &value))?;
                 }
                 Err(e) => {
                     return Err(format!(
@@ -434,7 +429,18 @@ fn set_start_values(
                     .into());
                 }
             }
+        } else {
+            remaining_start_values.push((var_name.clone(), literal.clone()));
         }
+    }
+
+    if !remaining_start_values.is_empty() {
+        let variable_names = remaining_start_values
+            .iter()
+            .map(|(var_name, _)| format!("'{var_name}'"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(format!("The start values for the following variables could not be set because they don't exist in the model description: {variable_names}.").into());
     }
 
     Ok(fmi3Status::fmi3OK)

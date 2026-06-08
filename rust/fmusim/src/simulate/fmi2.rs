@@ -24,16 +24,6 @@ pub fn simulate_fmu(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let model_description = fmi::model_description::fmi2::ModelDescription::from_path(xml_path)?;
 
-    // check if the start values exist in the model description
-    for (name, _) in &args.start_values {
-        if model_description.get_variable_by_name(name).is_none() {
-            return Err(format!(
-                "A start value for variable {name:?} was provided which does not exist."
-            )
-            .into());
-        }
-    }
-
     let output_variables: Vec<&fmi::model_description::fmi2::ScalarVariable> =
         if args.output_variable.is_empty() {
             model_description

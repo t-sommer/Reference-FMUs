@@ -196,6 +196,8 @@ fn set_start_values<T>(
         .map(|var| (var.name.as_str(), var))
         .collect();
 
+    let mut remaining_start_values = vec![];
+
     for (var_name, literal) in start_values {
         if let Some(variable) = variable_map.get(var_name.as_str()) {
             match parse_variable_value(&variable.variableType, literal) {
@@ -209,7 +211,18 @@ fn set_start_values<T>(
                     .into());
                 }
             }
+        } else {
+            remaining_start_values.push((var_name.clone(), literal.clone()));
         }
+    }
+
+    if !remaining_start_values.is_empty() {
+        let variable_names = remaining_start_values
+            .iter()
+            .map(|(var_name, _)| format!("'{var_name}'"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(format!("The start values for the following variables could not be set because they don't exist in the model description: {variable_names}.").into());
     }
 
     Ok(fmi2Status::fmi2OK)

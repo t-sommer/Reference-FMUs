@@ -1,3 +1,4 @@
+use crate::model_description::Category;
 use crate::model_description::file::NodeExt;
 use crate::model_description::{Unit, fmi2::SimpleType};
 use roxmltree::Node;
@@ -204,6 +205,14 @@ impl ModelDescription {
             modelVariables.push(variable);
         }
 
+        let logCategories = root
+            .get_child("LogCategories")
+            .map(|n| n.get_children("Category"))
+            .into_iter()
+            .flatten()
+            .map(|n| Category::from_node(&n))
+            .collect::<Result<Vec<_>, _>>()?;
+
         let defaultExperiment = root
             .get_child("DefaultExperiment")
             .map(|n| DefaultExperiment::from_node(&n))
@@ -250,6 +259,7 @@ impl ModelDescription {
                 .map(|n| n.parse())
                 .transpose()?
                 .unwrap_or(VariableNamingConvention::Flat),
+            logCategories,
             defaultExperiment,
             coSimulation,
             modelExchange,

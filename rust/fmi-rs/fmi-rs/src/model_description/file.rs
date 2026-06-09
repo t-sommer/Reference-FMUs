@@ -2,7 +2,7 @@ use std::{any::TypeId, error::Error, str::FromStr};
 
 use roxmltree::Node;
 
-use crate::model_description::{BaseUnit, DisplayUnit, Unit};
+use crate::model_description::{BaseUnit, Category, DisplayUnit, Unit};
 
 pub(crate) trait NodeExt<'a, 'input> {
     fn get_child(&self, name: &str) -> Option<Node<'a, 'input>>;
@@ -141,6 +141,15 @@ impl Unit {
                 .map(|n| DisplayUnit::from_node(&n))
                 .collect::<Result<Vec<_>, _>>()?,
             range: node.range(),
+        })
+    }
+}
+
+impl Category {
+    pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn Error>> {
+        Ok(Category {
+            name: node.required_attribute("name")?,
+            description: node.attribute_as("description")?,
         })
     }
 }

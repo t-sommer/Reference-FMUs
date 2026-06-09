@@ -4,7 +4,7 @@ pub mod validation;
 
 use std::{ops::Range, str::FromStr};
 
-use crate::{fmi3::types::fmi3ValueReference, model_description::Unit};
+use crate::{fmi3::types::fmi3ValueReference, model_description::{Category, Unit}};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum VariableNamingConvention {
@@ -626,6 +626,7 @@ pub struct ModelDescription {
     pub generationTool: Option<String>,
     pub generationDateAndTime: Option<String>,
     pub variableNamingConvention: VariableNamingConvention,
+    pub logCategories: Vec<Category>,
     pub defaultExperiment: Option<DefaultExperiment>,
     pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,

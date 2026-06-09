@@ -4,7 +4,7 @@ pub mod validation;
 
 use std::{ops::Range, str::FromStr};
 
-use crate::{fmi2::types::fmi2ValueReference, model_description::Unit};
+use crate::{fmi2::types::fmi2ValueReference, model_description::{Category, Unit}};
 
 pub type VariableIndex = u32;
 
@@ -317,6 +317,7 @@ pub struct ModelDescription {
     pub generationTool: Option<String>,
     pub generationDateAndTime: Option<String>,
     pub variableNamingConvention: VariableNamingConvention,
+    pub logCategories: Vec<Category>,
     pub defaultExperiment: Option<DefaultExperiment>,
     pub modelExchange: Option<ModelExchange>,
     pub coSimulation: Option<CoSimulation>,

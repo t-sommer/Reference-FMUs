@@ -52,6 +52,12 @@ pub struct BaseUnit {
     pub range: Range<usize>,
 }
 
+#[derive(Debug)]
+pub struct Category {
+    pub name: String,
+    pub description: Option<String>,
+}
+
 pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
     let text = match std::fs::read_to_string(path) {
         Ok(content) => content,

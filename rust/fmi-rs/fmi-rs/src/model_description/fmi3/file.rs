@@ -2,7 +2,7 @@ use std::{error::Error, path::Path, str::FromStr};
 
 use roxmltree::Node;
 
-use crate::model_description::Unit;
+use crate::model_description::{Category, Unit};
 use crate::model_description::file::NodeExt;
 
 use crate::model_description::fmi3::VariableNamingConvention;
@@ -417,6 +417,14 @@ impl ModelDescription {
             })
             .collect::<Result<Vec<_>, Box<dyn Error>>>()?;
 
+        let logCategories = root
+            .get_child("LogCategories")
+            .map(|n| n.get_children("Category"))
+            .into_iter()
+            .flatten()
+            .map(|n| Category::from_node(&n))
+            .collect::<Result<Vec<_>, _>>()?;
+
         let defaultExperiment = root
             .get_child("DefaultExperiment")
             .map(|n| DefaultExperiment::from_node(&n))
@@ -476,6 +484,7 @@ impl ModelDescription {
             variableNamingConvention: root
                 .attribute_as("variableNamingConvention")?
                 .unwrap_or(VariableNamingConvention::Flat),
+            logCategories,
             defaultExperiment,
             modelExchange,
             coSimulation,

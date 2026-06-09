@@ -1191,7 +1191,7 @@ impl FMU3 {
     pub fn setBinary(
         &self,
         valueReferences: &[fmi3ValueReference],
-        values: &[Vec<fmi3Byte>],
+        values: &[&[fmi3Byte]],
     ) -> fmi3Status {
         let sizes: Vec<usize> = values.iter().map(|v| v.len()).collect();
         let value_ptrs: Vec<fmi3Binary> = values.iter().map(|v| v.as_ptr()).collect();

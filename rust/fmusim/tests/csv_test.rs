@@ -30,6 +30,7 @@ fn test_input_interpolation_fmi2(workspace_root: PathBuf) {
 
     let simulation_output = Command::new(&fmusim_path)
         .args(&[
+            "simulate",
             &fmu_file.to_string_lossy(),
             "--input-file",
             &input_file.to_string_lossy(),
@@ -88,6 +89,7 @@ fn test_input_interpolation_fmi3(workspace_root: PathBuf) {
 
     let simulation_output = Command::new(&fmusim_path)
         .args(&[
+            "simulate",
             &fmu_file.to_string_lossy(),
             "--input-file",
             &input_file.to_string_lossy(),

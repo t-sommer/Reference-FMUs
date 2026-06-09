@@ -2,12 +2,11 @@
 
 use fmi::fmi3::types::*;
 use fmi::fmi3::*;
-use fmi::types::fmiStatus;
 use std::{env, path::PathBuf};
 
 macro_rules! assert_ok {
     ($status:expr) => {
-        assert_eq!($status, fmi3OK);
+        assert_eq!($status, fmi3Status::fmi3OK);
     };
 }
 
@@ -238,24 +237,14 @@ fn test_binary() {
     let fmu = create_fmu();
 
     let input_vr = [31];
-    let input_data = b"Hello, Binary World!";
-    let input_sizes = [input_data.len()];
+    let input_values = b"Hello, Binary World!";
+    assert_ok!(fmu.setBinary(&input_vr, &[input_values]));
 
     let output_vr = [32];
-    let output_data = vec![0u8; 100]; // Allocate enough space
-    let mut output_sizes = [100usize]; // Set initial size to buffer capacity
-    let mut output_ptrs = [output_data.as_ptr()]; // Use as_ptr() not as_mut_ptr()
+    let mut output_values = vec![vec![]; 1];
+    assert_ok!(fmu.getBinary(&output_vr, &mut output_values));
 
-    assert_ok!(fmu.setBinary(&input_vr, &input_sizes, &[input_data.as_ptr()]));
-    assert_ok!(fmu.getBinary(&output_vr, &mut output_sizes, &mut output_ptrs));
-
-    // The FMU should have updated the pointer to point to its internal buffer
-    // We need to copy the data from the returned pointer
-    let returned_data = unsafe { std::slice::from_raw_parts(output_ptrs[0], output_sizes[0]) };
-
-    // Compare the actual data
-    assert_eq!(output_sizes[0], input_sizes[0]);
-    assert_eq!(returned_data, input_data);
+    assert_eq!(output_values.get(0).unwrap(), input_values);
 }
 
 #[test]

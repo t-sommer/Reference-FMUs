@@ -360,7 +360,10 @@ pub fn set_variable_value(
             let string_refs: Vec<&str> = values.iter().map(|x| x.as_str()).collect();
             fmu.setString(&[value_reference], &string_refs)
         }
-        VariableValue::Binary(values) => fmu.setBinary(&[value_reference], values),
+        VariableValue::Binary(values) => {
+            let values = values.iter().map(|x| x.as_slice()).collect::<Vec<_>>();
+            fmu.setBinary(&[value_reference], values.as_slice())
+        }
     }
 }
 

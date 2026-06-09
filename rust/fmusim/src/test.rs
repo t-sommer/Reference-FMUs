@@ -33,9 +33,21 @@ pub fn smoke_test(args: &TestArgs) -> ExitCode {
         &unzipdir.path().join("modelDescription.xml")
     ));
 
-    let _ = test_set_fmu_state(&model_description, unzipdir.path());
+    let config = fmi2::Config {
+        model_description,
+        unzipdir: unzipdir.path().to_path_buf(),
+        visible: false,
+        loggingOn: false,
+        logCalls: true,
+        printCalls: true,
+        logMessages: true,
+        printMessages: true,
+        provideMemoryManagementFunctions: true,
+    };
 
-    let _ = test_serialize_fmu_state(&model_description, unzipdir.path());
+    let _ = test_set_fmu_state(&config);
+
+    let _ = test_serialize_fmu_state(&config);
 
     ExitCode::SUCCESS
 }

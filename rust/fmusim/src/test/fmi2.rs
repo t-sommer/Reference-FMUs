@@ -8,7 +8,7 @@ use fmi::{
 
 const DEFAULT_INSTANCE_NAME: &str = "instance";
 
-pub struct Config {
+pub struct FMU2Factory {
     pub model_description: model_description::fmi2::ModelDescription,
     pub unzipdir: PathBuf,
     pub visible: bool,
@@ -20,7 +20,7 @@ pub struct Config {
     pub provideMemoryManagementFunctions: bool,
 }
 
-impl Config {
+impl FMU2Factory {
     pub fn instantiate_me(&self) -> Result<FMU2<ME>, Box<dyn std::error::Error>> {
 
         let modelIdentifier = &self.model_description.coSimulation.as_ref().ok_or("Model-Exchange is not supported.")?.modelIdentifier;
@@ -60,18 +60,18 @@ impl Config {
 }
 
 pub fn test_set_fmu_state(
-    config: &Config,
+    factory: &FMU2Factory,
 ) -> Result<(), Box<dyn std::error::Error>> {
 
-    if config.model_description.modelExchange.as_ref().map(|me| me.canGetAndSetFMUstate).unwrap_or(false) {
+    if factory.model_description.modelExchange.as_ref().map(|me| me.canGetAndSetFMUstate).unwrap_or(false) {
         println!("{}", "    Testing set FMU state (ME)".green().bold());
-        let fmu = config.instantiate_me()?;
+        let fmu = factory.instantiate_me()?;
         get_and_set_fmu_state(fmu);
     }
 
-    if config.model_description.coSimulation.as_ref().map(|cs| cs.canGetAndSetFMUstate).unwrap_or(false) {
+    if factory.model_description.coSimulation.as_ref().map(|cs| cs.canGetAndSetFMUstate).unwrap_or(false) {
         println!("{}", "    Testing set FMU state (CS)".green().bold());
-        let fmu = config.instantiate_cs()?;
+        let fmu = factory.instantiate_cs()?;
         get_and_set_fmu_state(fmu);
     }
 
@@ -86,17 +86,17 @@ fn get_and_set_fmu_state<T>(fmu: FMU2<T>) {
 }
 
 pub fn test_serialize_fmu_state(
-    config: &Config,
+    factory: &FMU2Factory,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if config.model_description.modelExchange.as_ref().map(|me| me.canSerializeFMUstate).unwrap_or(false) {
+    if factory.model_description.modelExchange.as_ref().map(|me| me.canSerializeFMUstate).unwrap_or(false) {
         println!("{}", "    Testing serialize FMU state (ME)".green().bold());
-        let fmu = config.instantiate_me()?;
+        let fmu = factory.instantiate_me()?;
         serialize_fmu_state(fmu);
     }
 
-    if config.model_description.coSimulation.as_ref().map(|cs| cs.canSerializeFMUstate).unwrap_or(false) {
+    if factory.model_description.coSimulation.as_ref().map(|cs| cs.canSerializeFMUstate).unwrap_or(false) {
         println!("{}", "    Testing serialize FMU state (CS)".green().bold());
-        let fmu = config.instantiate_cs()?;
+        let fmu = factory.instantiate_cs()?;
         serialize_fmu_state(fmu);
     }
 

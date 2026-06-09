@@ -2,8 +2,8 @@ use std::{error::Error, path::Path, str::FromStr};
 
 use roxmltree::Node;
 
-use crate::model_description::{Category, Unit};
 use crate::model_description::file::NodeExt;
+use crate::model_description::{Category, Unit};
 
 use crate::model_description::fmi3::VariableNamingConvention;
 use crate::model_description::fmi3::{

@@ -4,7 +4,10 @@ pub mod validation;
 
 use std::{ops::Range, str::FromStr};
 
-use crate::{fmi3::types::fmi3ValueReference, model_description::{Category, Unit}};
+use crate::{
+    fmi3::types::fmi3ValueReference,
+    model_description::{Category, Unit},
+};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum VariableNamingConvention {

@@ -4,7 +4,10 @@ pub mod validation;
 
 use std::{ops::Range, str::FromStr};
 
-use crate::{fmi2::types::fmi2ValueReference, model_description::{Category, Unit}};
+use crate::{
+    fmi2::types::fmi2ValueReference,
+    model_description::{Category, Unit},
+};
 
 pub type VariableIndex = u32;
 

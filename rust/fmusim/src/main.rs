@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 mod info;
 mod simulate;
+mod test;
 mod validate;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -58,6 +59,9 @@ enum Commands {
     Validate(ValidateArgs),
     /// Simulate an FMU
     Simulate(SimulateArgs),
+    /// Run tests
+    #[command(hide = true)]
+    Test(TestArgs),
 }
 
 #[derive(Debug, Args)]
@@ -162,6 +166,12 @@ struct SimulateArgs {
     solver: SolverType,
 }
 
+#[derive(Debug, Args)]
+struct TestArgs {
+    /// Path to the FMU file
+    fmu_file: String,
+}
+
 fn main() -> ExitCode {
     // Parse command line arguments
     let cli = Cli::parse();
@@ -170,6 +180,7 @@ fn main() -> ExitCode {
         Commands::Info(args) => info::show_fmu_info(args),
         Commands::Validate(args) => validate::validate_fmu(args),
         Commands::Simulate(args) => simulate::simulate_fmu(args),
+        Commands::Test(args) => test::smoke_test(args),
     }
 }
 

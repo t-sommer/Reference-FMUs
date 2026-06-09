@@ -170,6 +170,10 @@ struct SimulateArgs {
 struct TestArgs {
     /// Path to the FMU file
     fmu_file: String,
+
+    /// Enable logging of FMI function calls
+    #[arg(long)]
+    log_fmi_calls: bool,
 }
 
 fn main() -> ExitCode {

@@ -32,7 +32,7 @@
                 // "C:\\Users\\tsr2\\Downloads\\egs\\egs.fmu", // FMI 2.0 CS
                 // "--interface-type=me",
                 // "--solver=euler",
-                // "--log-fmi-calls",
+                "--log-fmi-calls",
                 // "--output-interval=0.1",
                 // "--stop-time=0.01",
                 // "--input-file=FMU_in.csv",

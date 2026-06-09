@@ -38,7 +38,7 @@ pub fn smoke_test(args: &TestArgs) -> ExitCode {
         unzipdir: unzipdir.path().to_path_buf(),
         visible: false,
         loggingOn: false,
-        logCalls: true,
+        logCalls: args.log_fmi_calls,
         printCalls: true,
         logMessages: true,
         printMessages: true,

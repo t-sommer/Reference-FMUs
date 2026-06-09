@@ -22,40 +22,43 @@ pub struct FMU2Factory {
 
 impl FMU2Factory {
     pub fn instantiate_me(&self) -> Result<FMU2<ME>, Box<dyn std::error::Error>> {
-
-        let modelIdentifier = &self.model_description.coSimulation.as_ref().ok_or("Model-Exchange is not supported.")?.modelIdentifier;
-
-        FMU2::<ME>::new(
-            self.unzipdir.as_path(),
-            modelIdentifier,
-            DEFAULT_INSTANCE_NAME,
-            &self.model_description.guid,
-            self.visible,
-            self.loggingOn,
-            self.logCalls,
-            self.printCalls,
-            self.logMessages,
-            self.printMessages,
-            self.provideMemoryManagementFunctions,
-        )
+        if let Some(me) = &self.model_description.modelExchange {
+            FMU2::<ME>::new(
+                self.unzipdir.as_path(),
+                &me.modelIdentifier,
+                DEFAULT_INSTANCE_NAME,
+                &self.model_description.guid,
+                self.visible,
+                self.loggingOn,
+                self.logCalls,
+                self.printCalls,
+                self.logMessages,
+                self.printMessages,
+                !me.canNotUseMemoryManagementFunctions,
+            )
+        } else {
+            return Err("Model-Exchange is not supported.".into());
+        }
     }
 
     pub fn instantiate_cs(&self) -> Result<FMU2<CS>, Box<dyn std::error::Error>> {
-        let modelIdentifier = &self.model_description.coSimulation.as_ref().ok_or("Co-Simulation is not supported.")?.modelIdentifier;
-
-        FMU2::<CS>::new(
-            self.unzipdir.as_path(),
-            modelIdentifier,
-            DEFAULT_INSTANCE_NAME,
-            &self.model_description.guid,
-            self.visible,
-            self.loggingOn,
-            self.logCalls,
-            self.printCalls,
-            self.logMessages,
-            self.printMessages,
-            self.provideMemoryManagementFunctions,
-        )
+        if let Some(cs) = &self.model_description.coSimulation {
+            FMU2::<CS>::new(
+                self.unzipdir.as_path(),
+                &cs.modelIdentifier,
+                DEFAULT_INSTANCE_NAME,
+                &self.model_description.guid,
+                self.visible,
+                self.loggingOn,
+                self.logCalls,
+                self.printCalls,
+                self.logMessages,
+                self.printMessages,
+                self.provideMemoryManagementFunctions,
+            )
+        } else {
+            return Err("Co-Simulation is not supported.".into());
+        }
     }
 }
 

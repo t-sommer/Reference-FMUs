@@ -6,7 +6,6 @@ use fmi::{
         CS, FMU2, ME,
         types::{fmi2FMUstate, fmi2False, fmi2Status, fmi2True},
     },
-    fmi3::FMU3,
     model_description::{
         self,
         fmi2::{Initial, ModelDescription, VariableType},

@@ -5,10 +5,13 @@ use fmi::{
     fmi2::{
         CS, FMU2, ME,
         types::{fmi2FMUstate, fmi2False, fmi2Status, fmi2True},
-    }, fmi3::FMU3, model_description::{
+    },
+    fmi3::FMU3,
+    model_description::{
         self,
         fmi2::{Initial, ModelDescription, VariableType},
-    }, util::extract_fmu
+    },
+    util::extract_fmu,
 };
 
 use crate::TestArgs;
@@ -197,8 +200,10 @@ pub fn test_get_all_variables(factory: &FMU2Factory) -> Result<(), Box<dyn std::
     Ok(())
 }
 
-fn get_all_variables<T>(fmu: &FMU2<T>, model_description: &ModelDescription) -> Result<(), Box<dyn std::error::Error>> {
-
+fn get_all_variables<T>(
+    fmu: &FMU2<T>,
+    model_description: &ModelDescription,
+) -> Result<(), Box<dyn std::error::Error>> {
     call(fmu.enterInitializationMode())?;
     call(fmu.exitInitializationMode())?;
 

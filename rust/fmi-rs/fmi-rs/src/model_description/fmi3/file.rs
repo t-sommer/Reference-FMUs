@@ -266,11 +266,11 @@ impl ModelDescription {
                     node.required_attribute("intervalVariability")?.as_str(),
                 )?,
                 intervalDecimal: node.attribute_as("intervalDecimal")?,
-                shiftDecimal: node.required_attribute("shiftDecimal")?.parse()?,
+                shiftDecimal: node.attribute_as("shiftDecimal")?.unwrap_or_default(),
                 supportsFraction: node.attribute_as("supportsFraction")?.unwrap_or_default(),
                 resolution: node.attribute_as("resolution")?,
                 intervalCounter: node.attribute_as("intervalCounter")?,
-                shiftCounter: node.required_attribute("shiftDecimal")?.parse()?,
+                shiftCounter: node.attribute_as("shiftCounter")?.unwrap_or_default(),
             });
         } else if node.has_tag_name("Enumeration") {
             return Ok(VariableType::Enumeration {

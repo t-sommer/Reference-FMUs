@@ -63,8 +63,10 @@ impl ModelDescription {
             {
                 problems.push(ValidationError {
                     range: vec![variable.range.clone()],
-                    message: "The variable '{}' is calculated but provides a start value."
-                        .to_string(),
+                    message: format!(
+                        "Variable '{}' is calculated but provides a start value.",
+                        variable.name
+                    ),
                 });
             }
 

@@ -237,11 +237,11 @@ pub extern "C" fn logMessage(
 
     if instanceEnvironment.is_null() {
         let prefix = match status {
-            fmi3Status::fmi3OK => "ok".green().bold(),
-            fmi3Status::fmi3Warning => "warning".yellow().bold(),
-            _ => "error".red().bold(),
+            fmi3Status::fmi3OK => "🛈".green(),
+            fmi3Status::fmi3Warning => "⚠".yellow(),
+            _ => "⨉".red(),
         };
-        eprintln!("{prefix}: {message_str}");
+        eprintln!("{prefix} {}", message_str.trim_end());
     } else {
         let messages = unsafe { &*(instanceEnvironment as *const RefCell<Vec<Message>>) };
         let message = Message {

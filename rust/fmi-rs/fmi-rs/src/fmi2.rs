@@ -223,11 +223,11 @@ pub extern "C" fn logger(
 
     if componentEnvironment.is_null() {
         let prefix = match status {
-            fmi2Status::fmi2OK => "ok".green().bold(),
-            fmi2Status::fmi2Warning => "warning".yellow().bold(),
-            _ => "error".red().bold(),
+            fmi2Status::fmi2OK => "🛈".green(),
+            fmi2Status::fmi2Warning => "⚠".yellow(),
+            _ => "⨉".red(),
         };
-        eprintln!("{prefix}: {message_str}");
+        eprintln!("{prefix} {}", message_str.trim_end());
     } else {
         let messages = unsafe { &*(componentEnvironment as *const RefCell<Vec<Message>>) };
         let message = Message {

@@ -6,7 +6,7 @@ use fmi::{
         FMU3,
         types::{fmi3FMUState, fmi3Status},
     },
-    model_description::fmi3::ModelDescription,
+    model_description::{self, fmi3::ModelDescription},
     util::extract_fmu,
 };
 
@@ -172,64 +172,81 @@ fn serialize_fmu_state(fmu: FMU3) -> Result<(), Box<dyn std::error::Error>> {
 //     }
 // }
 
-// pub fn test_get_all_variables(factory: &FMUFactory) -> Result<(), Box<dyn std::error::Error>> {
-//     let fmu = factory.instantiate_me()?;
+pub fn test_get_all_variables(factory: &FMUFactory) -> Result<(), Box<dyn std::error::Error>> {
+    if factory.model_description.modelExchange.is_some() {
+        println!("{}", "    Testing serialize FMU state (ME)".green().bold());
+        let fmu = factory.instantiate_me()?;
+        get_all_variables(&fmu, &factory.model_description)?;
+    }
 
-//     fmu.enterInitializationMode();
-//     fmu.exitInitializationMode();
+    if factory.model_description.coSimulation.is_some() {
+        println!("{}", "    Testing serialize FMU state (CS)".green().bold());
+        let fmu = factory.instantiate_cs()?;
+        get_all_variables(&fmu, &factory.model_description)?;
+    }
 
-//     for variable in factory.model_description.modelVariables.iter() {
-//         match &variable.variableType {
-//             VariableType::Real { start, .. } => {
-//                 let mut values = [0.0];
-//                 call(fmu.getReal(&[variable.valueReference], &mut values))?;
-//                 if variable.initial == Some(Initial::Exact)
-//                     && let Some(literal) = start
-//                 {
-//                     let expected = literal.parse()?;
-//                     assert_equal(&variable.name, expected, values[0])?;
-//                 }
-//             }
-//             VariableType::Integer { start, .. } | VariableType::Enumeration { start, .. } => {
-//                 let mut values = [0];
-//                 call(fmu.getInteger(&[variable.valueReference], &mut values))?;
-//                 if variable.initial == Some(Initial::Exact)
-//                     && let Some(literal) = start
-//                 {
-//                     let expected = literal.parse()?;
-//                     assert_equal(&variable.name, expected, values[0])?;
-//                 }
-//             }
-//             VariableType::Boolean { start, .. } => {
-//                 let mut values = [fmi2False];
-//                 call(fmu.getBoolean(&[variable.valueReference], &mut values))?;
-//                 if variable.initial == Some(Initial::Exact)
-//                     && let Some(literal) = start
-//                 {
-//                     let expected = match literal.as_str() {
-//                         "true" => fmi2True,
-//                         "false" => fmi2False,
-//                         "1" => fmi2True,
-//                         "0" => fmi2False,
-//                         _ => return Err(format!("Invalid boolean literal: {literal}").into()),
-//                     };
-//                     assert_equal(&variable.name, expected, values[0])?;
-//                 }
-//             }
-//             VariableType::String { start, .. } => {
-//                 let mut values = [String::new()];
-//                 call(fmu.getString(&[variable.valueReference], &mut values))?;
-//                 if variable.initial == Some(Initial::Exact)
-//                     && let Some(literal) = start
-//                 {
-//                     assert_equal(&variable.name, literal, &values[0])?;
-//                 }
-//             }
-//         }
-//     }
+    Ok(())
+}
 
-//     Ok(())
-// }
+pub fn get_all_variables(
+    fmu: &FMU3,
+    model_description: &ModelDescription,
+) -> Result<(), Box<dyn std::error::Error>> {
+    call(fmu.enterInitializationMode(None, 0.0, None))?;
+    call(fmu.exitInitializationMode())?;
+
+    for variable in model_description.modelVariables.iter() {
+        // match &variable.variableType {
+        //     VariableType::Real { start, .. } => {
+        //         let mut values = [0.0];
+        //         call(fmu.getReal(&[variable.valueReference], &mut values))?;
+        //         if variable.initial == Some(Initial::Exact)
+        //             && let Some(literal) = start
+        //         {
+        //             let expected = literal.parse()?;
+        //             assert_equal(&variable.name, expected, values[0])?;
+        //         }
+        //     }
+        //     VariableType::Integer { start, .. } | VariableType::Enumeration { start, .. } => {
+        //         let mut values = [0];
+        //         call(fmu.getInteger(&[variable.valueReference], &mut values))?;
+        //         if variable.initial == Some(Initial::Exact)
+        //             && let Some(literal) = start
+        //         {
+        //             let expected = literal.parse()?;
+        //             assert_equal(&variable.name, expected, values[0])?;
+        //         }
+        //     }
+        //     VariableType::Boolean { start, .. } => {
+        //         let mut values = [fmi2False];
+        //         call(fmu.getBoolean(&[variable.valueReference], &mut values))?;
+        //         if variable.initial == Some(Initial::Exact)
+        //             && let Some(literal) = start
+        //         {
+        //             let expected = match literal.as_str() {
+        //                 "true" => fmi2True,
+        //                 "false" => fmi2False,
+        //                 "1" => fmi2True,
+        //                 "0" => fmi2False,
+        //                 _ => return Err(format!("Invalid boolean literal: {literal}").into()),
+        //             };
+        //             assert_equal(&variable.name, expected, values[0])?;
+        //         }
+        //     }
+        //     VariableType::String { start, .. } => {
+        //         let mut values = [String::new()];
+        //         call(fmu.getString(&[variable.valueReference], &mut values))?;
+        //         if variable.initial == Some(Initial::Exact)
+        //             && let Some(literal) = start
+        //         {
+        //             assert_equal(&variable.name, literal, &values[0])?;
+        //         }
+        //     }
+        // }
+    }
+
+    call(fmu.terminate())
+}
 
 macro_rules! bail {
     ($result:expr) => {
@@ -272,9 +289,9 @@ pub fn smoke_test_fmi3(args: &TestArgs) -> ExitCode {
         println!("{}: {}", "error".red().bold(), e);
     }
 
-    // if let Err(e) = test_get_all_variables(&factory) {
-    //     println!("{}: {}", "error".red().bold(), e);
-    // }
+    if let Err(e) = test_get_all_variables(&factory) {
+        println!("{}: {}", "error".red().bold(), e);
+    }
 
     ExitCode::SUCCESS
 }

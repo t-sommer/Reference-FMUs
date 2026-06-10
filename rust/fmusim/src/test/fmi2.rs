@@ -1,5 +1,8 @@
 use colored::Colorize;
-use std::{path::{Path, PathBuf}, process::ExitCode};
+use std::{
+    path::{Path, PathBuf},
+    process::ExitCode,
+};
 
 use fmi::{
     fmi2::{
@@ -10,7 +13,8 @@ use fmi::{
         self,
         fmi2::{Initial, ModelDescription, ScalarVariable, VariableType},
     },
-    sim::fmi2::parse_variable_value, util::extract_fmu,
+    sim::fmi2::parse_variable_value,
+    util::extract_fmu,
 };
 
 use crate::TestArgs;
@@ -242,7 +246,6 @@ macro_rules! bail {
 }
 
 pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
-
     let unzipdir = bail!(extract_fmu(&args.fmu_file));
 
     let model_description = bail!(ModelDescription::from_path(

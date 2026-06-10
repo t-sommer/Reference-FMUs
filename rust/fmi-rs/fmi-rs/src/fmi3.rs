@@ -1351,10 +1351,12 @@ impl FMU3 {
     }
 
     pub fn serializedFMUStateSize(&self, FMUState: fmi3FMUState, size: &mut usize) -> fmi3Status {
-        let status =
-            unsafe { (self.fmi3SerializedFMUStateSize)(self.instance, FMUState, size) };
+        let status = unsafe { (self.fmi3SerializedFMUStateSize)(self.instance, FMUState, size) };
         if self.logCalls {
-            let message = format!("fmi3SerializedFMUStateSize(FMUState={:p}, size={}) -> {:?}", FMUState, size, status);
+            let message = format!(
+                "fmi3SerializedFMUStateSize(FMUState={:p}, size={}) -> {:?}",
+                FMUState, size, status
+            );
             self.log_call(status, &message);
         }
         status
@@ -1391,14 +1393,9 @@ impl FMU3 {
     ) -> fmi3Status {
         let size = serializedState.len();
         let serializedState = serializedState.as_ptr();
-        
+
         let status = unsafe {
-            (self.fmi3DeserializeFMUState)(
-                self.instance,
-                serializedState,
-                size,
-                FMUState,
-            )
+            (self.fmi3DeserializeFMUState)(self.instance, serializedState, size, FMUState)
         };
 
         if self.logCalls {

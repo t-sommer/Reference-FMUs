@@ -1,10 +1,14 @@
 use colored::Colorize;
-use std::{ffi::c_uint, path::{Path, PathBuf}, process::ExitCode};
+use std::{
+    ffi::c_uint,
+    path::{Path, PathBuf},
+    process::ExitCode,
+};
 
 use fmi::{
-    fmi3::{FMU3, types::fmi3FMUState}, model_description::{
-        self, fmi3::ModelDescription,
-    }, util::extract_fmu
+    fmi3::{FMU3, types::fmi3FMUState},
+    model_description::{self, fmi3::ModelDescription},
+    util::extract_fmu,
 };
 
 use crate::TestArgs;
@@ -16,8 +20,8 @@ pub struct FMUFactory {
     pub unzipdir: PathBuf,
     pub visible: bool,
     pub loggingOn: bool,
-    pub eventModeUsed: bool, 
-    pub earlyReturnAllowed: bool, 
+    pub eventModeUsed: bool,
+    pub earlyReturnAllowed: bool,
     pub requiredIntermediateVariables: Vec<c_uint>,
     pub logCalls: bool,
     pub printCalls: bool,
@@ -31,8 +35,8 @@ impl FMUFactory {
             FMU3::instantiateModelExchange(
                 self.unzipdir.as_path(),
                 &me.modelIdentifier,
-                DEFAULT_INSTANCE_NAME, 
-                &self.model_description.instantiationToken, 
+                DEFAULT_INSTANCE_NAME,
+                &self.model_description.instantiationToken,
                 self.visible,
                 self.loggingOn,
                 self.logCalls,
@@ -44,19 +48,19 @@ impl FMUFactory {
             return Err("Model-Exchange is not supported.".into());
         }
     }
-    
+
     pub fn instantiate_cs(&self) -> Result<FMU3, Box<dyn std::error::Error>> {
         if let Some(cs) = &self.model_description.coSimulation {
             FMU3::instantiateCoSimulation(
                 self.unzipdir.as_path(),
                 &cs.modelIdentifier,
-                DEFAULT_INSTANCE_NAME, 
-                &self.model_description.instantiationToken, 
+                DEFAULT_INSTANCE_NAME,
+                &self.model_description.instantiationToken,
                 self.visible,
                 self.loggingOn,
-                self.eventModeUsed, 
-                self.earlyReturnAllowed, 
-                &self.requiredIntermediateVariables, 
+                self.eventModeUsed,
+                self.earlyReturnAllowed,
+                &self.requiredIntermediateVariables,
                 self.logCalls,
                 self.printCalls,
                 self.logMessages,
@@ -250,8 +254,8 @@ pub fn smoke_test_fmi3(args: &TestArgs) -> ExitCode {
         unzipdir: unzipdir.path().to_path_buf(),
         visible: false,
         loggingOn: false,
-        eventModeUsed: false, 
-        earlyReturnAllowed: false, 
+        eventModeUsed: false,
+        earlyReturnAllowed: false,
         requiredIntermediateVariables: vec![],
         logCalls: args.log_fmi_calls,
         printCalls: true,

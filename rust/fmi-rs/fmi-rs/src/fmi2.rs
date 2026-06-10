@@ -741,13 +741,8 @@ impl<T> FMU2<T> {
 
         status
     }
-    pub fn serializedFMUstateSize(
-        &self,
-        FMUstate: fmi2FMUstate,
-        size: &mut usize,
-    ) -> fmi2Status {
-        let status =
-            unsafe { (self.fmi2SerializedFMUstateSize)(self.component, FMUstate, size) };
+    pub fn serializedFMUstateSize(&self, FMUstate: fmi2FMUstate, size: &mut usize) -> fmi2Status {
+        let status = unsafe { (self.fmi2SerializedFMUstateSize)(self.component, FMUstate, size) };
         if self.logCalls {
             let message = format!(
                 "fmi2SerializedFMUstateSize(FMUstate={FMUstate:p}, size={size:p}) -> {status:?}"
@@ -766,12 +761,7 @@ impl<T> FMU2<T> {
         let serializedState = serializedState.as_mut_ptr();
 
         let status = unsafe {
-            (self.fmi2SerializeFMUstate)(
-                self.component,
-                FMUstate,
-                serializedState,
-                size,
-            )
+            (self.fmi2SerializeFMUstate)(self.component, FMUstate, serializedState, size)
         };
 
         if self.logCalls {

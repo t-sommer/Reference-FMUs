@@ -8,14 +8,19 @@ use fmi::{
 };
 
 use crate::{
-    TestArgs, prepare_fmu, test::{fmi2::{smoke_test_fmi2, test_get_all_variables, test_serialize_fmu_state, test_set_fmu_state}, fmi3::{FMUFactory, smoke_test_fmi3}}
+    TestArgs, prepare_fmu,
+    test::{
+        fmi2::{
+            smoke_test_fmi2, test_get_all_variables, test_serialize_fmu_state, test_set_fmu_state,
+        },
+        fmi3::{FMUFactory, smoke_test_fmi3},
+    },
 };
 
 mod fmi2;
 mod fmi3;
 
 pub fn smoke_test(args: &TestArgs) -> ExitCode {
-
     let (unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
         Err(code) => return code,

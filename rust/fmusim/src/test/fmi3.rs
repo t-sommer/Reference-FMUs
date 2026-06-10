@@ -6,7 +6,10 @@ use std::{
 };
 
 use fmi::{
-    fmi3::{FMU3, types::fmi3FMUState},
+    fmi3::{
+        FMU3,
+        types::{fmi3FMUState, fmi3Status},
+    },
     model_description::{self, fmi3::ModelDescription},
     util::extract_fmu,
 };
@@ -72,6 +75,14 @@ impl FMUFactory {
     }
 }
 
+fn call(status: fmi3Status) -> Result<(), Box<dyn std::error::Error>> {
+    if matches!(status, fmi3Status::fmi3OK | fmi3Status::fmi3Warning) {
+        Ok(())
+    } else {
+        Err("FMI call failed".into())
+    }
+}
+
 pub fn test_set_fmu_state(factory: &FMUFactory) -> Result<(), Box<dyn std::error::Error>> {
     if factory
         .model_description
@@ -82,7 +93,7 @@ pub fn test_set_fmu_state(factory: &FMUFactory) -> Result<(), Box<dyn std::error
     {
         println!("{}", "    Testing set FMU state (ME)".green().bold());
         let fmu = factory.instantiate_me()?;
-        get_and_set_fmu_state(fmu);
+        get_and_set_fmu_state(fmu)?;
     }
 
     if factory
@@ -94,17 +105,18 @@ pub fn test_set_fmu_state(factory: &FMUFactory) -> Result<(), Box<dyn std::error
     {
         println!("{}", "    Testing set FMU state (CS)".green().bold());
         let fmu = factory.instantiate_cs()?;
-        get_and_set_fmu_state(fmu);
+        get_and_set_fmu_state(fmu)?;
     }
 
     Ok(())
 }
 
-fn get_and_set_fmu_state(fmu: FMU3) {
+fn get_and_set_fmu_state(fmu: FMU3) -> Result<(), Box<dyn std::error::Error>> {
     let mut fmu_state: fmi3FMUState = std::ptr::null_mut();
-    fmu.getFMUState(&mut fmu_state);
-    fmu.setFMUState(fmu_state);
-    fmu.freeFMUState(&mut fmu_state);
+    call(fmu.getFMUState(&mut fmu_state))?;
+    call(fmu.setFMUState(fmu_state))?;
+    call(fmu.freeFMUState(&mut fmu_state))?;
+    Ok(())
 }
 
 pub fn test_serialize_fmu_state(factory: &FMUFactory) -> Result<(), Box<dyn std::error::Error>> {
@@ -117,7 +129,7 @@ pub fn test_serialize_fmu_state(factory: &FMUFactory) -> Result<(), Box<dyn std:
     {
         println!("{}", "    Testing serialize FMU state (ME)".green().bold());
         let fmu = factory.instantiate_me()?;
-        serialize_fmu_state(fmu);
+        serialize_fmu_state(fmu)?;
     }
 
     if factory
@@ -129,32 +141,25 @@ pub fn test_serialize_fmu_state(factory: &FMUFactory) -> Result<(), Box<dyn std:
     {
         println!("{}", "    Testing serialize FMU state (CS)".green().bold());
         let fmu = factory.instantiate_cs()?;
-        serialize_fmu_state(fmu);
+        serialize_fmu_state(fmu)?;
     }
 
     Ok(())
 }
 
-fn serialize_fmu_state(fmu: FMU3) {
+fn serialize_fmu_state(fmu: FMU3) -> Result<(), Box<dyn std::error::Error>> {
     let mut fmu_state: fmi3FMUState = std::ptr::null_mut();
-    fmu.getFMUState(&mut fmu_state);
+    call(fmu.getFMUState(&mut fmu_state))?;
     let mut size = 0;
-    fmu.serializedFMUStateSize(fmu_state, &mut size);
+    call(fmu.serializedFMUStateSize(fmu_state, &mut size))?;
     let mut serialized_fmu_state = vec![0; size];
-    fmu.serializeFMUState(fmu_state, &mut serialized_fmu_state);
-    fmu.freeFMUState(&mut fmu_state);
+    call(fmu.serializeFMUState(fmu_state, &mut serialized_fmu_state))?;
+    call(fmu.freeFMUState(&mut fmu_state))?;
     let mut deserialized_fmu_state: fmi3FMUState = std::ptr::null_mut();
-    fmu.deserializeFMUState(&serialized_fmu_state, &mut deserialized_fmu_state);
-    fmu.setFMUState(deserialized_fmu_state);
+    call(fmu.deserializeFMUState(&serialized_fmu_state, &mut deserialized_fmu_state))?;
+    call(fmu.setFMUState(deserialized_fmu_state))?;
+    Ok(())
 }
-
-// fn call(status: fmi2Status) -> Result<(), Box<dyn std::error::Error>> {
-//     if matches!(status, fmi2Status::fmi2OK | fmi2Status::fmi2Warning) {
-//         Ok(())
-//     } else {
-//         Err("FMI call failed".into())
-//     }
-// }
 
 // fn assert_equal<T: PartialEq + std::fmt::Debug>(
 //     variable_name: &str,

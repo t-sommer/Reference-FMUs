@@ -120,7 +120,7 @@ pub fn test_serialize_fmu_state(factory: &FMU2Factory) -> Result<(), Box<dyn std
     {
         println!("{}", "    Testing serialize FMU state (ME)".green().bold());
         let fmu = factory.instantiate_me()?;
-        serialize_fmu_state(fmu);
+        serialize_fmu_state(fmu)?;
     }
 
     if factory
@@ -132,23 +132,24 @@ pub fn test_serialize_fmu_state(factory: &FMU2Factory) -> Result<(), Box<dyn std
     {
         println!("{}", "    Testing serialize FMU state (CS)".green().bold());
         let fmu = factory.instantiate_cs()?;
-        serialize_fmu_state(fmu);
+        serialize_fmu_state(fmu)?;
     }
 
     Ok(())
 }
 
-fn serialize_fmu_state<T>(fmu: FMU2<T>) {
+fn serialize_fmu_state<T>(fmu: FMU2<T>) -> Result<(), Box<dyn std::error::Error>> {
     let mut fmu_state: fmi2FMUstate = std::ptr::null_mut();
-    fmu.getFMUstate(&mut fmu_state);
+    call(fmu.getFMUstate(&mut fmu_state))?;
     let mut size = 0;
-    fmu.serializedFMUstateSize(fmu_state, &mut size);
+    call(fmu.serializedFMUstateSize(fmu_state, &mut size))?;
     let mut serialized_fmu_state = vec![0; size];
-    fmu.serializeFMUstate(fmu_state, &mut serialized_fmu_state);
-    fmu.freeFMUstate(&mut fmu_state);
+    call(fmu.serializeFMUstate(fmu_state, &mut serialized_fmu_state))?;
+    call(fmu.freeFMUstate(&mut fmu_state))?;
     let mut deserialized_fmu_state: fmi2FMUstate = std::ptr::null_mut();
-    fmu.deSerializeFMUstate(&serialized_fmu_state, &mut deserialized_fmu_state);
-    fmu.setFMUstate(deserialized_fmu_state);
+    call(fmu.deSerializeFMUstate(&serialized_fmu_state, &mut deserialized_fmu_state))?;
+    call(fmu.setFMUstate(deserialized_fmu_state))?;
+    Ok(())
 }
 
 fn call(status: fmi2Status) -> Result<(), Box<dyn std::error::Error>> {
@@ -177,8 +178,8 @@ fn assert_equal<T: PartialEq + std::fmt::Debug>(
 pub fn test_get_all_variables(factory: &FMU2Factory) -> Result<(), Box<dyn std::error::Error>> {
     let fmu = factory.instantiate_me()?;
 
-    fmu.enterInitializationMode();
-    fmu.exitInitializationMode();
+    call(fmu.enterInitializationMode())?;
+    call(fmu.exitInitializationMode())?;
 
     for variable in factory.model_description.modelVariables.iter() {
         match &variable.variableType {

@@ -137,7 +137,9 @@ pub fn test_serialize_fmu_state(factory: &FMU2Factory) -> Result<(), Box<dyn std
 fn serialize_fmu_state<T>(fmu: FMU2<T>) {
     let mut fmu_state: fmi2FMUstate = std::ptr::null_mut();
     fmu.getFMUstate(&mut fmu_state);
-    let mut serialized_fmu_state = vec![];
+    let mut size = 0;
+    fmu.serializedFMUstateSize(fmu_state, &mut size);
+    let mut serialized_fmu_state = vec![0; size];
     fmu.serializeFMUstate(fmu_state, &mut serialized_fmu_state);
     fmu.freeFMUstate(&mut fmu_state);
     let mut deserialized_fmu_state: fmi2FMUstate = std::ptr::null_mut();

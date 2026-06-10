@@ -741,47 +741,42 @@ impl<T> FMU2<T> {
 
         status
     }
+    pub fn serializedFMUstateSize(
+        &self,
+        FMUstate: fmi2FMUstate,
+        size: &mut usize,
+    ) -> fmi2Status {
+        let status =
+            unsafe { (self.fmi2SerializedFMUstateSize)(self.component, FMUstate, size) };
+        if self.logCalls {
+            let message = format!(
+                "fmi2SerializedFMUstateSize(FMUstate={FMUstate:p}, size={size:p}) -> {status:?}"
+            );
+            self.log_call(status, message.as_str());
+        }
+        status
+    }
 
     pub fn serializeFMUstate(
         &self,
         FMUstate: fmi2FMUstate,
-        serializedState: &mut Vec<fmi2Byte>,
+        serializedState: &mut [fmi2Byte],
     ) -> fmi2Status {
-        let mut size = 0;
-
-        let status =
-            unsafe { (self.fmi2SerializedFMUstateSize)(self.component, FMUstate, &mut size) };
-
-        if self.logCalls {
-            let message = format!(
-                "fmi2SerializedFMUstateSize(FMUstate={:p}, size={:p}) -> {:?}",
-                FMUstate, &size as *const usize, status
-            );
-            self.log_call(status, message.as_str());
-        }
-
-        if status != fmi2Status::fmi2OK {
-            return status;
-        }
-
-        serializedState.resize(size, 0u8);
+        let size = serializedState.len();
+        let serializedState = serializedState.as_mut_ptr();
 
         let status = unsafe {
             (self.fmi2SerializeFMUstate)(
                 self.component,
                 FMUstate,
-                serializedState.as_mut_ptr(),
-                serializedState.len(),
+                serializedState,
+                size,
             )
         };
 
         if self.logCalls {
             let message = format!(
-                "fmi2SerializeFMUstate(FMUstate={:p}, serializedState={:p}, size={}) -> {:?}",
-                FMUstate,
-                serializedState.as_ptr(),
-                serializedState.len(),
-                status
+                "fmi2SerializeFMUstate(FMUstate={FMUstate:p}, serializedState={serializedState:p}, size={size}) -> {status:?}"
             );
             self.log_call(status, message.as_str());
         }

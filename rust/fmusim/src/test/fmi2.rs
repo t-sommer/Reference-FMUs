@@ -1,19 +1,15 @@
 use colored::Colorize;
-use std::{
-    path::{Path, PathBuf},
-    process::ExitCode,
-};
+use std::{path::PathBuf, process::ExitCode};
 
 use fmi::{
     fmi2::{
-        CS, Call, FMU2, ME,
+        CS, FMU2, ME,
         types::{fmi2FMUstate, fmi2False, fmi2Status, fmi2True},
     },
     model_description::{
         self,
-        fmi2::{Initial, ModelDescription, ScalarVariable, VariableType},
+        fmi2::{Initial, ModelDescription, VariableType},
     },
-    sim::fmi2::parse_variable_value,
     util::extract_fmu,
 };
 
@@ -50,7 +46,7 @@ impl FMU2Factory {
                 !me.canNotUseMemoryManagementFunctions,
             )
         } else {
-            return Err("Model-Exchange is not supported.".into());
+            Err("Model-Exchange is not supported.".into())
         }
     }
 
@@ -70,7 +66,7 @@ impl FMU2Factory {
                 self.provideMemoryManagementFunctions,
             )
         } else {
-            return Err("Co-Simulation is not supported.".into());
+            Err("Co-Simulation is not supported.".into())
         }
     }
 }

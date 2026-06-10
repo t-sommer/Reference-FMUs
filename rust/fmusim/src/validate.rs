@@ -12,7 +12,7 @@ fn validate_zip_archive(fmu_file: &str) -> Vec<String> {
 
     if let Ok(contents) = get_zip_contents(fmu_file) {
         for entry in contents {
-            if entry.starts_with(&['.', '/']) {
+            if entry.starts_with(['.', '/']) {
                 problems.push(format!(
                     "Path '{entry}' starts with a dot ('.') or slash ('/')"
                 ));

@@ -1,16 +1,12 @@
 use colored::Colorize;
-use std::{
-    ffi::c_uint,
-    path::{Path, PathBuf},
-    process::ExitCode,
-};
+use std::{ffi::c_uint, path::PathBuf, process::ExitCode};
 
 use fmi::{
     fmi3::{
         FMU3,
         types::{fmi3FMUState, fmi3Status},
     },
-    model_description::{self, fmi3::ModelDescription},
+    model_description::fmi3::ModelDescription,
     util::extract_fmu,
 };
 
@@ -48,7 +44,7 @@ impl FMUFactory {
                 self.printMessages,
             )
         } else {
-            return Err("Model-Exchange is not supported.".into());
+            Err("Model-Exchange is not supported.".into())
         }
     }
 
@@ -70,7 +66,7 @@ impl FMUFactory {
                 self.printMessages,
             )
         } else {
-            return Err("Co-Simulation is not supported.".into());
+            Err("Co-Simulation is not supported.".into())
         }
     }
 }

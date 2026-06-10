@@ -1,27 +1,17 @@
-use colored::Colorize;
 use std::process::ExitCode;
 
-use fmi::{
-    fmi2::{CS, FMU2, types::fmi2FMUstate},
-    model_description::{FMIMajorVersion, fmi2::ModelDescription},
-    util::extract_fmu,
-};
+use fmi::model_description::FMIMajorVersion;
 
 use crate::{
     TestArgs, prepare_fmu,
-    test::{
-        fmi2::{
-            smoke_test_fmi2, test_get_all_variables, test_serialize_fmu_state, test_set_fmu_state,
-        },
-        fmi3::{FMUFactory, smoke_test_fmi3},
-    },
+    test::{fmi2::smoke_test_fmi2, fmi3::smoke_test_fmi3},
 };
 
 mod fmi2;
 mod fmi3;
 
 pub fn smoke_test(args: &TestArgs) -> ExitCode {
-    let (unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
+    let (_unzipdir, _xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
         Err(code) => return code,
     };

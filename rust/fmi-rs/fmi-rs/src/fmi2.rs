@@ -745,7 +745,7 @@ impl<T> FMU2<T> {
         let status = unsafe { (self.fmi2SerializedFMUstateSize)(self.component, FMUstate, size) };
         if self.logCalls {
             let message = format!(
-                "fmi2SerializedFMUstateSize(FMUstate={FMUstate:p}, size={size:p}) -> {status:?}"
+                "fmi2SerializedFMUstateSize(FMUstate={FMUstate:p}, size={size}) -> {status:?}"
             );
             self.log_call(status, message.as_str());
         }

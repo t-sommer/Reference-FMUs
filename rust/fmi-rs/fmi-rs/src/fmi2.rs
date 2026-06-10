@@ -223,9 +223,9 @@ pub extern "C" fn logger(
 
     if componentEnvironment.is_null() {
         let prefix = match status {
-            fmi2Status::fmi2OK => "🛈".green(),
+            fmi2Status::fmi2OK => "🛈".bright_blue(),
             fmi2Status::fmi2Warning => "⚠".yellow(),
-            _ => "⨉".red(),
+            _ => "⨉".bright_red(),
         };
         eprintln!("{prefix} {}", message_str.trim_end());
     } else {

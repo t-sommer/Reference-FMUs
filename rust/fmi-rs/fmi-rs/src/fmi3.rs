@@ -237,9 +237,9 @@ pub extern "C" fn logMessage(
 
     if instanceEnvironment.is_null() {
         let prefix = match status {
-            fmi3Status::fmi3OK => "🛈".green(),
+            fmi3Status::fmi3OK => "🛈".bright_blue(),
             fmi3Status::fmi3Warning => "⚠".yellow(),
-            _ => "⨉".red(),
+            _ => "⨉".bright_red(),
         };
         eprintln!("{prefix} {}", message_str.trim_end());
     } else {

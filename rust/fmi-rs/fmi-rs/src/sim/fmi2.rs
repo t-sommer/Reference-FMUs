@@ -151,6 +151,14 @@ fn call(status: fmi2Status) -> Result<fmi2Status, Box<dyn Error>> {
     }
 }
 
+pub fn parse_boolean(literal: &str) -> Result<fmi2Boolean, Box<dyn Error>> {
+    match literal {
+        "true" | "1" => Ok(fmi2True),
+        "false" | "0" => Ok(fmi2False),
+        _ => Err(format!("Invalid boolean literal: {literal}").into()),
+    }
+}
+
 pub fn parse_variable_value(
     variable_type: &VariableType,
     literal: &str,
@@ -160,14 +168,7 @@ pub fn parse_variable_value(
         VariableType::Integer { .. } | VariableType::Enumeration { .. } => {
             Ok(VariableValue::Integer(literal.parse()?))
         }
-        VariableType::Boolean { .. } => {
-            let value: bool = literal.parse()?;
-            Ok(VariableValue::Boolean(if value {
-                fmi2True
-            } else {
-                fmi2False
-            }))
-        }
+        VariableType::Boolean { .. } => Ok(VariableValue::Boolean(parse_boolean(literal)?)),
         VariableType::String { .. } => Ok(VariableValue::String(literal.to_string())),
     }
 }

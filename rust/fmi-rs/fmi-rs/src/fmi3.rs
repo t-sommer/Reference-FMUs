@@ -1323,55 +1323,41 @@ impl FMU3 {
         status
     }
 
-    pub fn getFMUState(&self) -> Result<fmi3FMUState, fmi3Status> {
-        let mut fmuState: fmi3FMUState = ptr::null_mut();
-        let status = unsafe { (self.fmi3GetFMUState)(self.instance, &mut fmuState) };
-
+    pub fn getFMUState(&self, FMUState: &mut fmi3FMUState) -> fmi3Status {
+        let status = unsafe { (self.fmi3GetFMUState)(self.instance, FMUState) };
         if self.logCalls {
-            let message = "fmi3GetFMUState()".to_string();
-            self.log_call(status, &message);
-        }
-
-        if status == fmi3Status::fmi3OK {
-            Ok(fmuState)
-        } else {
-            Err(status)
-        }
-    }
-
-    pub fn setFMUState(&self, fmuState: fmi3FMUState) -> fmi3Status {
-        let status = unsafe { (self.fmi3SetFMUState)(self.instance, fmuState) };
-        if self.logCalls {
-            let message = format!("fmi3SetFMUState() -> {status:?}");
+            let message = format!("fmi3GetFMUState(FMUState={FMUState:p}) -> {status:?}");
             self.log_call(status, &message);
         }
         status
     }
 
-    pub fn freeFMUState(&self, fmuState: &mut fmi3FMUState) -> fmi3Status {
-        let status = unsafe { (self.fmi3FreeFMUState)(self.instance, fmuState) };
+    pub fn setFMUState(&self, FMUState: fmi3FMUState) -> fmi3Status {
+        let status = unsafe { (self.fmi3SetFMUState)(self.instance, FMUState) };
         if self.logCalls {
-            let message = format!("fmi3FreeFMUState() -> {status:?}");
+            let message = format!("fmi3SetFMUState(FMUState={FMUState:p}) -> {status:?}");
             self.log_call(status, &message);
         }
         status
     }
 
-    pub fn serializedFMUStateSize(&self, fmuState: fmi3FMUState) -> Result<usize, fmi3Status> {
-        let mut size: usize = 0;
+    pub fn freeFMUState(&self, FMUState: &mut fmi3FMUState) -> fmi3Status {
+        let status = unsafe { (self.fmi3FreeFMUState)(self.instance, FMUState) };
+        if self.logCalls {
+            let message = format!("fmi3FreeFMUState(FMUState={FMUState:p}) -> {status:?}");
+            self.log_call(status, &message);
+        }
+        status
+    }
+
+    pub fn serializedFMUStateSize(&self, FMUState: fmi3FMUState, size: &mut usize) -> fmi3Status {
         let status =
-            unsafe { (self.fmi3SerializedFMUStateSize)(self.instance, fmuState, &mut size) };
-
+            unsafe { (self.fmi3SerializedFMUStateSize)(self.instance, FMUState, size) };
         if self.logCalls {
-            let message = format!("fmi3SerializedFMUStateSize(size={}) -> {:?}", size, status);
+            let message = format!("fmi3SerializedFMUStateSize(FMUState={:p}, size={}) -> {:?}", FMUState, size, status);
             self.log_call(status, &message);
         }
-
-        if status == fmi3Status::fmi3OK {
-            Ok(size)
-        } else {
-            Err(status)
-        }
+        status
     }
 
     pub fn serializeFMUState(
@@ -1401,30 +1387,28 @@ impl FMU3 {
     pub fn deserializeFMUState(
         &self,
         serializedState: &[fmi3Byte],
-    ) -> Result<fmi3FMUState, fmi3Status> {
-        let mut fmuState: fmi3FMUState = ptr::null_mut();
+        FMUState: &mut fmi3FMUState,
+    ) -> fmi3Status {
+        let size = serializedState.len();
+        let serializedState = serializedState.as_ptr();
+        
         let status = unsafe {
             (self.fmi3DeserializeFMUState)(
                 self.instance,
-                serializedState.as_ptr(),
-                serializedState.len(),
-                &mut fmuState,
+                serializedState,
+                size,
+                FMUState,
             )
         };
 
         if self.logCalls {
             let message = format!(
-                "fmi3DeserializeFMUState(size={}) -> {status:?}",
-                serializedState.len(),
+                "fmi3DeserializeFMUState(serializedState={serializedState:p}, size={size}, FMUState={FMUState:p}) -> {status:?}"
             );
             self.log_call(status, &message);
         }
 
-        if status == fmi3Status::fmi3OK {
-            Ok(fmuState)
-        } else {
-            Err(status)
-        }
+        status
     }
 
     pub fn getDirectionalDerivative(

@@ -1,3 +1,4 @@
+use clap::error::Result;
 use colored::Colorize;
 use std::{path::PathBuf, process::ExitCode};
 
@@ -71,19 +72,12 @@ impl FMU2Factory {
     }
 }
 
-pub fn test_set_fmu_state(factory: &FMU2Factory) -> Result<(), Box<dyn std::error::Error>> {
-    if factory
-        .model_description
-        .modelExchange
-        .as_ref()
-        .map(|me| me.canGetAndSetFMUstate)
-        .unwrap_or(false)
-    {
-        println!("{}", "    Testing set FMU state (ME)".green().bold());
-        let fmu = factory.instantiate_me()?;
-        get_and_set_fmu_state(fmu);
-    }
+pub fn test_set_fmu_state_me(factory: &FMU2Factory) -> Result<(), Box<dyn std::error::Error>> {
+    let fmu = factory.instantiate_me()?;
+    get_and_set_fmu_state(fmu)
+}
 
+pub fn test_set_fmu_state_cs(factory: &FMU2Factory) -> Result<(), Box<dyn std::error::Error>> {
     if factory
         .model_description
         .coSimulation
@@ -95,15 +89,14 @@ pub fn test_set_fmu_state(factory: &FMU2Factory) -> Result<(), Box<dyn std::erro
         let fmu = factory.instantiate_cs()?;
         get_and_set_fmu_state(fmu);
     }
-
     Ok(())
 }
 
-fn get_and_set_fmu_state<T>(fmu: FMU2<T>) {
+pub fn get_and_set_fmu_state<T>(fmu: FMU2<T>) -> Result<(), Box<dyn std::error::Error>> {
     let mut fmu_state: fmi2FMUstate = std::ptr::null_mut();
-    fmu.getFMUstate(&mut fmu_state);
-    fmu.setFMUstate(fmu_state);
-    fmu.freeFMUstate(&mut fmu_state);
+    call(fmu.getFMUstate(&mut fmu_state))?;
+    call(fmu.setFMUstate(fmu_state))?;
+    call(fmu.freeFMUstate(&mut fmu_state))
 }
 
 pub fn test_serialize_fmu_state(factory: &FMU2Factory) -> Result<(), Box<dyn std::error::Error>> {
@@ -271,6 +264,17 @@ macro_rules! bail {
     };
 }
 
+// fn print_result(name: &str, result: Result<(), Box<dyn std::error::Error>>) {
+//     print!("test {name} ... ");
+//     match result {
+//         Ok(()) => println!("{}", "ok".bright_green().bold()),
+//         Err(e) => {
+//             println!("{}", "FAILED".bright_red().bold());
+//             println!("{e}");
+//         },
+//     }
+// }
+
 pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
     let unzipdir = bail!(extract_fmu(&args.fmu_file));
 
@@ -290,17 +294,98 @@ pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
         provideMemoryManagementFunctions: true,
     };
 
-    if let Err(e) = test_set_fmu_state(&factory) {
-        println!("{}: {}", "error".red().bold(), e);
+    let mut passed = 0;
+    let mut failed = 0;
+
+    let mut print_result= |name: &str, result: Result<(), Box<dyn std::error::Error>>| {
+        print!("test {name} ... ");
+        match result {
+            Ok(()) => {
+                println!("{}", "ok".bright_green().bold());
+                passed += 1;
+            },
+            Err(e) => {
+                println!("{}", "FAILED".bright_red().bold());
+                println!("{e}");
+                failed += 1;
+            },
+        }
+    };
+    
+    if factory
+        .model_description
+        .modelExchange
+        .as_ref()
+        .map(|me| me.canGetAndSetFMUstate)
+        .unwrap_or(false)
+    {
+        print_result("get_and_set_fmu_state (ME)", get_and_set_fmu_state(factory.instantiate_me().unwrap()));
     }
 
-    if let Err(e) = test_serialize_fmu_state(&factory) {
-        println!("{}: {}", "error".red().bold(), e);
+    if factory
+        .model_description
+        .coSimulation
+        .as_ref()
+        .map(|cs| cs.canGetAndSetFMUstate)
+        .unwrap_or(false)
+    {
+        print_result("get_and_set_fmu_state (CS)", get_and_set_fmu_state(factory.instantiate_cs().unwrap()));
     }
 
-    if let Err(e) = test_get_all_variables(&factory) {
-        println!("{}: {}", "error".red().bold(), e);
+    if factory
+        .model_description
+        .modelExchange
+        .as_ref()
+        .map(|me| me.canSerializeFMUstate)
+        .unwrap_or(false)
+    {
+        print_result("serialize_fmu_state (ME)", serialize_fmu_state(factory.instantiate_me().unwrap()));
     }
 
-    ExitCode::SUCCESS
+    if factory
+        .model_description
+        .coSimulation
+        .as_ref()
+        .map(|cs| cs.canSerializeFMUstate)
+        .unwrap_or(false)
+    {
+        print_result("serialize_fmu_state (CS)", serialize_fmu_state(factory.instantiate_cs().unwrap()));
+    }
+
+    if factory
+        .model_description
+        .modelExchange
+        .as_ref()
+        .map(|me| me.canSerializeFMUstate)
+        .unwrap_or(false)
+    {
+        let fmu = factory.instantiate_me().unwrap();
+        print_result("get_all_variables (ME)", get_all_variables(&fmu, &factory.model_description));
+    }
+
+    if factory
+        .model_description
+        .coSimulation
+        .as_ref()
+        .map(|cs| cs.canSerializeFMUstate)
+        .unwrap_or(false)
+    {
+        let fmu = factory.instantiate_cs().unwrap();
+        print_result("get_all_variables (CS)", get_all_variables(&fmu, &factory.model_description));
+    }
+
+    let test_result = if failed == 0 {
+        "ok".green()
+    } else {
+        "FAILED".bright_red()
+    };
+
+    println!();
+    println!("test result: {test_result}. {passed} passed; {failed} failed;");
+
+    if failed == 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
 }

@@ -1,17 +1,25 @@
+use std::{env, path::Path};
+
 fn main() {
-    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let library_dir = manifest_dir.join("vendor/x86_64-windows");
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let target = env::var("TARGET").unwrap();
+    
+    // Organize vendor by target triple to prevent cross-compilation conflicts
+    let library_dir = manifest_dir.join("vendor").join(&target);
+
+    let lib_ext = if target.contains("windows") { "lib" } else { "a" };
+    let lib_name = format!("libxml2s.{}", lib_ext);
 
     // Check if libxml2 static library exists; if not, download and build it.
-    let lib_path = library_dir.join("lib/libxml2s.lib");
+    let lib_path = library_dir.join("lib").join(lib_name);
     if !lib_path.exists() {
-        fetch_and_build_libxml2(&library_dir);
+        fetch_and_build_libxml2(&library_dir, &target);
     }
 
     cc::Build::new()
         .file("src/c/src/fmi_rs_xsd.c")
         .include("src/c/include")
-        .include("vendor/x86_64-windows/include/libxml2")
+        .include(format!("vendor/{target}/include/libxml2"))
         .compile("fmi_rs_xsd");
 
     // Link to libxml2 static library
@@ -28,7 +36,7 @@ fn main() {
 }
 
 /// Downloads, builds, and installs libxml2 to the specified directory.
-fn fetch_and_build_libxml2(install_dir: &std::path::Path) {
+fn fetch_and_build_libxml2(install_dir: &std::path::Path, target: &str) {
     use std::process::Command;
 
     let version = "2.15.3";
@@ -39,6 +47,15 @@ fn fetch_and_build_libxml2(install_dir: &std::path::Path) {
         "cargo:warning=libxml2s.lib not found. Downloading and building libxml2 v{}...",
         version
     );
+
+    // Determine CMake generator based on the Rust target
+    let generator = if target.contains("msvc") {
+        "Visual Studio 17 2022"
+    } else if target.contains("windows-gnu") {
+        "MinGW Makefiles"
+    } else {
+        "Unix Makefiles"
+    };
 
     // 1. Download source using curl (standard on modern Windows)
     let url = format!(
@@ -80,11 +97,17 @@ fn fetch_and_build_libxml2(install_dir: &std::path::Path) {
             "-DLIBXML2_WITH_ZLIB=OFF",
             "-DLIBXML2_WITH_LZMA=OFF",
             "-DLIBXML2_WITH_ICONV=OFF",
+            "-G", generator,
         ])
-        .status()
+        .output()
         .expect("Failed to execute cmake. Ensure it is installed and in your PATH.");
-    if !status.success() {
-        panic!("Failed to configure libxml2.");
+
+    if !status.status.success() {
+        panic!(
+            "Failed to configure libxml2 with generator {}: {}",
+            generator,
+            String::from_utf8_lossy(&status.stderr)
+        );
     }
 
     // 4. Build and Install
@@ -97,16 +120,21 @@ fn fetch_and_build_libxml2(install_dir: &std::path::Path) {
             "--target",
             "install",
         ])
-        .status()
+        .output()
         .expect("Failed to build libxml2.");
-    if !status.success() {
-        panic!("Failed to install libxml2.");
+
+    if !status.status.success() {
+        panic!(
+            "Failed to install libxml2: {}",
+            String::from_utf8_lossy(&status.stderr)
+        );
     }
 
-    // 5. Ensure the static library is named libxml2s.lib (the expected name for static libxml2 on MSVC)
-    let lib_file = install_dir.join("lib/libxml2.lib");
-    let target_lib = install_dir.join("lib/libxml2s.lib");
-    if lib_file.exists() && !target_lib.exists() {
-        let _ = std::fs::rename(lib_file, target_lib);
-    }
+    // // 5. Ensure the static library is named libxml2s.lib (the expected name for static libxml2 on MSVC)
+    // let lib_file = install_dir.join("lib/libxml2.lib");
+    // let target_lib = install_dir.join("lib/libxml2s.lib");
+    
+    // if lib_file.exists() && !target_lib.exists() {
+    //     let _ = std::fs::rename(lib_file, target_lib);
+    // }
 }

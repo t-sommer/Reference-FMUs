@@ -4,7 +4,9 @@ mod simulate;
 mod test;
 mod validate;
 
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use clap_complete::CompleteEnv;
+use clap_complete::engine::{ArgValueCompleter, PathCompleter};
 use colored::Colorize;
 use fmi::{
     model_description::{FMIMajorVersion, peak_fmi_major_version},
@@ -64,21 +66,32 @@ enum Commands {
     Test(TestArgs),
 }
 
+/// A value completer that suggests directories and `*.fmu` files.
+fn fmu_completer() -> ArgValueCompleter {
+    ArgValueCompleter::new(PathCompleter::file().filter(|path| {
+        path.extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("fmu"))
+    }))
+}
+
 #[derive(Debug, Args)]
 struct InfoArgs {
     /// Path to the FMU file
+    #[arg(add = fmu_completer())]
     fmu_file: String,
 }
 
 #[derive(Debug, Args)]
 struct ValidateArgs {
     /// Path to the FMU file
+    #[arg(add = fmu_completer())]
     fmu_file: String,
 }
 
 #[derive(Debug, Args)]
 struct SimulateArgs {
     /// Path to the FMU file
+    #[arg(add = fmu_completer())]
     fmu_file: String,
 
     /// Enable logging of FMI function calls
@@ -177,6 +190,10 @@ struct TestArgs {
 }
 
 fn main() -> ExitCode {
+    // Handle shell completion requests (when the COMPLETE env var is set, this
+    // computes the candidates and exits before any argument parsing happens).
+    CompleteEnv::with_factory(Cli::command).complete();
+
     // Parse command line arguments
     let cli = Cli::parse();
 

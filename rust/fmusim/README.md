@@ -76,6 +76,42 @@ The resulting binary is at `target/debug/fmusim` (or `target/release/fmusim`).
 ./../target/debug/fmusim simulate <path/to/model.fmu>
 ```
 
+### Shell completions
+
+`fmusim` uses *dynamic* completion: instead of installing a static completion
+script, the binary itself is asked for the candidates each time you press Tab.
+This means completion never goes stale when the CLI changes, and the `fmu_file`
+argument of `info`, `validate` and `simulate` completes **only directories and
+`*.fmu` files**.
+
+Register it by adding the matching line to your shell startup file (it makes the
+shell call `fmusim` back for completions):
+
+```zsh
+# ~/.zshrc
+source <(COMPLETE=zsh fmusim)
+```
+
+```bash
+# ~/.bashrc
+source <(COMPLETE=bash fmusim)
+```
+
+```fish
+# ~/.config/fish/config.fish
+COMPLETE=fish fmusim | source
+```
+
+Start a new shell (or run `exec zsh`) and `fmusim simulate <Tab>` will offer
+only `*.fmu` files (and directories to descend into).
+
+> The `fmusim` invoked by the `source` line must be the one on your `PATH`, and
+> that same binary is what computes the candidates. So if you alias a second
+> build, register it under its own name (e.g. `source <(COMPLETE=zsh
+> fmusim-debug)`) — there are no script files to keep in sync, each name just
+> calls its own binary. Dynamic completion relies on `clap_complete`'s
+> `unstable-dynamic` feature.
+
 ### Test
 
 The integration tests run `fmusim` against the `Feedthrough` Reference FMU for

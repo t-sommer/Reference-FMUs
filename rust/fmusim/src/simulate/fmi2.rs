@@ -76,12 +76,12 @@ pub fn simulate_fmu(
             (0.0, 1.0, None)
         };
 
+    // `stepSize` lives in <DefaultExperiment>, which is optional; treat it as
+    // absent when the FMU has no <DefaultExperiment> element.
     let internal_step_size: Option<f64> = model_description
         .defaultExperiment
         .as_ref()
-        .unwrap()
-        .stepSize
-        .as_ref()
+        .and_then(|default_experiment| default_experiment.stepSize.as_ref())
         .map(|v| v.parse())
         .transpose()?;
 

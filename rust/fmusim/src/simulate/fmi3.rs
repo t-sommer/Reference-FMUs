@@ -82,12 +82,12 @@ pub fn simulate_fmu(
             (0.0, 1.0, None)
         };
 
+    // `fixedInternalStepSize` only exists for Co-Simulation FMUs; Model
+    // Exchange FMUs have no <CoSimulation> element, so treat it as absent.
     let internal_step_size: Option<f64> = model_description
         .coSimulation
         .as_ref()
-        .unwrap()
-        .fixedInternalStepSize
-        .as_ref()
+        .and_then(|co_simulation| co_simulation.fixedInternalStepSize.as_ref())
         .map(|v| v.parse().unwrap());
 
     let start_time = args.start_time.unwrap_or(start_time);

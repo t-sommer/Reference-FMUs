@@ -68,11 +68,10 @@ pub struct FMU2Builder {
 }
 
 impl FMU2Builder {
-
     pub fn new<P: AsRef<Path>>(fmu_path: &P) -> Result<Self, Box<dyn std::error::Error>> {
         let unzipdir = extract_fmu(fmu_path)?;
         let model_description = crate::model_description::fmi2::ModelDescription::from_path(
-            &unzipdir.path().join("modelDescription.xml")
+            &unzipdir.path().join("modelDescription.xml"),
         )?;
         Ok(Self {
             unzipdir,
@@ -116,7 +115,10 @@ impl FMU2Builder {
         self
     }
 
-    pub fn instantiate_me(&self, instanceName: &str) -> Result<fmi2::FMU2<fmi2::ME>, Box<dyn std::error::Error>> {
+    pub fn instantiate_me(
+        &self,
+        instanceName: &str,
+    ) -> Result<fmi2::FMU2<fmi2::ME>, Box<dyn std::error::Error>> {
         if let Some(me) = &self.model_description.modelExchange {
             fmi2::FMU2::<fmi2::ME>::new(
                 self.unzipdir.path(),
@@ -136,7 +138,10 @@ impl FMU2Builder {
         }
     }
 
-    pub fn instantiate_cs(&self, instanceName: &str) -> Result<fmi2::FMU2<fmi2::CS>, Box<dyn std::error::Error>> {
+    pub fn instantiate_cs(
+        &self,
+        instanceName: &str,
+    ) -> Result<fmi2::FMU2<fmi2::CS>, Box<dyn std::error::Error>> {
         if let Some(cs) = &self.model_description.coSimulation {
             fmi2::FMU2::<fmi2::CS>::new(
                 self.unzipdir.path(),
@@ -155,7 +160,6 @@ impl FMU2Builder {
             Err("Co-Simulation is not supported.".into())
         }
     }
-
 }
 
 pub struct FMU3Builder {
@@ -173,11 +177,10 @@ pub struct FMU3Builder {
 }
 
 impl FMU3Builder {
-
     pub fn new<P: AsRef<Path>>(fmu_path: &P) -> Result<Self, Box<dyn std::error::Error>> {
         let unzipdir = extract_fmu(fmu_path)?;
         let model_description = crate::model_description::fmi3::ModelDescription::from_path(
-            &unzipdir.path().join("modelDescription.xml")
+            &unzipdir.path().join("modelDescription.xml"),
         )?;
         Ok(Self {
             unzipdir,
@@ -224,7 +227,10 @@ impl FMU3Builder {
         self
     }
 
-    pub fn instantiate_me(&self, instanceName: &str) -> Result<fmi3::FMU3, Box<dyn std::error::Error>> {
+    pub fn instantiate_me(
+        &self,
+        instanceName: &str,
+    ) -> Result<fmi3::FMU3, Box<dyn std::error::Error>> {
         if let Some(me) = &self.model_description.modelExchange {
             fmi3::FMU3::instantiateModelExchange(
                 self.unzipdir.path(),
@@ -236,14 +242,17 @@ impl FMU3Builder {
                 self.logCalls,
                 self.printCalls,
                 self.logMessages,
-                self.printMessages,            
+                self.printMessages,
             )
         } else {
             Err("Model Exchange is not supported.".into())
         }
     }
 
-    pub fn instantiate_cs(&self, instanceName: &str) -> Result<fmi3::FMU3, Box<dyn std::error::Error>> {
+    pub fn instantiate_cs(
+        &self,
+        instanceName: &str,
+    ) -> Result<fmi3::FMU3, Box<dyn std::error::Error>> {
         if let Some(cs) = &self.model_description.coSimulation {
             fmi3::FMU3::instantiateCoSimulation(
                 self.unzipdir.path(),
@@ -264,5 +273,4 @@ impl FMU3Builder {
             Err("Co-Simulation is not supported.".into())
         }
     }
-
 }

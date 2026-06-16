@@ -132,7 +132,7 @@ impl ModelDescription {
         } else {
             return Err("Missing attribute 'fmiVersion'".into());
         }
-        
+
         let mut modelVariables = vec![];
 
         for child in root

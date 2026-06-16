@@ -297,21 +297,21 @@ pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
     let mut passed = 0;
     let mut failed = 0;
 
-    let mut print_result= |name: &str, result: Result<(), Box<dyn std::error::Error>>| {
+    let mut print_result = |name: &str, result: Result<(), Box<dyn std::error::Error>>| {
         print!("test {name} ... ");
         match result {
             Ok(()) => {
                 println!("{}", "ok".bright_green().bold());
                 passed += 1;
-            },
+            }
             Err(e) => {
                 println!("{}", "FAILED".bright_red().bold());
                 println!("{e}");
                 failed += 1;
-            },
+            }
         }
     };
-    
+
     if factory
         .model_description
         .modelExchange
@@ -319,7 +319,10 @@ pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
         .map(|me| me.canGetAndSetFMUstate)
         .unwrap_or(false)
     {
-        print_result("get_and_set_fmu_state (ME)", get_and_set_fmu_state(factory.instantiate_me().unwrap()));
+        print_result(
+            "get_and_set_fmu_state (ME)",
+            get_and_set_fmu_state(factory.instantiate_me().unwrap()),
+        );
     }
 
     if factory
@@ -329,7 +332,10 @@ pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
         .map(|cs| cs.canGetAndSetFMUstate)
         .unwrap_or(false)
     {
-        print_result("get_and_set_fmu_state (CS)", get_and_set_fmu_state(factory.instantiate_cs().unwrap()));
+        print_result(
+            "get_and_set_fmu_state (CS)",
+            get_and_set_fmu_state(factory.instantiate_cs().unwrap()),
+        );
     }
 
     if factory
@@ -339,7 +345,10 @@ pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
         .map(|me| me.canSerializeFMUstate)
         .unwrap_or(false)
     {
-        print_result("serialize_fmu_state (ME)", serialize_fmu_state(factory.instantiate_me().unwrap()));
+        print_result(
+            "serialize_fmu_state (ME)",
+            serialize_fmu_state(factory.instantiate_me().unwrap()),
+        );
     }
 
     if factory
@@ -349,7 +358,10 @@ pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
         .map(|cs| cs.canSerializeFMUstate)
         .unwrap_or(false)
     {
-        print_result("serialize_fmu_state (CS)", serialize_fmu_state(factory.instantiate_cs().unwrap()));
+        print_result(
+            "serialize_fmu_state (CS)",
+            serialize_fmu_state(factory.instantiate_cs().unwrap()),
+        );
     }
 
     if factory
@@ -360,7 +372,10 @@ pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
         .unwrap_or(false)
     {
         let fmu = factory.instantiate_me().unwrap();
-        print_result("get_all_variables (ME)", get_all_variables(&fmu, &factory.model_description));
+        print_result(
+            "get_all_variables (ME)",
+            get_all_variables(&fmu, &factory.model_description),
+        );
     }
 
     if factory
@@ -371,7 +386,10 @@ pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
         .unwrap_or(false)
     {
         let fmu = factory.instantiate_cs().unwrap();
-        print_result("get_all_variables (CS)", get_all_variables(&fmu, &factory.model_description));
+        print_result(
+            "get_all_variables (CS)",
+            get_all_variables(&fmu, &factory.model_description),
+        );
     }
 
     let test_result = if failed == 0 {

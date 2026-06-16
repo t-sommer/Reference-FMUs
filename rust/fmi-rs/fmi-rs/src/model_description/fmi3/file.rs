@@ -336,7 +336,7 @@ impl ModelDescription {
         } else {
             return Err("Missing attribute 'fmiVersion'".into());
         }
-        
+
         let modelVariables: Vec<ModelVariable> = root
             .get_required_child("ModelVariables")?
             .children()

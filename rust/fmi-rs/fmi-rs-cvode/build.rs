@@ -5,11 +5,15 @@ use std::process::Command;
 fn main() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let target = env::var("TARGET").unwrap();
-    
+
     // Organize vendor by target triple to prevent cross-compilation conflicts
     let library_dir = manifest_dir.join("vendor").join(&target);
 
-    let lib_ext = if target.contains("windows") { "lib" } else { "a" };
+    let lib_ext = if target.contains("windows") {
+        "lib"
+    } else {
+        "a"
+    };
     let lib_name = format!("sundials_core_static.{}", lib_ext);
 
     // Check if sundials_core_static exists; if not, download and build it.
@@ -57,7 +61,7 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
         .args(["-L", "-o", tar_path.to_str().unwrap(), &url])
         .output()
         .expect("Failed to execute curl. Ensure it is installed and in your PATH.");
-    
+
     if !status.status.success() {
         panic!(
             "Failed to download cvode from {}. Error: {}",
@@ -91,11 +95,12 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
             build_dir.to_str().unwrap(),
             &format!("-DCMAKE_INSTALL_PREFIX={}", install_dir.display()),
             "-DBUILD_SHARED_LIBS=OFF",
-            "-G", generator,
+            "-G",
+            generator,
         ])
         .output()
         .expect("Failed to execute cmake. Ensure it is installed and in your PATH.");
-    
+
     if !status.status.success() {
         panic!(
             "Failed to configure cvode with generator {}: {}",
@@ -116,7 +121,7 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
         ])
         .output()
         .expect("Failed to build cvode.");
-    
+
     if !status.status.success() {
         panic!(
             "Failed to install cvode: {}",

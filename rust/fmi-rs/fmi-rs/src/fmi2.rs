@@ -741,7 +741,7 @@ impl<T> FMU2<T> {
 
         status
     }
-    
+
     pub fn serializedFMUstateSize(&self, FMUstate: fmi2FMUstate, size: &mut usize) -> fmi2Status {
         let status = unsafe { (self.fmi2SerializedFMUstateSize)(self.component, FMUstate, size) };
         if self.logCalls {

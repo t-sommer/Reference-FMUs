@@ -10,10 +10,11 @@
             "args": [
                 // "help",
                 // "info",
-                // "simulate",
+                "simulate-config",
                 // "validate",
-                "test",
-                "E:\\WS\\dymola-fmi-compatibility\\2024x Refresh 1, 2024-04-12\\CoupledClutches_fmi2_Cvode.fmu",
+                // "test",
+                "BouncingBall.toml",
+                // "E:\\WS\\dymola-fmi-compatibility\\2024x Refresh 1, 2024-04-12\\CoupledClutches_fmi2_Cvode.fmu",
                 // "E:\\WS\\dymola-fmi-compatibility\\2026x Refresh 1, 2026-04-08\\CoupledClutches_fmi3_Inline.fmu",
                 // "C:\\Users\\tsr2\\Downloads\\FMU_model_v2-20260529T091030Z-3-001\\FMU_model_v2\\test1.fmu",
                 // "C:\\Users\\tsr2\\Downloads\\Fmucontroller.fmu",
@@ -32,7 +33,7 @@
                 // "C:\\Users\\tsr2\\Downloads\\egs\\egs.fmu", // FMI 2.0 CS
                 // "--interface-type=me",
                 // "--solver=euler",
-                "--log-fmi-calls",
+                // "--log-fmi-calls",
                 // "--output-interval=0.1",
                 // "--stop-time=0.01",
                 // "--input-file=FMU_in.csv",

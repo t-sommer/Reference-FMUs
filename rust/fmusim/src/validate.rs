@@ -4,7 +4,7 @@ use colored::Colorize;
 use fmi::{model_description::FMIMajorVersion, util::get_zip_contents};
 use fmi_rs_xsd::validate_model_description_against_xsd;
 
-use crate::{ValidateArgs, prepare_fmu};
+use crate::{ValidateArgs, error, prepare_fmu};
 
 /// Validate ZIP archive
 fn validate_zip_archive(fmu_file: &str) -> Vec<String> {
@@ -37,7 +37,7 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
 
     let (_unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
-        Err(code) => return code,
+        Err(message) => { error!(message); },
     };
 
     println!("{}", "    Validating model description".green().bold());
@@ -51,11 +51,8 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
     let text = match std::fs::read_to_string(xml_path) {
         Ok(content) => content,
         Err(e) => {
-            eprintln!(
-                "{}: Failed to read modelDescription.xml: {e}",
-                "error".red().bold()
-            );
-            return ExitCode::FAILURE;
+            let message = format!("Failed to read modelDescription.xml: {e}");
+            error!(message);
         }
     };
 
@@ -67,11 +64,8 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
     let doc = match roxmltree::Document::parse_with_options(&text, opt) {
         Ok(doc) => doc,
         Err(e) => {
-            eprintln!(
-                "{}: Failed to parse modelDescription.xml: {e}",
-                "error".red().bold()
-            );
-            return ExitCode::FAILURE;
+            let message = format!("Failed to parse modelDescription.xml: {e}");
+            error!(message);
         }
     };
 
@@ -85,11 +79,8 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
                 match fmi::model_description::fmi2::ModelDescription::from_node(&root) {
                     Ok(md) => md,
                     Err(e) => {
-                        eprintln!(
-                            "{}: Failed to parse modelDescription.xml: {e}",
-                            "error".red().bold()
-                        );
-                        return ExitCode::FAILURE;
+                        let message = format!("Failed to parse modelDescription.xml: {e}");
+                        error!(message);
                     }
                 };
             problems.extend(model_description.validate());
@@ -99,11 +90,8 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
                 match fmi::model_description::fmi3::ModelDescription::from_node(&root) {
                     Ok(md) => md,
                     Err(e) => {
-                        eprintln!(
-                            "{}: Failed to parse modelDescription.xml: {e}",
-                            "error".red().bold()
-                        );
-                        return ExitCode::FAILURE;
+                        let message = format!("Failed to parse modelDescription.xml: {e}");
+                        error!(message);
                     }
                 };
             problems.extend(model_description.validate());

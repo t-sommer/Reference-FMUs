@@ -3,12 +3,12 @@ use std::process::ExitCode;
 use colored::Colorize;
 use fmi::model_description::FMIMajorVersion;
 
-use crate::{InfoArgs, prepare_fmu};
+use crate::{InfoArgs, prepare_fmu, error};
 
 pub fn show_fmu_info(args: &InfoArgs) -> ExitCode {
     let (unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
-        Err(code) => return code,
+        Err(message) => { error!(message); },
     };
 
     let entries = std::fs::read_dir(unzipdir.path().join("binaries")).unwrap();
@@ -32,8 +32,8 @@ pub fn show_fmu_info(args: &InfoArgs) -> ExitCode {
                 match fmi::model_description::fmi2::ModelDescription::from_path(&xml_path) {
                     Ok(md) => md,
                     Err(e) => {
-                        eprintln!("Failed to parse modelDescription.xml: {e}");
-                        return ExitCode::FAILURE;
+                        let message = format!("Failed to parse modelDescription.xml: {e}");
+                        error!(message);
                     }
                 };
 
@@ -108,8 +108,8 @@ pub fn show_fmu_info(args: &InfoArgs) -> ExitCode {
                 match fmi::model_description::fmi3::ModelDescription::from_path(&xml_path) {
                     Ok(md) => md,
                     Err(e) => {
-                        eprintln!("Failed to parse modelDescription.xml: {e}");
-                        return ExitCode::FAILURE;
+                        let message = format!("Failed to parse modelDescription.xml: {e}");
+                        error!(message);
                     }
                 };
 

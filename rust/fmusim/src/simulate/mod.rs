@@ -1,17 +1,21 @@
-use std::process::ExitCode;
+use std::{fs::read_to_string, process::ExitCode};
 
-use colored::Colorize;
 use fmi::model_description::FMIMajorVersion;
 
-use crate::{SimulateArgs, prepare_fmu};
+use crate::{SimulateArgs, SimulateConfigArgs, error, prepare_fmu};
 
 pub mod fmi2;
 pub mod fmi3;
 
 pub fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
+
+    if args.fmu_file.is_empty() {
+        error!("No FMU file specified.");
+    }
+
     let (unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
-        Err(code) => return code,
+        Err(message) => { error!(message); },
     };
 
     let start_time = std::time::Instant::now();
@@ -30,8 +34,23 @@ pub fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
     match result {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("{}: {}", "error".red().bold(), e);
-            ExitCode::FAILURE
+            error!(e);
+        }
+    }
+}
+
+pub fn simulate_config(args: &SimulateConfigArgs) -> ExitCode {
+    match read_to_string(&args.config_path) {
+        Ok(content) => match toml::from_str::<SimulateArgs>(&content) {
+            Ok(toml_args) => {
+                simulate_fmu(&toml_args)
+            }
+            Err(e) => {
+                error!(format!("Failed to parse config file {}: {e}", &args.config_path));
+            }
+        },
+        Err(e) => {
+            error!(format!("Failed to read config file {}: {e}", &args.config_path));
         }
     }
 }

@@ -5,14 +5,14 @@ mod test;
 mod validate;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use colored::Colorize;
+use serde::Deserialize;
 use fmi::{
     model_description::{FMIMajorVersion, peak_fmi_major_version},
     util::extract_fmu,
 };
 use std::{path::Path, process::ExitCode};
 
-#[derive(ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug, Deserialize)]
 enum InterfaceType {
     /// Model Exchange
     #[value(name = "me")]
@@ -22,10 +22,12 @@ enum InterfaceType {
     CoSimulation,
 }
 
-#[derive(ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
 enum SolverType {
     #[value(name = "euler")]
     Euler,
+    #[default]
     #[value(name = "cvode")]
     Cvode,
 }
@@ -59,6 +61,8 @@ enum Commands {
     Validate(ValidateArgs),
     /// Simulate an FMU
     Simulate(SimulateArgs),
+    /// Simulate an FMU using a configuration file
+    SimulateConfig(SimulateConfigArgs),
     /// Run tests
     #[command(hide = true)]
     Test(TestArgs),
@@ -76,8 +80,9 @@ struct ValidateArgs {
     fmu_file: String,
 }
 
-#[derive(Debug, Args)]
-struct SimulateArgs {
+#[derive(Debug, Args, Deserialize, Clone, Default)]
+#[serde(default, deny_unknown_fields)]
+pub struct SimulateArgs {
     /// Path to the FMU file
     fmu_file: String,
 
@@ -167,6 +172,12 @@ struct SimulateArgs {
 }
 
 #[derive(Debug, Args)]
+struct SimulateConfigArgs {
+    /// Path to the configuration file
+    config_path: String,
+}
+
+#[derive(Debug, Args)]
 struct TestArgs {
     /// Path to the FMU file
     fmu_file: String,
@@ -176,14 +187,23 @@ struct TestArgs {
     log_fmi_calls: bool,
 }
 
+#[macro_export]
+macro_rules! error {
+    ($message:expr) => {
+        use colored::Colorize;
+        eprintln!("{}: {}", "error".red().bold(), $message);
+        return ExitCode::FAILURE; 
+    };
+}
+
 fn main() -> ExitCode {
-    // Parse command line arguments
     let cli = Cli::parse();
 
     match &cli.command {
         Commands::Info(args) => info::show_fmu_info(args),
         Commands::Validate(args) => validate::validate_fmu(args),
         Commands::Simulate(args) => simulate::simulate_fmu(args),
+        Commands::SimulateConfig(args) => simulate::simulate_config(args),
         Commands::Test(args) => test::smoke_test(args),
     }
 }
@@ -191,12 +211,12 @@ fn main() -> ExitCode {
 /// Common logic to extract an FMU and the detect its FMI major version
 fn prepare_fmu<P: AsRef<Path>>(
     fmu_path: P,
-) -> Result<(tempfile::TempDir, std::path::PathBuf, FMIMajorVersion), ExitCode> {
+) -> Result<(tempfile::TempDir, std::path::PathBuf, FMIMajorVersion), String> {
     let unzipdir = match extract_fmu(fmu_path) {
         Ok(dir) => dir,
         Err(e) => {
-            eprintln!("Failed to extract FMU: {e}");
-            return Err(ExitCode::FAILURE);
+            let message = format!("Failed to extract FMU: {e}");
+            return Err(message);
         }
     };
 
@@ -205,11 +225,8 @@ fn prepare_fmu<P: AsRef<Path>>(
     let fmi_major_version = match peak_fmi_major_version(&xml_path) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!(
-                "{}: Failed to determine FMI version: {e}",
-                "error".red().bold()
-            );
-            return Err(ExitCode::FAILURE);
+            let message = format!("Failed to determine FMI version: {e}");
+            return Err(message);
         }
     };
 

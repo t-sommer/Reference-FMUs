@@ -1,0 +1,8 @@
+fmu_file = "C:/Users/tsr2/Downloads/Reference-FMUs-0.0.39/3.0/BouncingBall.fmu"
+start_values = [["h", "1.5"]]
+# event_mode_used = true
+show_plot = true
+# log_fmi_calls = true
+# show_events = true
+# foo = "bar"
+show_stats = true

@@ -62,6 +62,12 @@ enum Commands {
     /// Simulate an FMU
     Simulate(SimulateArgs),
     /// Simulate an FMU using a configuration file
+    #[command(long_about = "Load simulation configuration from a TOML file with the same parameters as the simulate command.\n\n\
+        Example configuration file:\n\n\
+        fmu_file = \"BouncingBall.fmu\"\n\
+        start_values = [[\"h\", \"1.5\"]]\n\
+        stop_time = 3.0\n\
+    ")]
     SimulateConfig(SimulateConfigArgs),
     /// Run tests
     #[command(hide = true)]

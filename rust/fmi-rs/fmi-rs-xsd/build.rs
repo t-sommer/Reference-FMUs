@@ -7,11 +7,17 @@ fn main() {
     // Organize vendor by target triple to prevent cross-compilation conflicts
     let library_dir = manifest_dir.join("vendor").join(&target);
 
-    let lib_ext = if target.contains("windows") { "lib" } else { "a" };
-    let lib_name = format!("libxml2s.{}", lib_ext);
+    // The static libxml2 library is named differently per platform:
+    //   * Windows (MSVC): `libxml2s.lib`, linked as `libxml2s`
+    //   * Unix:           `libxml2.a`,    linked as `xml2`
+    let (lib_file_name, link_name) = if target.contains("windows") {
+        ("libxml2s.lib", "libxml2s")
+    } else {
+        ("libxml2.a", "xml2")
+    };
 
     // Check if libxml2 static library exists; if not, download and build it.
-    let lib_path = library_dir.join("lib").join(lib_name);
+    let lib_path = library_dir.join("lib").join(lib_file_name);
     if !lib_path.exists() {
         fetch_and_build_libxml2(&library_dir, &target);
     }
@@ -27,12 +33,14 @@ fn main() {
         "cargo:rustc-link-search=native={}",
         library_dir.join("lib").display()
     );
-    println!("cargo:rustc-link-lib=static=libxml2s");
+    println!("cargo:rustc-link-lib=static={link_name}");
 
     // Windows system libraries required by libxml2
-    println!("cargo:rustc-link-lib=dylib=ws2_32");
-    println!("cargo:rustc-link-lib=dylib=bcrypt");
-    println!("cargo:rustc-link-lib=dylib=winmm");
+    if target.contains("windows") {
+        println!("cargo:rustc-link-lib=dylib=ws2_32");
+        println!("cargo:rustc-link-lib=dylib=bcrypt");
+        println!("cargo:rustc-link-lib=dylib=winmm");
+    }
 }
 
 /// Downloads, builds, and installs libxml2 to the specified directory.

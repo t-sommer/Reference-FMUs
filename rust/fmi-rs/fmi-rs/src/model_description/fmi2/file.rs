@@ -125,6 +125,14 @@ impl ModelDescription {
     }
 
     pub fn from_node(root: &Node) -> Result<ModelDescription, Box<dyn Error>> {
+        if let Some(fmi_version) = root.attribute("fmiVersion") {
+            if fmi_version != "2.0" {
+                return Err(format!("Expected FMI version 2.0, but was {fmi_version}").into());
+            }
+        } else {
+            return Err("Missing attribute 'fmiVersion'".into());
+        }
+        
         let mut modelVariables = vec![];
 
         for child in root

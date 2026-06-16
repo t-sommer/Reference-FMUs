@@ -2,6 +2,8 @@ use std::{fs::File, path::Path};
 use tempfile::TempDir;
 use zip::ZipArchive;
 
+use crate::{fmi2, fmi3};
+
 pub fn extract_fmu<P: AsRef<Path>>(fmu_path: P) -> Result<TempDir, Box<dyn std::error::Error>> {
     // Create temporary directory
     let temp_dir = TempDir::new()?;
@@ -52,4 +54,215 @@ pub fn get_zip_contents(fmu_path: &str) -> Result<Vec<String>, Box<dyn std::erro
     }
 
     Ok(entries)
+}
+
+pub struct FMU2Builder {
+    pub unzipdir: TempDir,
+    pub model_description: crate::model_description::fmi2::ModelDescription,
+    pub visible: bool,
+    pub loggingOn: bool,
+    pub logCalls: bool,
+    pub printCalls: bool,
+    pub logMessages: bool,
+    pub printMessages: bool,
+}
+
+impl FMU2Builder {
+
+    pub fn new<P: AsRef<Path>>(fmu_path: &P) -> Result<Self, Box<dyn std::error::Error>> {
+        let unzipdir = extract_fmu(fmu_path)?;
+        let model_description = crate::model_description::fmi2::ModelDescription::from_path(
+            &unzipdir.path().join("modelDescription.xml")
+        )?;
+        Ok(Self {
+            unzipdir,
+            model_description,
+            visible: false,
+            loggingOn: false,
+            logCalls: false,
+            printCalls: true,
+            logMessages: true,
+            printMessages: true,
+        })
+    }
+
+    pub fn visible(mut self, visible: bool) -> Self {
+        self.visible = visible;
+        self
+    }
+
+    pub fn loggingOn(mut self, loggingOn: bool) -> Self {
+        self.loggingOn = loggingOn;
+        self
+    }
+
+    pub fn logCalls(mut self, logCalls: bool) -> Self {
+        self.logCalls = logCalls;
+        self
+    }
+
+    pub fn printCalls(mut self, printCalls: bool) -> Self {
+        self.printCalls = printCalls;
+        self
+    }
+
+    pub fn logMessages(mut self, logMessages: bool) -> Self {
+        self.logMessages = logMessages;
+        self
+    }
+
+    pub fn printMessages(mut self, printMessages: bool) -> Self {
+        self.printMessages = printMessages;
+        self
+    }
+
+    pub fn instantiate_me(&self, instanceName: &str) -> Result<fmi2::FMU2<fmi2::ME>, Box<dyn std::error::Error>> {
+        if let Some(me) = &self.model_description.modelExchange {
+            fmi2::FMU2::<fmi2::ME>::new(
+                self.unzipdir.path(),
+                &me.modelIdentifier,
+                instanceName,
+                &self.model_description.guid,
+                self.visible,
+                self.loggingOn,
+                self.logCalls,
+                self.printCalls,
+                self.logMessages,
+                self.printMessages,
+                !me.canNotUseMemoryManagementFunctions,
+            )
+        } else {
+            Err("Model Exchange is not supported.".into())
+        }
+    }
+
+    pub fn instantiate_cs(&self, instanceName: &str) -> Result<fmi2::FMU2<fmi2::CS>, Box<dyn std::error::Error>> {
+        if let Some(cs) = &self.model_description.coSimulation {
+            fmi2::FMU2::<fmi2::CS>::new(
+                self.unzipdir.path(),
+                &cs.modelIdentifier,
+                instanceName,
+                &self.model_description.guid,
+                self.visible,
+                self.loggingOn,
+                self.logCalls,
+                self.printCalls,
+                self.logMessages,
+                self.printMessages,
+                !cs.canNotUseMemoryManagementFunctions,
+            )
+        } else {
+            Err("Co-Simulation is not supported.".into())
+        }
+    }
+
+}
+
+pub struct FMU3Builder {
+    pub unzipdir: TempDir,
+    pub model_description: crate::model_description::fmi3::ModelDescription,
+    pub visible: bool,
+    pub loggingOn: bool,
+    pub logCalls: bool,
+    pub printCalls: bool,
+    pub logMessages: bool,
+    pub printMessages: bool,
+    pub eventModeUsed: bool,
+    pub earlyReturnAllowed: bool,
+    pub requiredIntermediateVariables: Vec<u32>,
+}
+
+impl FMU3Builder {
+
+    pub fn new<P: AsRef<Path>>(fmu_path: &P) -> Result<Self, Box<dyn std::error::Error>> {
+        let unzipdir = extract_fmu(fmu_path)?;
+        let model_description = crate::model_description::fmi3::ModelDescription::from_path(
+            &unzipdir.path().join("modelDescription.xml")
+        )?;
+        Ok(Self {
+            unzipdir,
+            model_description,
+            visible: false,
+            loggingOn: false,
+            logCalls: false,
+            printCalls: true,
+            logMessages: true,
+            printMessages: true,
+            eventModeUsed: true,
+            earlyReturnAllowed: true,
+            requiredIntermediateVariables: vec![],
+        })
+    }
+
+    pub fn visible(mut self, visible: bool) -> Self {
+        self.visible = visible;
+        self
+    }
+
+    pub fn loggingOn(mut self, loggingOn: bool) -> Self {
+        self.loggingOn = loggingOn;
+        self
+    }
+
+    pub fn logCalls(mut self, logCalls: bool) -> Self {
+        self.logCalls = logCalls;
+        self
+    }
+
+    pub fn printCalls(mut self, printCalls: bool) -> Self {
+        self.printCalls = printCalls;
+        self
+    }
+
+    pub fn logMessages(mut self, logMessages: bool) -> Self {
+        self.logMessages = logMessages;
+        self
+    }
+
+    pub fn printMessages(mut self, printMessages: bool) -> Self {
+        self.printMessages = printMessages;
+        self
+    }
+
+    pub fn instantiate_me(&self, instanceName: &str) -> Result<fmi3::FMU3, Box<dyn std::error::Error>> {
+        if let Some(me) = &self.model_description.modelExchange {
+            fmi3::FMU3::instantiateModelExchange(
+                self.unzipdir.path(),
+                &me.modelIdentifier,
+                instanceName,
+                &self.model_description.instantiationToken,
+                self.visible,
+                self.loggingOn,
+                self.logCalls,
+                self.printCalls,
+                self.logMessages,
+                self.printMessages,            
+            )
+        } else {
+            Err("Model Exchange is not supported.".into())
+        }
+    }
+
+    pub fn instantiate_cs(&self, instanceName: &str) -> Result<fmi3::FMU3, Box<dyn std::error::Error>> {
+        if let Some(cs) = &self.model_description.coSimulation {
+            fmi3::FMU3::instantiateCoSimulation(
+                self.unzipdir.path(),
+                &cs.modelIdentifier,
+                instanceName,
+                &self.model_description.instantiationToken,
+                self.visible,
+                self.loggingOn,
+                self.eventModeUsed,
+                self.earlyReturnAllowed,
+                &self.requiredIntermediateVariables,
+                self.logCalls,
+                self.printCalls,
+                self.logMessages,
+                self.printMessages,
+            )
+        } else {
+            Err("Co-Simulation is not supported.".into())
+        }
+    }
+
 }

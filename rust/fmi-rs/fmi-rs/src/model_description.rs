@@ -58,7 +58,7 @@ pub struct Category {
     pub description: Option<String>,
 }
 
-pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
+pub fn peek_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
     let text = match std::fs::read_to_string(path) {
         Ok(content) => content,
         Err(e) => return Err(format!("Failed to read XML file: {}", e).into()),
@@ -81,7 +81,7 @@ pub fn peak_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
 }
 
 pub fn peak_fmi_major_version(path: &Path) -> Result<FMIMajorVersion, Box<dyn Error>> {
-    let fmi_version = peak_fmi_version(path)?;
+    let fmi_version = peek_fmi_version(path)?;
 
     if fmi_version == "1.0" {
         Err("FMI 1.0 is not supported.".into())

@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use std::{fs::File, path::Path};
 use tempfile::TempDir;
 use zip::ZipArchive;

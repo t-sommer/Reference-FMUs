@@ -13,7 +13,6 @@ use libloading::{Library, Symbol};
 use std::cell::RefCell;
 use std::error::Error;
 use std::ffi::{CStr, CString};
-use std::mem::transmute;
 use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;

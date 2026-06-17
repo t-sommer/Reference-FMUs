@@ -6,7 +6,7 @@ use fmi::{
         FMU3,
         types::{fmi3FMUState, fmi3Status},
     },
-    model_description::{self, fmi3::ModelDescription},
+    model_description::fmi3::ModelDescription,
     util::extract_fmu,
 };
 

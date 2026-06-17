@@ -13,6 +13,7 @@ use libloading::{Library, Symbol};
 use std::cell::RefCell;
 use std::error::Error;
 use std::ffi::{CStr, CString};
+use std::io::{self, IsTerminal};
 use std::os::raw::{c_uint, c_void};
 use std::path::Path;
 use std::ptr::{self, null, null_mut};
@@ -236,12 +237,27 @@ pub extern "C" fn logMessage(
     };
 
     if instanceEnvironment.is_null() {
-        let prefix = match status {
-            fmi3Status::fmi3OK => "🛈".bright_blue(),
-            fmi3Status::fmi3Warning => "⚠".yellow(),
-            _ => "⨉".bright_red(),
+        if io::stderr().is_terminal() {
+            let prefix = match status {
+                fmi3Status::fmi3OK => "[INFO]".bright_blue(),
+                fmi3Status::fmi3Warning => "[WARNING]".yellow(),
+                fmi3Status::fmi3Error => "[ERROR]".bright_red(),
+                fmi3Status::fmi3Discard => "[DISCARD]".bright_red(),
+                fmi3Status::fmi3Fatal => "[FATAL]".bright_red(),
+                fmi3Status::fmi3Pending => "[PENDING]".bright_red(),
+            };
+            eprintln!("{prefix} {}", message_str.trim_end());
+        } else {
+            let prefix = match status {
+                fmi3Status::fmi3OK => "[INFO]",
+                fmi3Status::fmi3Warning => "[WARNING]",
+                fmi3Status::fmi3Error => "[ERROR]",
+                fmi3Status::fmi3Discard => "[DISCARD]",
+                fmi3Status::fmi3Fatal => "[FATAL]",
+                fmi3Status::fmi3Pending => "[PENDING]",
+            };
+            eprintln!("{prefix} {}", message_str.trim_end());
         };
-        eprintln!("{prefix} {}", message_str.trim_end());
     } else {
         let messages = unsafe { &*(instanceEnvironment as *const RefCell<Vec<Message>>) };
         let message = Message {

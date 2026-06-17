@@ -13,6 +13,7 @@ use libloading::{Library, Symbol};
 use std::cell::RefCell;
 use std::error::Error;
 use std::ffi::{CStr, CString};
+use std::io::{self, IsTerminal};
 use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
@@ -221,12 +222,27 @@ pub extern "C" fn logger(
     };
 
     if componentEnvironment.is_null() {
-        let prefix = match status {
-            fmi2Status::fmi2OK => "🛈".bright_blue(),
-            fmi2Status::fmi2Warning => "⚠".yellow(),
-            _ => "⨉".bright_red(),
+        if io::stderr().is_terminal() {
+            let prefix = match status {
+                fmi2Status::fmi2OK => "[INFO]".bright_blue(),
+                fmi2Status::fmi2Warning => "[WARNING]".yellow(),
+                fmi2Status::fmi2Error => "[ERROR]".bright_red(),
+                fmi2Status::fmi2Discard => "[DISCARD]".bright_red(),
+                fmi2Status::fmi2Fatal => "[FATAL]".bright_red(),
+                fmi2Status::fmi2Pending => "[PENDING]".bright_red(),
+            };
+            eprintln!("{prefix} {}", message_str.trim_end());
+        } else {
+            let prefix = match status {
+                fmi2Status::fmi2OK => "[INFO]",
+                fmi2Status::fmi2Warning => "[WARNING]",
+                fmi2Status::fmi2Error => "[ERROR]",
+                fmi2Status::fmi2Discard => "[DISCARD]",
+                fmi2Status::fmi2Fatal => "[FATAL]",
+                fmi2Status::fmi2Pending => "[PENDING]",
+            };
+            eprintln!("{prefix} {}", message_str.trim_end());
         };
-        eprintln!("{prefix} {}", message_str.trim_end());
     } else {
         let messages = unsafe { &*(componentEnvironment as *const RefCell<Vec<Message>>) };
         let message = Message {
@@ -379,8 +395,11 @@ impl<T> FMU2<T> {
 
     fn log_call(&self, status: fmi2Status, message: &str) {
         if self.printCalls {
-            let message = message.bright_black();
-            eprintln!("{message}");
+            if io::stderr().is_terminal() {
+                eprintln!("{} {message}", "[FMI]".bright_black());
+            } else {
+                eprintln!("[FMI] {message}");
+            }
         } else {
             let call = Call {
                 status,

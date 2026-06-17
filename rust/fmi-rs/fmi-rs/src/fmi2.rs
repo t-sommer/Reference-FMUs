@@ -339,7 +339,7 @@ impl<T> FMU2<T> {
             None
         };
 
-        fmu.component = fmu.instantiate(
+        match fmu.instantiate(
             instanceName,
             fmuType,
             guid,
@@ -347,12 +347,9 @@ impl<T> FMU2<T> {
             visible,
             loggingOn,
             provideMemoryManagementFunctions,
-        );
-
-        if fmu.component.is_null() {
-            Err("Failed to instantiate FMU.".into())
-        } else {
-            Ok(fmu)
+        ) {
+            Err(e) => return Err(e),
+            Ok(_) => Ok(fmu),
         }
     }
 
@@ -426,17 +423,34 @@ impl<T> FMU2<T> {
         visible: bool,
         loggingOn: bool,
         provideMemoryManagementFunctions: bool,
-    ) -> fmi2Component {
-        let instance_name_cstr = CString::new(instanceName).unwrap();
-        let fmu_guid_cstr = CString::new(guid).unwrap();
+    ) -> Result<(), Box<dyn Error>> {
+        let instance_name_cstr = match CString::new(instanceName) {
+            Ok(cstr) => cstr,
+            Err(e) => {
+                return Err(
+                    format!("Failed to convert argument instanceName to C string: {}", e).into(),
+                );
+            }
+        };
 
-        let url_cstr;
+        let fmu_guid_cstr = match CString::new(guid) {
+            Ok(cstr) => cstr,
+            Err(e) => {
+                return Err(format!("Failed to convert argument guid to C string: {}", e).into());
+            }
+        };
 
-        let fmuResourceLocation = if let Some(url) = resourceUrl {
-            url_cstr = CString::new(url.to_string()).unwrap();
-            url_cstr.as_ptr() as fmi2String
-        } else {
-            ptr::null() as fmi2String
+        let url_cstr = match resourceUrl
+            .map(|url| url.to_string())
+            .map(|url| {
+                CString::new(url).map_err(|e| {
+                    format!("Failed to convert argument resourceUrl to C string: {}", e)
+                })
+            })
+            .transpose()
+        {
+            Ok(cstr) => cstr,
+            Err(e) => return Err(e.into()),
         };
 
         let componentEnvironment = if self.logMessages && !self.printMessages {
@@ -484,12 +498,14 @@ impl<T> FMU2<T> {
         let visible = visible as fmi2Boolean;
         let loggingOn = loggingOn as fmi2Boolean;
 
+        let url_ptr = url_cstr.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null()) as fmi2String;
+
         let component = unsafe {
             (self.fmi2Instantiate)(
                 instance_name_cstr.as_ptr(),
                 fmuType,
                 fmu_guid_cstr.as_ptr(),
-                fmuResourceLocation,
+                url_ptr,
                 &callbacks,
                 visible as fmi2Boolean,
                 loggingOn as fmi2Boolean,
@@ -515,7 +531,9 @@ impl<T> FMU2<T> {
             }
         }
 
-        component
+        self.component = component;
+
+        Ok(())
     }
 
     pub fn terminate(&self) -> fmi2Status {

@@ -100,9 +100,9 @@ pub type fmi2StepFinished =
 #[derive(Debug)]
 pub struct fmi2CallbackFunctions {
     pub logger: fmi2CallbackLogger,
-    pub allocateMemory: fmi2CallbackAllocateMemory,
-    pub freeMemory: fmi2CallbackFreeMemory,
-    pub stepFinished: fmi2StepFinished,
+    pub allocateMemory: Option<fmi2CallbackAllocateMemory>,
+    pub freeMemory: Option<fmi2CallbackFreeMemory>,
+    pub stepFinished: Option<fmi2StepFinished>,
     pub componentEnvironment: fmi2ComponentEnvironment,
 }
 

@@ -467,16 +467,16 @@ impl<T> FMU2<T> {
         let mut callbacks = fmi2CallbackFunctions {
             logger,
             allocateMemory: if provideMemoryManagementFunctions {
-                allocateMemory
+                Some(allocateMemory)
             } else {
-                unsafe { transmute(std::ptr::null::<()>()) }
+                None
             },
             freeMemory: if provideMemoryManagementFunctions {
-                freeMemory
+                Some(freeMemory)
             } else {
-                unsafe { transmute(std::ptr::null::<()>()) }
+                None
             },
-            stepFinished: unsafe { std::mem::transmute(std::ptr::null::<()>()) },
+            stepFinished: None,
             componentEnvironment,
         };
 

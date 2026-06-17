@@ -37,7 +37,9 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
 
     let (_unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
-        Err(message) => { error!(message); },
+        Err(message) => {
+            error!(message);
+        }
     };
 
     println!("{}", "    Validating model description".green().bold());

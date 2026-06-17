@@ -5,11 +5,11 @@ mod test;
 mod validate;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use serde::Deserialize;
 use fmi::{
     model_description::{FMIMajorVersion, peak_fmi_major_version},
     util::extract_fmu,
 };
+use serde::Deserialize;
 use std::{path::Path, process::ExitCode};
 
 #[derive(ValueEnum, Clone, Debug, Deserialize)]
@@ -62,12 +62,14 @@ enum Commands {
     /// Simulate an FMU
     Simulate(SimulateArgs),
     /// Simulate an FMU using a configuration file
-    #[command(long_about = "Load simulation configuration from a TOML file with the same parameters as the simulate command.\n\n\
+    #[command(
+        long_about = "Load simulation configuration from a TOML file with the same parameters as the simulate command.\n\n\
         Example configuration file:\n\n\
         fmu_file = \"BouncingBall.fmu\"\n\
         start_values = [[\"h\", \"1.5\"]]\n\
         stop_time = 3.0\n\
-    ")]
+    "
+    )]
     SimulateConfig(SimulateConfigArgs),
     /// Run tests
     #[command(hide = true)]
@@ -198,7 +200,7 @@ macro_rules! error {
     ($message:expr) => {
         use colored::Colorize;
         eprintln!("{}: {}", "error".red().bold(), $message);
-        return ExitCode::FAILURE; 
+        return ExitCode::FAILURE;
     };
 }
 

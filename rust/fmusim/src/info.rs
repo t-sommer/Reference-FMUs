@@ -3,12 +3,14 @@ use std::process::ExitCode;
 use colored::Colorize;
 use fmi::model_description::FMIMajorVersion;
 
-use crate::{InfoArgs, prepare_fmu, error};
+use crate::{InfoArgs, error, prepare_fmu};
 
 pub fn show_fmu_info(args: &InfoArgs) -> ExitCode {
     let (unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
-        Err(message) => { error!(message); },
+        Err(message) => {
+            error!(message);
+        }
     };
 
     let entries = std::fs::read_dir(unzipdir.path().join("binaries")).unwrap();

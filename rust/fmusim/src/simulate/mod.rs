@@ -8,14 +8,15 @@ pub mod fmi2;
 pub mod fmi3;
 
 pub fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
-
     if args.fmu_file.is_empty() {
         error!("No FMU file specified.");
     }
 
     let (unzipdir, xml_path, fmi_major_version) = match prepare_fmu(&args.fmu_file) {
         Ok(val) => val,
-        Err(message) => { error!(message); },
+        Err(message) => {
+            error!(message);
+        }
     };
 
     let start_time = std::time::Instant::now();
@@ -42,15 +43,19 @@ pub fn simulate_fmu(args: &SimulateArgs) -> ExitCode {
 pub fn simulate_config(args: &SimulateConfigArgs) -> ExitCode {
     match read_to_string(&args.config_path) {
         Ok(content) => match toml::from_str::<SimulateArgs>(&content) {
-            Ok(toml_args) => {
-                simulate_fmu(&toml_args)
-            }
+            Ok(toml_args) => simulate_fmu(&toml_args),
             Err(e) => {
-                error!(format!("Failed to parse config file {}: {e}", &args.config_path));
+                error!(format!(
+                    "Failed to parse config file {}: {e}",
+                    &args.config_path
+                ));
             }
         },
         Err(e) => {
-            error!(format!("Failed to read config file {}: {e}", &args.config_path));
+            error!(format!(
+                "Failed to read config file {}: {e}",
+                &args.config_path
+            ));
         }
     }
 }

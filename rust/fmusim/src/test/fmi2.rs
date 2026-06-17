@@ -228,10 +228,8 @@ fn get_all_variables<T>(
                     && let Some(literal) = start
                 {
                     let expected = match literal.as_str() {
-                        "true" => fmi2True,
-                        "false" => fmi2False,
-                        "1" => fmi2True,
-                        "0" => fmi2False,
+                        "true" | "1" => fmi2True,
+                        "false" | "0" => fmi2False,
                         _ => return Err(format!("Invalid boolean literal: {literal}").into()),
                     };
                     assert_equal(&variable.name, expected, values[0])?;

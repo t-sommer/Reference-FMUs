@@ -481,8 +481,8 @@ impl<T> FMU2<T> {
 
         unsafe { add_logger_proxy(&mut callbacks) };
 
-        let visible = if visible { fmi2True } else { fmi2False };
-        let loggingOn = if loggingOn { fmi2True } else { fmi2False };
+        let visible = visible as fmi2Boolean;
+        let loggingOn = loggingOn as fmi2Boolean;
 
         let component = unsafe {
             (self.fmi2Instantiate)(
@@ -491,8 +491,8 @@ impl<T> FMU2<T> {
                 fmu_guid_cstr.as_ptr(),
                 fmuResourceLocation,
                 &callbacks,
-                visible,
-                loggingOn,
+                visible as fmi2Boolean,
+                loggingOn as fmi2Boolean,
             )
         };
 

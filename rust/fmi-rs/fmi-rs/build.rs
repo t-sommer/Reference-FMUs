@@ -1,3 +1,5 @@
+use std::env;
+
 fn main() {
     // Tell Cargo to rebuild if any of these files change
     println!("cargo:rerun-if-changed=src/c/src/logger_proxy.c");
@@ -6,15 +8,26 @@ fn main() {
     println!("cargo:rerun-if-changed=src/c/src/structured_variable_name.yy.c");
     println!("cargo:rerun-if-changed=src/c/include/structured_variable_name.tab.h");
 
+    let target = env::var("TARGET").unwrap();
+
     cc::Build::new()
         .include("src/c/include")
         .file("src/c/src/logger_proxy.c")
         .compile("logger_proxy");
-    cc::Build::new()
+
+    let mut builder = cc::Build::new();
+
+    builder
         .define("YY_NO_UNISTD_H", None)
         .include("src/c/include")
         .file("src/c/src/variable_name_validator.c")
         .file("src/c/src/structured_variable_name.tab.c")
-        .file("src/c/src/structured_variable_name.yy.c")
-        .compile("variable_name_validator");
+        .file("src/c/src/structured_variable_name.yy.c");
+
+    if !target.contains("msvc") {
+        builder.flag("-Wno-implicit-function-declaration");
+        builder.flag("-Wno-unused-function");
+    }
+
+    builder.compile("variable_name_validator");
 }

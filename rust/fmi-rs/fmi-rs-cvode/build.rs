@@ -9,17 +9,13 @@ fn main() {
     // Organize vendor by target triple to prevent cross-compilation conflicts
     let library_dir = manifest_dir.join("vendor").join(&target);
 
-    let lib_ext = if target.contains("windows") {
-        "lib"
+    let (lib_prefix, lib_suffix) = if target.contains("windows") {
+        ("sundials_", "_static")
     } else {
-        "a"
+        ("sundials_", "")
     };
-    let lib_name = format!("sundials_core_static.{}", lib_ext);
 
-    // Check if sundials_core_static exists; if not, download and build it.
-    let lib_path = library_dir.join("lib").join(lib_name);
-
-    if !lib_path.exists() {
+    if !library_dir.exists() {
         fetch_and_build_cvode(&library_dir, &target);
     }
 
@@ -27,11 +23,15 @@ fn main() {
         "cargo:rustc-link-search=native={}",
         library_dir.join("lib").display()
     );
-    println!("cargo:rustc-link-lib=static=sundials_core_static");
-    println!("cargo:rustc-link-lib=static=sundials_cvode_static");
-    println!("cargo:rustc-link-lib=static=sundials_nvecserial_static");
-    println!("cargo:rustc-link-lib=static=sundials_sunlinsoldense_static");
-    println!("cargo:rustc-link-lib=static=sundials_sunmatrixdense_static");
+    println!(
+        "cargo:rustc-link-search=native={}",
+        library_dir.join("lib64").display()
+    );
+    println!("cargo:rustc-link-lib=static={lib_prefix}core{lib_suffix}");
+    println!("cargo:rustc-link-lib=static={lib_prefix}cvode{lib_suffix}");
+    println!("cargo:rustc-link-lib=static={lib_prefix}nvecserial{lib_suffix}");
+    println!("cargo:rustc-link-lib=static={lib_prefix}sunlinsoldense{lib_suffix}");
+    println!("cargo:rustc-link-lib=static={lib_prefix}sunmatrixdense{lib_suffix}");
 }
 
 /// Downloads, builds, and installs cvode to the specified directory.

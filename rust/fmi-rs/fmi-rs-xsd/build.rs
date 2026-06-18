@@ -7,16 +7,14 @@ fn main() {
     // Organize vendor by target triple to prevent cross-compilation conflicts
     let library_dir = manifest_dir.join("vendor").join(&target);
 
-    let lib_ext = if target.contains("windows") {
-        "lib"
+    let lib_name = if target.contains("windows") {
+        "libxml2s"
     } else {
-        "a"
+        "xml2"
     };
-    let lib_name = format!("libxml2s.{}", lib_ext);
 
     // Check if libxml2 static library exists; if not, download and build it.
-    let lib_path = library_dir.join("lib").join(lib_name);
-    if !lib_path.exists() {
+    if !library_dir.exists() {
         fetch_and_build_libxml2(&library_dir, &target);
     }
 
@@ -31,12 +29,18 @@ fn main() {
         "cargo:rustc-link-search=native={}",
         library_dir.join("lib").display()
     );
-    println!("cargo:rustc-link-lib=static=libxml2s");
+    println!(
+        "cargo:rustc-link-search=native={}",
+        library_dir.join("lib64").display()
+    );
+    println!("cargo:rustc-link-lib=static={lib_name}");
 
     // Windows system libraries required by libxml2
-    println!("cargo:rustc-link-lib=dylib=ws2_32");
-    println!("cargo:rustc-link-lib=dylib=bcrypt");
-    println!("cargo:rustc-link-lib=dylib=winmm");
+    if target.contains("windows") {
+        println!("cargo:rustc-link-lib=dylib=ws2_32");
+        println!("cargo:rustc-link-lib=dylib=bcrypt");
+        println!("cargo:rustc-link-lib=dylib=winmm");
+    }
 }
 
 /// Downloads, builds, and installs libxml2 to the specified directory.
@@ -48,7 +52,7 @@ fn fetch_and_build_libxml2(install_dir: &std::path::Path, target: &str) {
     let out_path = std::path::Path::new(&out_dir);
 
     println!(
-        "cargo:warning=libxml2s.lib not found. Downloading and building libxml2 v{}...",
+        "cargo:warning=libxml2 not found. Downloading and building libxml2 v{}...",
         version
     );
 
@@ -134,12 +138,4 @@ fn fetch_and_build_libxml2(install_dir: &std::path::Path, target: &str) {
             String::from_utf8_lossy(&status.stderr)
         );
     }
-
-    // // 5. Ensure the static library is named libxml2s.lib (the expected name for static libxml2 on MSVC)
-    // let lib_file = install_dir.join("lib/libxml2.lib");
-    // let target_lib = install_dir.join("lib/libxml2s.lib");
-
-    // if lib_file.exists() && !target_lib.exists() {
-    //     let _ = std::fs::rename(lib_file, target_lib);
-    // }
 }

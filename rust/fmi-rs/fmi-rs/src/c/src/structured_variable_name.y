@@ -7,10 +7,10 @@ extern int yylex();
 extern int yyparse();
 extern FILE* yyin;
 
-void yyerror(const char* variable_name, const char* s);
+void yyerror(char** error_message, const char* s);
 %}
 
-%parse-param {const char* variable_name}
+%parse-param {char** error_message}
 
 %define parse.error verbose
 

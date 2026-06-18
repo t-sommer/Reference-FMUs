@@ -35,8 +35,8 @@
    especially those whose name start with YY_ or yy_.  They are
    private implementation details that can be changed or removed.  */
 
-#ifndef YY_YY_INCLUDE_STRUCTURED_VARIABLE_NAME_TAB_H_INCLUDED
-# define YY_YY_INCLUDE_STRUCTURED_VARIABLE_NAME_TAB_H_INCLUDED
+#ifndef YY_YY_STRUCTURED_VARIABLE_NAME_TAB_H_INCLUDED
+# define YY_YY_STRUCTURED_VARIABLE_NAME_TAB_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -73,7 +73,7 @@ typedef int YYSTYPE;
 extern YYSTYPE yylval;
 
 
-int yyparse (const char* variable_name);
+int yyparse (char** error_message);
 
 
-#endif /* !YY_YY_INCLUDE_STRUCTURED_VARIABLE_NAME_TAB_H_INCLUDED  */
+#endif /* !YY_YY_STRUCTURED_VARIABLE_NAME_TAB_H_INCLUDED  */

@@ -2,6 +2,10 @@
 #include <string.h>
 #include "structured_variable_name.tab.h"
 
+// Regenerate the lexer and parser:
+// flex -o structured_variable_name.yy.c structured_variable_name.l
+// bison -d -o structured_variable_name.tab.c structured_variable_name.y
+
 void set_input_string(const char* in);
 
 void end_lexical_scan(void);

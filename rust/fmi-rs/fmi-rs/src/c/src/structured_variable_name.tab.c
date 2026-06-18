@@ -77,7 +77,7 @@ extern int yylex();
 extern int yyparse();
 extern FILE* yyin;
 
-void yyerror(const char* variable_name, const char* s);
+void yyerror(char** error_message, const char* s);
 
 #line 83 "structured_variable_name.tab.c"
 
@@ -649,7 +649,7 @@ enum { YYENOMEM = -2 };
       }                                                           \
     else                                                          \
       {                                                           \
-        yyerror (variable_name, YY_("syntax error: cannot back up")); \
+        yyerror (error_message, YY_("syntax error: cannot back up")); \
         YYERROR;                                                  \
       }                                                           \
   while (0)
@@ -682,7 +682,7 @@ do {                                                                      \
     {                                                                     \
       YYFPRINTF (stderr, "%s ", Title);                                   \
       yy_symbol_print (stderr,                                            \
-                  Kind, Value, variable_name); \
+                  Kind, Value, error_message); \
       YYFPRINTF (stderr, "\n");                                           \
     }                                                                     \
 } while (0)
@@ -694,11 +694,11 @@ do {                                                                      \
 
 static void
 yy_symbol_value_print (FILE *yyo,
-                       yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep, const char* variable_name)
+                       yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep, char** error_message)
 {
   FILE *yyoutput = yyo;
   YY_USE (yyoutput);
-  YY_USE (variable_name);
+  YY_USE (error_message);
   if (!yyvaluep)
     return;
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
@@ -713,12 +713,12 @@ yy_symbol_value_print (FILE *yyo,
 
 static void
 yy_symbol_print (FILE *yyo,
-                 yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep, const char* variable_name)
+                 yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep, char** error_message)
 {
   YYFPRINTF (yyo, "%s %s (",
              yykind < YYNTOKENS ? "token" : "nterm", yysymbol_name (yykind));
 
-  yy_symbol_value_print (yyo, yykind, yyvaluep, variable_name);
+  yy_symbol_value_print (yyo, yykind, yyvaluep, error_message);
   YYFPRINTF (yyo, ")");
 }
 
@@ -752,7 +752,7 @@ do {                                                            \
 
 static void
 yy_reduce_print (yy_state_t *yyssp, YYSTYPE *yyvsp,
-                 int yyrule, const char* variable_name)
+                 int yyrule, char** error_message)
 {
   int yylno = yyrline[yyrule];
   int yynrhs = yyr2[yyrule];
@@ -765,7 +765,7 @@ yy_reduce_print (yy_state_t *yyssp, YYSTYPE *yyvsp,
       YYFPRINTF (stderr, "   $%d = ", yyi + 1);
       yy_symbol_print (stderr,
                        YY_ACCESSING_SYMBOL (+yyssp[yyi + 1 - yynrhs]),
-                       &yyvsp[(yyi + 1) - (yynrhs)], variable_name);
+                       &yyvsp[(yyi + 1) - (yynrhs)], error_message);
       YYFPRINTF (stderr, "\n");
     }
 }
@@ -773,7 +773,7 @@ yy_reduce_print (yy_state_t *yyssp, YYSTYPE *yyvsp,
 # define YY_REDUCE_PRINT(Rule)          \
 do {                                    \
   if (yydebug)                          \
-    yy_reduce_print (yyssp, yyvsp, Rule, variable_name); \
+    yy_reduce_print (yyssp, yyvsp, Rule, error_message); \
 } while (0)
 
 /* Nonzero means print parse trace.  It is left uninitialized so that
@@ -1081,10 +1081,10 @@ yysyntax_error (YYPTRDIFF_T *yymsg_alloc, char **yymsg,
 
 static void
 yydestruct (const char *yymsg,
-            yysymbol_kind_t yykind, YYSTYPE *yyvaluep, const char* variable_name)
+            yysymbol_kind_t yykind, YYSTYPE *yyvaluep, char** error_message)
 {
   YY_USE (yyvaluep);
-  YY_USE (variable_name);
+  YY_USE (error_message);
   if (!yymsg)
     yymsg = "Deleting";
   YY_SYMBOL_PRINT (yymsg, yykind, yyvaluep, yylocationp);
@@ -1111,7 +1111,7 @@ int yynerrs;
 `----------*/
 
 int
-yyparse (const char* variable_name)
+yyparse (char** error_message)
 {
     yy_state_fast_t yystate = 0;
     /* Number of tokens to shift before error messages enabled.  */
@@ -1430,7 +1430,7 @@ yyerrlab:
                 yysyntax_error_status = YYENOMEM;
               }
           }
-        yyerror (variable_name, yymsgp);
+        yyerror (error_message, yymsgp);
         if (yysyntax_error_status == YYENOMEM)
           YYNOMEM;
       }
@@ -1450,7 +1450,7 @@ yyerrlab:
       else
         {
           yydestruct ("Error: discarding",
-                      yytoken, &yylval, variable_name);
+                      yytoken, &yylval, error_message);
           yychar = YYEMPTY;
         }
     }
@@ -1506,7 +1506,7 @@ yyerrlab1:
 
 
       yydestruct ("Error: popping",
-                  YY_ACCESSING_SYMBOL (yystate), yyvsp, variable_name);
+                  YY_ACCESSING_SYMBOL (yystate), yyvsp, error_message);
       YYPOPSTACK (1);
       yystate = *yyssp;
       YY_STACK_PRINT (yyss, yyssp);
@@ -1544,7 +1544,7 @@ yyabortlab:
 | yyexhaustedlab -- YYNOMEM (memory exhaustion) comes here.  |
 `-----------------------------------------------------------*/
 yyexhaustedlab:
-  yyerror (variable_name, YY_("memory exhausted"));
+  yyerror (error_message, YY_("memory exhausted"));
   yyresult = 2;
   goto yyreturnlab;
 
@@ -1559,7 +1559,7 @@ yyreturnlab:
          user semantic actions for why this is necessary.  */
       yytoken = YYTRANSLATE (yychar);
       yydestruct ("Cleanup: discarding lookahead",
-                  yytoken, &yylval, variable_name);
+                  yytoken, &yylval, error_message);
     }
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYABORT or YYACCEPT.  */
@@ -1568,7 +1568,7 @@ yyreturnlab:
   while (yyssp != yyss)
     {
       yydestruct ("Cleanup: popping",
-                  YY_ACCESSING_SYMBOL (+*yyssp), yyvsp, variable_name);
+                  YY_ACCESSING_SYMBOL (+*yyssp), yyvsp, error_message);
       YYPOPSTACK (1);
     }
 #ifndef yyoverflow

@@ -8,30 +8,25 @@ fn main() {
 
     // Organize vendor by target triple to prevent cross-compilation conflicts
     let library_dir = manifest_dir.join("vendor").join(&target);
-
-    let (lib_prefix, lib_suffix) = if target.contains("windows") {
-        ("sundials_", "_static")
-    } else {
-        ("sundials_", "")
-    };
-
+    
     if !library_dir.exists() {
         fetch_and_build_cvode(&library_dir, &target);
     }
-
+    
     println!(
         "cargo:rustc-link-search=native={}",
         library_dir.join("lib").display()
     );
-    println!(
-        "cargo:rustc-link-search=native={}",
-        library_dir.join("lib64").display()
-    );
-    println!("cargo:rustc-link-lib=static={lib_prefix}core{lib_suffix}");
-    println!("cargo:rustc-link-lib=static={lib_prefix}cvode{lib_suffix}");
-    println!("cargo:rustc-link-lib=static={lib_prefix}nvecserial{lib_suffix}");
-    println!("cargo:rustc-link-lib=static={lib_prefix}sunlinsoldense{lib_suffix}");
-    println!("cargo:rustc-link-lib=static={lib_prefix}sunmatrixdense{lib_suffix}");
+
+    let lib_suffix = if target.contains("windows") {
+        "_static"
+    } else {
+        ""
+    };
+
+    for lib in ["core", "cvode", "nvecserial", "sunlinsoldense", "sunmatrixdense"] {
+         println!("cargo:rustc-link-lib=static=sundials_{lib}{lib_suffix}");
+    }
 }
 
 /// Downloads, builds, and installs cvode to the specified directory.

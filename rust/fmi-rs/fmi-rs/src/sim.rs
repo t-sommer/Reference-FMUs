@@ -71,3 +71,38 @@ pub fn relative_lt(lhs: f64, rhs: f64) -> bool {
 pub fn relative_gt(lhs: f64, rhs: f64) -> bool {
     lhs > rhs && !relative_eq(lhs, rhs)
 }
+
+/// Validates the simulation steps and returns an error message if any of the checks fail.
+pub fn validate_simulation_steps(
+    start_time: f64,
+    stop_time: f64,
+    output_interval: f64,
+) -> Result<(), String> {
+    if stop_time < start_time {
+        return Err(format!(
+            "Stop time ({}) must be greater than or equal to start time ({}).",
+            stop_time, start_time
+        ));
+    }
+
+    if output_interval <= 0.0 {
+        return Err(format!(
+            "Output interval ({}) must be greater than 0.",
+            output_interval
+        ));
+    } else if output_interval > (stop_time - start_time) {
+        return Err(format!(
+            "Output interval ({}) must be less than or equal to the simulation duration ({}).",
+            output_interval,
+            stop_time - start_time
+        ));
+    } else if !relative_eq(((stop_time - start_time) / output_interval).fract(), 0.0) {
+        return Err(format!(
+            "Output interval ({}) must be a divisor of the simulation duration ({}).",
+            output_interval,
+            stop_time - start_time
+        ));
+    }
+
+    Ok(())
+}

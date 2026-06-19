@@ -5,6 +5,7 @@ pub mod recorder;
 use std::{collections::HashMap, error::Error};
 
 use crate::model_description::fmi3::{Causality, ModelDescription};
+use crate::sim::validate_simulation_steps;
 use crate::{
     fmi3::{FMU3, types::*},
     model_description::fmi3::{ModelVariable, VariableType},
@@ -460,6 +461,8 @@ pub fn simulate_cs(
     let output_interval = settings.output_interval;
     let event_mode_used = settings.event_mode_used;
 
+    validate_simulation_steps(start_time, stop_time, output_interval)?;
+
     let mut time = start_time;
 
     let co_simulation = match &settings.model_description.coSimulation {
@@ -684,6 +687,8 @@ pub fn simulate_me<S: SolverFactory>(
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;
     let output_interval = settings.output_interval;
+
+    validate_simulation_steps(start_time, stop_time, output_interval)?;
 
     let mut time = start_time;
 

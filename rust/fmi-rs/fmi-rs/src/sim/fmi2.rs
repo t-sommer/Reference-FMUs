@@ -15,7 +15,7 @@ use crate::{
     sim::{
         SolverFactory,
         fmi2::{input::StaticInput, recorder::Recorder},
-        relative_eq, relative_ge, relative_gt, relative_le, relative_lt,
+        relative_eq, relative_ge, relative_gt, relative_le, relative_lt, validate_simulation_steps,
     },
 };
 
@@ -239,6 +239,8 @@ pub fn simulate_cs(
     let set_stop_time = settings.set_stop_time;
     let output_interval = settings.output_interval;
 
+    validate_simulation_steps(start_time, stop_time, output_interval)?;
+
     let mut time = start_time;
 
     let co_simulation = match &settings.model_description.coSimulation {
@@ -358,6 +360,8 @@ pub fn simulate_me<S: SolverFactory>(
     let stop_time = settings.stop_time;
     let set_stop_time = settings.set_stop_time;
     let output_interval = settings.output_interval;
+
+    validate_simulation_steps(start_time, stop_time, output_interval)?;
 
     let mut time = start_time;
 

@@ -4,12 +4,14 @@ mod simulate;
 mod test;
 mod validate;
 
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use clap_complete::Shell;
 use fmi::{
     model_description::{FMIMajorVersion, peak_fmi_major_version},
     util::extract_fmu,
 };
 use serde::Deserialize;
+use std::io;
 use std::{path::Path, process::ExitCode};
 
 #[derive(ValueEnum, Clone, Debug, Deserialize)]
@@ -53,8 +55,25 @@ struct Cli {
     command: Commands,
 }
 
+// We map this to clap_complete's Shell enum
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShellArg {
+    Bash,
+    Zsh,
+    Fish,
+    PowerShell,
+    Elvish,
+}
+
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// Generate shell completion scripts
+    #[command(hide = true)]
+    Completion {
+        /// The shell to generate completions for
+        #[arg(value_enum)]
+        shell: ShellArg,
+    },
     /// Display information about an FMU
     Info(InfoArgs),
     /// Validate an FMU
@@ -208,6 +227,22 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
 
     match &cli.command {
+        Commands::Completion { shell } => {
+            let target_shell = match shell {
+                ShellArg::Bash => Shell::Bash,
+                ShellArg::Zsh => Shell::Zsh,
+                ShellArg::Fish => Shell::Fish,
+                ShellArg::PowerShell => Shell::PowerShell,
+                ShellArg::Elvish => Shell::Elvish,
+            };
+
+            let mut cmd = Cli::command();
+            let bin_name = cmd.get_name().to_string();
+
+            clap_complete::generate(target_shell, &mut cmd, bin_name, &mut io::stdout());
+
+            ExitCode::SUCCESS
+        }
         Commands::Info(args) => info::show_fmu_info(args),
         Commands::Validate(args) => validate::validate_fmu(args),
         Commands::Simulate(args) => simulate::simulate_fmu(args),

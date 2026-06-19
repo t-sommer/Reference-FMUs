@@ -57,33 +57,30 @@ pub fn simulate_fmu(
 
     let (start_time, stop_time, _tolerance) =
         if let Some(default_experiment) = &model_description.defaultExperiment {
-            let start_time: f64 = if let Some(v) = &default_experiment.startTime {
-                v.parse().unwrap()
-            } else {
-                0.0
-            };
-            let stop_time: f64 = if let Some(v) = &default_experiment.stopTime {
-                v.parse().unwrap()
-            } else {
-                start_time + 1.0
-            };
+            let start_time: f64 = default_experiment
+                .startTime
+                .as_ref()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.0);
+            let stop_time: f64 = default_experiment
+                .stopTime
+                .as_ref()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(start_time + 1.0);
             let tolerance: Option<f64> = default_experiment
                 .tolerance
                 .as_ref()
-                .map(|v| v.parse().unwrap());
+                .and_then(|v| v.parse().ok());
             (start_time, stop_time, tolerance)
         } else {
             (0.0, 1.0, None)
         };
 
-    let internal_step_size: Option<f64> = model_description
+    let default_step_size: Option<f64> = model_description
         .defaultExperiment
         .as_ref()
-        .unwrap()
-        .stepSize
-        .as_ref()
-        .map(|v| v.parse())
-        .transpose()?;
+        .and_then(|d| d.stepSize.clone())
+        .and_then(|v| v.parse().ok());
 
     let start_time = args.start_time.unwrap_or(start_time);
     let stop_time = args.stop_time.unwrap_or(stop_time);
@@ -91,7 +88,7 @@ pub fn simulate_fmu(
 
     let output_interval = if let Some(v) = args.output_interval {
         v
-    } else if let Some(v) = internal_step_size {
+    } else if let Some(v) = default_step_size {
         v
     } else {
         (stop_time - start_time) / 500.0
@@ -265,15 +262,18 @@ pub fn plot_result(
                 let tick_values: Vec<i32> = items.iter().map(|item| item.value).collect();
                 let tick_text: Vec<String> = items.iter().map(|item| item.name.clone()).collect();
 
-                let minimum = tick_values.iter().min().unwrap();
-                let maximum = tick_values.iter().max().unwrap();
+                let min_value = tick_values.iter().min();
+                let max_value = tick_values.iter().max();
 
                 let tick_values = tick_values.iter().map(|v| *v as f64).collect();
 
                 y_axis = y_axis
                     .tick_values(tick_values)
-                    .tick_text(tick_text)
-                    .range(AxisRange::new(*minimum, *maximum));
+                    .tick_text(tick_text);
+
+                if let (Some(min_value), Some(max_value)) = (min_value, max_value) {
+                    y_axis = y_axis.range(AxisRange::new(*min_value, *max_value));
+                }
             } else {
                 continue;
             }

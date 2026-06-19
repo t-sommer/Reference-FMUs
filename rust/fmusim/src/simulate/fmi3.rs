@@ -21,7 +21,7 @@ use plotly::{
     },
 };
 
-use crate::{InterfaceType, SimulateArgs, SolverType};
+use crate::{InterfaceType, SimulateArgs, SolverType, simulate::calculate_simulation_steps};
 
 pub fn simulate_fmu(
     args: &SimulateArgs,
@@ -61,44 +61,15 @@ pub fn simulate_fmu(
             output_variables
         };
 
-    let (start_time, stop_time, _tolerance) =
-        if let Some(default_experiment) = &model_description.defaultExperiment {
-            let start_time: f64 = default_experiment
-                .startTime
-                .as_ref()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(0.0);
-            let stop_time: f64 = default_experiment
-                .stopTime
-                .as_ref()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(start_time + 1.0);
-            let tolerance: Option<f64> = default_experiment
-                .tolerance
-                .as_ref()
-                .and_then(|v| v.parse().ok());
-            (start_time, stop_time, tolerance)
-        } else {
-            (0.0, 1.0, None)
-        };
-
-    let internal_step_size = model_description
+    let default_experiment = model_description.defaultExperiment.as_ref();
+    let fixed_step_size = model_description
         .coSimulation
         .as_ref()
         .and_then(|cs| cs.fixedInternalStepSize.as_ref())
         .and_then(|v| v.parse().ok());
 
-    let start_time = args.start_time.unwrap_or(start_time);
-    let stop_time = args.stop_time.unwrap_or(stop_time);
-    let tolerance = args.tolerance;
-
-    let output_interval = if let Some(v) = args.output_interval {
-        v
-    } else if let Some(v) = internal_step_size {
-        v
-    } else {
-        (stop_time - start_time) / 500.0
-    };
+    let (start_time, stop_time, tolerance, output_interval) =
+        calculate_simulation_steps(args, default_experiment, fixed_step_size);
 
     let settings = fmi::sim::fmi3::SimulationSettings {
         unzipdir: unzipdir.path(),
@@ -283,12 +254,10 @@ pub fn plot_result(
 
                 let min_value = tick_values.iter().min();
                 let max_value = tick_values.iter().max();
-                
+
                 let tick_values = tick_values.iter().map(|v| *v as f64).collect();
 
-                y_axis = y_axis
-                    .tick_values(tick_values)
-                    .tick_text(tick_text);
+                y_axis = y_axis.tick_values(tick_values).tick_text(tick_text);
 
                 if let (Some(min_value), Some(max_value)) = (min_value, max_value) {
                     y_axis = y_axis.range(AxisRange::new(*min_value, *max_value));

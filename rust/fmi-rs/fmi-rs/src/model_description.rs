@@ -58,6 +58,15 @@ pub struct Category {
     pub description: Option<String>,
 }
 
+#[derive(Debug)]
+pub struct DefaultExperiment {
+    pub startTime: Option<String>,
+    pub stopTime: Option<String>,
+    pub tolerance: Option<String>,
+    pub stepSize: Option<String>,
+    pub range: Range<usize>,
+}
+
 pub fn peek_fmi_version(path: &Path) -> Result<String, Box<dyn Error>> {
     let text = match std::fs::read_to_string(path) {
         Ok(content) => content,

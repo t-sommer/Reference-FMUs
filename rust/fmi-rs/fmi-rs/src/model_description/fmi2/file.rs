@@ -11,18 +11,6 @@ use crate::model_description::fmi2::{
     ModelExchange, ScalarVariable, Unknown, Variability, VariableNamingConvention, VariableType,
 };
 
-impl DefaultExperiment {
-    fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(DefaultExperiment {
-            startTime: node.attribute_as("startTime")?,
-            stopTime: node.attribute_as("stopTime")?,
-            tolerance: node.attribute_as("tolerance")?,
-            stepSize: node.attribute_as("stepSize")?,
-            range: node.range(),
-        })
-    }
-}
-
 impl ModelExchange {
     fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
         let sourceFiles = node

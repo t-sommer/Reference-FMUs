@@ -2,7 +2,7 @@ use std::{any::TypeId, error::Error, str::FromStr};
 
 use roxmltree::Node;
 
-use crate::model_description::{BaseUnit, Category, DisplayUnit, Unit};
+use crate::model_description::{BaseUnit, Category, DefaultExperiment, DisplayUnit, Unit};
 
 pub(crate) trait NodeExt<'a, 'input> {
     fn get_child(&self, name: &str) -> Option<Node<'a, 'input>>;
@@ -150,6 +150,18 @@ impl Category {
         Ok(Category {
             name: node.required_attribute("name")?,
             description: node.attribute_as("description")?,
+        })
+    }
+}
+
+impl DefaultExperiment {
+    pub(crate) fn from_node(node: &roxmltree::Node) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(DefaultExperiment {
+            startTime: node.attribute_as("startTime")?,
+            stopTime: node.attribute_as("stopTime")?,
+            tolerance: node.attribute_as("tolerance")?,
+            stepSize: node.attribute_as("stepSize")?,
+            range: node.range(),
         })
     }
 }

@@ -6,7 +6,7 @@ use std::{ops::Range, str::FromStr};
 
 use crate::{
     fmi2::types::fmi2ValueReference,
-    model_description::{Category, Unit},
+    model_description::{Category, DefaultExperiment, Unit},
 };
 
 pub type VariableIndex = u32;
@@ -245,15 +245,6 @@ impl SimpleType {
             | SimpleType::Enumeration { name, .. } => name,
         }
     }
-}
-
-#[derive(Debug)]
-pub struct DefaultExperiment {
-    pub startTime: Option<String>,
-    pub stopTime: Option<String>,
-    pub tolerance: Option<String>,
-    pub stepSize: Option<String>,
-    pub range: Range<usize>,
 }
 
 #[derive(Debug)]

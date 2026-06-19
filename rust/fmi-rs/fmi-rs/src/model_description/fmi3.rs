@@ -6,7 +6,7 @@ use std::{ops::Range, str::FromStr};
 
 use crate::{
     fmi3::types::fmi3ValueReference,
-    model_description::{Category, Unit},
+    model_description::{Category, DefaultExperiment, Unit},
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -526,15 +526,6 @@ impl FromStr for DependencyKind {
             _ => Err(format!("Unknown dependency kind: {}", s)),
         }
     }
-}
-
-#[derive(Debug)]
-pub struct DefaultExperiment {
-    pub startTime: Option<String>,
-    pub stopTime: Option<String>,
-    pub tolerance: Option<String>,
-    pub stepSize: Option<String>,
-    pub range: Range<usize>,
 }
 
 #[derive(Debug)]

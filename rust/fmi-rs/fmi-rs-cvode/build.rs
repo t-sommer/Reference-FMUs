@@ -8,11 +8,11 @@ fn main() {
 
     // Organize vendor by target triple to prevent cross-compilation conflicts
     let library_dir = manifest_dir.join("vendor").join(&target);
-    
+
     if !library_dir.exists() {
         fetch_and_build_cvode(&library_dir, &target);
     }
-    
+
     println!(
         "cargo:rustc-link-search=native={}",
         library_dir.join("lib").display()
@@ -24,8 +24,14 @@ fn main() {
         ""
     };
 
-    for lib in ["core", "cvode", "nvecserial", "sunlinsoldense", "sunmatrixdense"] {
-         println!("cargo:rustc-link-lib=static=sundials_{lib}{lib_suffix}");
+    for lib in [
+        "core",
+        "cvode",
+        "nvecserial",
+        "sunlinsoldense",
+        "sunmatrixdense",
+    ] {
+        println!("cargo:rustc-link-lib=static=sundials_{lib}{lib_suffix}");
     }
 }
 

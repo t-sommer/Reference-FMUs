@@ -10,7 +10,7 @@ use zip::ZipArchive;
 
 use crate::{
     fmi2,
-    fmi3::{self, log::DefaultLogger},
+    fmi3,
     model_description::{
         self, fmi2::ModelDescription as ModelDescription2,
         fmi3::ModelDescription as ModelDescription3,
@@ -74,10 +74,8 @@ pub struct FMU2Builder {
     pub model_description: crate::model_description::fmi2::ModelDescription,
     pub visible: bool,
     pub loggingOn: bool,
+    pub logFile: Option<PathBuf>,
     pub logCalls: bool,
-    pub printCalls: bool,
-    pub logMessages: bool,
-    pub printMessages: bool,
 }
 
 impl FMU2Builder {
@@ -91,10 +89,8 @@ impl FMU2Builder {
             model_description,
             visible: false,
             loggingOn: false,
+            logFile: None,
             logCalls: false,
-            printCalls: true,
-            logMessages: true,
-            printMessages: true,
         })
     }
 
@@ -113,26 +109,19 @@ impl FMU2Builder {
         self
     }
 
-    pub fn printCalls(mut self, printCalls: bool) -> Self {
-        self.printCalls = printCalls;
-        self
-    }
-
-    pub fn logMessages(mut self, logMessages: bool) -> Self {
-        self.logMessages = logMessages;
-        self
-    }
-
-    pub fn printMessages(mut self, printMessages: bool) -> Self {
-        self.printMessages = printMessages;
-        self
-    }
-
     pub fn instantiate_me(
         &self,
         instanceName: &str,
     ) -> Result<fmi2::FMU2<fmi2::ME>, Box<dyn std::error::Error>> {
         if let Some(me) = &self.model_description.modelExchange {
+
+            let logger = if let Some(log_file) = &self.logFile {
+                fmi2::log::DefaultLogger::from_path(log_file)
+                    .map_err(|e| format!("Failed to create log file: {e}"))?
+            } else {
+                fmi2::log::DefaultLogger::default()
+            };
+
             fmi2::FMU2::<fmi2::ME>::new(
                 self.unzipdir.path(),
                 &me.modelIdentifier,
@@ -141,9 +130,7 @@ impl FMU2Builder {
                 self.visible,
                 self.loggingOn,
                 self.logCalls,
-                self.printCalls,
-                self.logMessages,
-                self.printMessages,
+                Box::new(logger),
                 !me.canNotUseMemoryManagementFunctions,
             )
         } else {
@@ -156,6 +143,14 @@ impl FMU2Builder {
         instanceName: &str,
     ) -> Result<fmi2::FMU2<fmi2::CS>, Box<dyn std::error::Error>> {
         if let Some(cs) = &self.model_description.coSimulation {
+
+            let logger = if let Some(log_file) = &self.logFile {
+                fmi2::log::DefaultLogger::from_path(log_file)
+                    .map_err(|e| format!("Failed to create log file: {e}"))?
+            } else {
+                fmi2::log::DefaultLogger::default()
+            };
+
             fmi2::FMU2::<fmi2::CS>::new(
                 self.unzipdir.path(),
                 &cs.modelIdentifier,
@@ -164,9 +159,7 @@ impl FMU2Builder {
                 self.visible,
                 self.loggingOn,
                 self.logCalls,
-                self.printCalls,
-                self.logMessages,
-                self.printMessages,
+                Box::new(logger),
                 !cs.canNotUseMemoryManagementFunctions,
             )
         } else {
@@ -235,10 +228,10 @@ impl FMU3Builder {
     ) -> Result<fmi3::FMU3, Box<dyn std::error::Error>> {
         if let Some(me) = &self.model_description.modelExchange {
             let logger = if let Some(log_file) = &self.logFile {
-                DefaultLogger::from_path(log_file)
+                fmi3::log::DefaultLogger::from_path(log_file)
                     .map_err(|e| format!("Failed to create log file: {e}"))?
             } else {
-                DefaultLogger::default()
+                fmi3::log::DefaultLogger::default()
             };
 
             fmi3::FMU3::instantiateModelExchange(
@@ -262,10 +255,10 @@ impl FMU3Builder {
     ) -> Result<fmi3::FMU3, Box<dyn std::error::Error>> {
         if let Some(cs) = &self.model_description.coSimulation {
             let logger = if let Some(log_file) = &self.logFile {
-                DefaultLogger::from_path(log_file)
+                 fmi3::log::DefaultLogger::from_path(log_file)
                     .map_err(|e| format!("Failed to create log file: {e}"))?
             } else {
-                DefaultLogger::default()
+                 fmi3::log::DefaultLogger::default()
             };
 
             fmi3::FMU3::instantiateCoSimulation(

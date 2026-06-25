@@ -5,9 +5,11 @@
     clippy::too_many_arguments
 )]
 
+pub mod log;
 pub mod types;
 
 use crate::SHARED_LIBRARY_EXTENSION;
+use crate::fmi2::log::Logger;
 use colored::Colorize;
 use libloading::{Library, Symbol};
 use std::cell::RefCell;
@@ -159,13 +161,8 @@ pub struct Message {
 pub struct FMU2<T> {
     instanceName: String,
 
+    logger: Box<RefCell<Box<dyn Logger>>>,
     logCalls: bool,
-    printCalls: bool,
-    calls: RefCell<Vec<Call>>,
-
-    logMessages: bool,
-    printMessages: bool,
-    messages: Box<RefCell<Vec<Message>>>,
 
     library: Box<Library>,
 
@@ -221,36 +218,11 @@ pub extern "C" fn logger(
         "empty".to_string()
     };
 
-    if componentEnvironment.is_null() {
-        if io::stderr().is_terminal() {
-            let prefix = match status {
-                fmi2Status::fmi2OK => "[INFO]".bright_blue(),
-                fmi2Status::fmi2Warning => "[WARNING]".yellow(),
-                fmi2Status::fmi2Error => "[ERROR]".bright_red(),
-                fmi2Status::fmi2Discard => "[DISCARD]".bright_red(),
-                fmi2Status::fmi2Fatal => "[FATAL]".bright_red(),
-                fmi2Status::fmi2Pending => "[PENDING]".bright_red(),
-            };
-            eprintln!("{prefix} {}", message_str.trim_end());
-        } else {
-            let prefix = match status {
-                fmi2Status::fmi2OK => "[INFO]",
-                fmi2Status::fmi2Warning => "[WARNING]",
-                fmi2Status::fmi2Error => "[ERROR]",
-                fmi2Status::fmi2Discard => "[DISCARD]",
-                fmi2Status::fmi2Fatal => "[FATAL]",
-                fmi2Status::fmi2Pending => "[PENDING]",
-            };
-            eprintln!("{prefix} {}", message_str.trim_end());
-        };
-    } else {
-        let messages = unsafe { &*(componentEnvironment as *const RefCell<Vec<Message>>) };
-        let message = Message {
-            status,
-            category: category_str,
-            message: message_str,
-        };
-        messages.borrow_mut().push(message);
+    if !componentEnvironment.is_null() {
+        let logger = unsafe { &*(componentEnvironment as *const RefCell<Box<dyn Logger>>) };
+        logger
+            .borrow()
+            .log_message(status, &category_str, &message_str);
     }
 }
 
@@ -276,10 +248,8 @@ impl<T> FMU2<T> {
         guid: &str,
         visible: bool,
         loggingOn: bool,
+        logger: Box<dyn Logger>,
         logCalls: bool,
-        printCalls: bool,
-        logMessages: bool,
-        printMessages: bool,
         interfaceType: T,
         provideMemoryManagementFunctions: bool,
     ) -> Result<FMU2<T>, Box<dyn Error>> {
@@ -312,11 +282,7 @@ impl<T> FMU2<T> {
         let mut fmu = FMU2 {
             instanceName: String::from(instanceName),
             logCalls,
-            printCalls,
-            calls: RefCell::new(Vec::new()),
-            logMessages,
-            printMessages,
-            messages: Box::new(RefCell::new(Vec::new())),
+            logger: Box::new(RefCell::new(logger)),
             library,
             fmi2GetVersion,
             fmi2GetTypesPlatform,
@@ -369,14 +335,6 @@ impl<T> FMU2<T> {
         }
     }
 
-    pub fn drain_calls(&self) -> Vec<Call> {
-        self.calls.borrow_mut().drain(..).collect()
-    }
-
-    pub fn drain_messages(&self) -> Vec<Message> {
-        self.messages.borrow_mut().drain(..).collect()
-    }
-
     fn load_library(
         unzipdir: &Path,
         model_identifier: &str,
@@ -394,19 +352,7 @@ impl<T> FMU2<T> {
     }
 
     fn log_call(&self, status: fmi2Status, message: &str) {
-        if self.printCalls {
-            if io::stderr().is_terminal() {
-                eprintln!("{} {message}", "[FMI]".bright_black());
-            } else {
-                eprintln!("[FMI] {message}");
-            }
-        } else {
-            let call = Call {
-                status,
-                message: message.to_string(),
-            };
-            self.calls.borrow_mut().push(call);
-        }
+        self.logger.borrow().log_call(status, message);
     }
 
     pub fn getVersion(&self) -> String {
@@ -472,11 +418,8 @@ impl<T> FMU2<T> {
             Err(e) => return Err(e.into()),
         };
 
-        let componentEnvironment = if self.logMessages && !self.printMessages {
-            &*self.messages as *const RefCell<Vec<Message>> as fmi2ComponentEnvironment
-        } else {
-            ptr::null_mut() as fmi2ComponentEnvironment
-        };
+        let componentEnvironment =
+            &*self.logger as *const RefCell<Box<dyn Logger>> as fmi2ComponentEnvironment;
 
         unsafe extern "C" fn allocateMemory(nobj: usize, size: usize) -> *mut c_void {
             unsafe {
@@ -889,9 +832,7 @@ impl FMU2<ME> {
         visible: bool,
         loggingOn: bool,
         logCalls: bool,
-        printCalls: bool,
-        logMessages: bool,
-        printMessages: bool,
+        logger: Box<dyn Logger>,
         provideMemoryManagementFunctions: bool,
     ) -> Result<FMU2<ME>, Box<dyn Error>> {
         let library = FMU2::<ME>::load_library(unzipdir, modelIdentifier)?;
@@ -908,7 +849,7 @@ impl FMU2<ME> {
         let fmi2GetNominalsOfContinuousStates =
             get_symbol(&library, b"fmi2GetNominalsOfContinuousStates")?;
 
-        let modelExchangeFunctions = ME {
+        let interfaceType = ME {
             fmi2EnterEventMode,
             fmi2NewDiscreteStates,
             fmi2EnterContinuousTimeMode,
@@ -929,11 +870,9 @@ impl FMU2<ME> {
             guid,
             visible,
             loggingOn,
+            logger,
             logCalls,
-            printCalls,
-            logMessages,
-            printMessages,
-            modelExchangeFunctions,
+            interfaceType,
             provideMemoryManagementFunctions,
         )?;
 
@@ -1128,9 +1067,7 @@ impl FMU2<CS> {
         visible: bool,
         loggingOn: bool,
         logCalls: bool,
-        printCalls: bool,
-        logMessages: bool,
-        printMessages: bool,
+        logger: Box<dyn Logger>,
         provideMemoryManagementFunctions: bool,
     ) -> Result<FMU2<CS>, Box<dyn Error>> {
         let library = FMU2::<ME>::load_library(unzipdir, modelIdentifier)?;
@@ -1145,7 +1082,7 @@ impl FMU2<CS> {
         let fmi2GetBooleanStatus = get_symbol(&library, b"fmi2GetBooleanStatus")?;
         let fmi2GetStringStatus = get_symbol(&library, b"fmi2GetStringStatus")?;
 
-        let coSimulationFunctions = CS {
+        let interfaceType = CS {
             fmi2SetRealInputDerivatives,
             fmi2GetRealOutputDerivatives,
             fmi2DoStep,
@@ -1165,11 +1102,9 @@ impl FMU2<CS> {
             guid,
             visible,
             loggingOn,
+            logger,
             logCalls,
-            printCalls,
-            logMessages,
-            printMessages,
-            coSimulationFunctions,
+            interfaceType,
             provideMemoryManagementFunctions,
         )?;
 

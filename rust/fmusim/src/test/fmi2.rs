@@ -4,14 +4,11 @@ use std::{path::PathBuf, process::ExitCode};
 
 use fmi::{
     fmi2::{
-        CS, FMU2, ME,
-        types::{fmi2FMUstate, fmi2False, fmi2Status, fmi2True},
-    },
-    model_description::{
+        CS, FMU2, ME, log::DefaultLogger, types::{fmi2FMUstate, fmi2False, fmi2Status, fmi2True},
+    }, model_description::{
         self,
         fmi2::{Initial, ModelDescription, VariableType},
-    },
-    util::extract_fmu,
+    }, util::extract_fmu,
 };
 
 use crate::TestArgs;
@@ -23,15 +20,22 @@ pub struct FMU2Factory {
     pub unzipdir: PathBuf,
     pub visible: bool,
     pub loggingOn: bool,
+    pub logFile: Option<PathBuf>,
     pub logCalls: bool,
-    pub printCalls: bool,
-    pub logMessages: bool,
-    pub printMessages: bool,
     pub provideMemoryManagementFunctions: bool,
 }
 
 impl FMU2Factory {
     pub fn instantiate_me(&self) -> Result<FMU2<ME>, Box<dyn std::error::Error>> {
+
+        let logger = if let Some(log_file) = &self.logFile {
+            let stream = std::fs::File::create(log_file)
+                .map_err(|e| format!("Failed to create log file: {}", e))?;
+            DefaultLogger::new(stream)
+        } else {
+            DefaultLogger::new(std::io::stderr())
+        };
+
         if let Some(me) = &self.model_description.modelExchange {
             FMU2::<ME>::new(
                 self.unzipdir.as_path(),
@@ -41,9 +45,7 @@ impl FMU2Factory {
                 self.visible,
                 self.loggingOn,
                 self.logCalls,
-                self.printCalls,
-                self.logMessages,
-                self.printMessages,
+                Box::new(logger),
                 !me.canNotUseMemoryManagementFunctions,
             )
         } else {
@@ -53,6 +55,15 @@ impl FMU2Factory {
 
     pub fn instantiate_cs(&self) -> Result<FMU2<CS>, Box<dyn std::error::Error>> {
         if let Some(cs) = &self.model_description.coSimulation {
+
+            let logger = if let Some(log_file) = &self.logFile {
+                let stream = std::fs::File::create(log_file)
+                    .map_err(|e| format!("Failed to create log file: {}", e))?;
+                DefaultLogger::new(stream)
+            } else {
+                DefaultLogger::new(std::io::stderr())
+            };
+
             FMU2::<CS>::new(
                 self.unzipdir.as_path(),
                 &cs.modelIdentifier,
@@ -61,9 +72,7 @@ impl FMU2Factory {
                 self.visible,
                 self.loggingOn,
                 self.logCalls,
-                self.printCalls,
-                self.logMessages,
-                self.printMessages,
+                Box::new(logger),
                 self.provideMemoryManagementFunctions,
             )
         } else {
@@ -262,17 +271,6 @@ macro_rules! bail {
     };
 }
 
-// fn print_result(name: &str, result: Result<(), Box<dyn std::error::Error>>) {
-//     print!("test {name} ... ");
-//     match result {
-//         Ok(()) => println!("{}", "ok".bright_green().bold()),
-//         Err(e) => {
-//             println!("{}", "FAILED".bright_red().bold());
-//             println!("{e}");
-//         },
-//     }
-// }
-
 pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
     let unzipdir = bail!(extract_fmu(&args.fmu_file));
 
@@ -285,10 +283,8 @@ pub fn smoke_test_fmi2(args: &TestArgs) -> ExitCode {
         unzipdir: unzipdir.path().to_path_buf(),
         visible: false,
         loggingOn: false,
+        logFile: None,
         logCalls: args.log_fmi_calls,
-        printCalls: true,
-        logMessages: true,
-        printMessages: true,
         provideMemoryManagementFunctions: true,
     };
 

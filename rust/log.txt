@@ -1,0 +1,5 @@
+[FMI] fmi3InstantiateCoSimulation(instanceName="Resource", instantiationToken="{7b9c2114-2ce5-4076-a138-2cbc69e069e5}", resourcePath=Some("C:\\Users\\tsr2\\AppData\\Local\\Temp\\.tmpAoX5MK\\resources\\"), visible=false, loggingOn=false, eventModeUsed=false, earlyReturnAllowed=false, nRequiredIntermediateVariables=0, instanceEnvironment=0x1be0e420690, logMessage=0x7ff69811b540, intermediateUpdate=0x0) -> 0x1be0e4196d0
+[FMI] fmi3EnterInitializationMode(toleranceDefined=false, tolerance=0, startTime=4, stopTimeDefined=false, stopTime=0) -> fmi3OK
+[ERROR] [logStatusError] Failed to open resource file C:\Users\tsr2\AppData\Local\Temp\.tmpAoX5MK\resources\y.txt.
+[FMI] fmi3ExitInitializationMode() -> fmi3Error
+[FMI] fmi3FreeInstance()

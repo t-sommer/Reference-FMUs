@@ -37,6 +37,7 @@ pub struct SimulationSettings<'a> {
     pub input_file: Option<PathBuf>,
     pub early_return_allowed: bool,
     pub event_mode_used: bool,
+    pub log_file: Option<PathBuf>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -253,6 +254,13 @@ pub fn simulate_cs(
     let can_handle_variable_communication_step_size =
         co_simulation.canHandleVariableCommunicationStepSize;
 
+    let logger = if let Some(log_file) = &settings.log_file {
+        fmi2::log::DefaultLogger::from_path(log_file)
+            .map_err(|e| format!("Failed to create log file: {e}"))?
+    } else {
+        fmi2::log::DefaultLogger::default()
+    };
+
     let fmu = FMU2::<CS>::new(
         settings.unzipdir,
         &co_simulation.modelIdentifier,
@@ -261,9 +269,7 @@ pub fn simulate_cs(
         false,
         settings.logging_on,
         settings.log_fmi_calls,
-        true,
-        true,
-        true,
+        Box::new(logger),
         !co_simulation.canNotUseMemoryManagementFunctions,
     )?;
 
@@ -374,6 +380,13 @@ pub fn simulate_me<S: SolverFactory>(
 
     let needs_completed_integrator_step = !model_exchange.completedIntegratorStepNotNeeded;
 
+    let logger = if let Some(log_file) = &settings.log_file {
+        fmi2::log::DefaultLogger::from_path(log_file)
+            .map_err(|e| format!("Failed to create log file: {e}"))?
+    } else {
+        fmi2::log::DefaultLogger::default()
+    };
+
     let fmu = FMU2::<ME>::new(
         settings.unzipdir,
         &model_exchange.modelIdentifier,
@@ -382,9 +395,7 @@ pub fn simulate_me<S: SolverFactory>(
         false,
         settings.logging_on,
         settings.log_fmi_calls,
-        true,
-        true,
-        true,
+        Box::new(logger),
         !model_exchange.canNotUseMemoryManagementFunctions,
     )?;
 

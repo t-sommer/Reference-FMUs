@@ -85,6 +85,7 @@ pub fn simulate_fmu(
         early_return_allowed: args.early_return_allowed,
         event_mode_used: args.event_mode_used,
         logging_on: args.logging_on,
+        log_file: args.log_file.as_ref().map(PathBuf::from),
     };
 
     let interface_type = match &args.interface_type {

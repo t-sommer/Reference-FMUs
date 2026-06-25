@@ -5,15 +5,15 @@
     clippy::too_many_arguments
 )]
 
+pub mod log;
 pub mod types;
 
 use crate::SHARED_LIBRARY_EXTENSION;
-use colored::Colorize;
+use crate::fmi3::log::Logger;
 use libloading::{Library, Symbol};
 use std::cell::RefCell;
 use std::error::Error;
 use std::ffi::{CStr, CString};
-use std::io::{self, IsTerminal};
 use std::os::raw::{c_uint, c_void};
 use std::path::Path;
 use std::ptr::{self, null, null_mut};
@@ -127,13 +127,9 @@ pub struct Message {
 }
 
 pub struct FMU3 {
-    logCalls: bool,
-    printCalls: bool,
-    calls: RefCell<Vec<Call>>,
+    logger: Box<RefCell<Box<dyn Logger>>>,
 
-    logMessages: bool,
-    printMessages: bool,
-    messages: Box<RefCell<Vec<Message>>>,
+    logCalls: bool,
 
     _lib: Box<Library>,
 
@@ -236,36 +232,11 @@ pub extern "C" fn logMessage(
         "empty".to_string()
     };
 
-    if instanceEnvironment.is_null() {
-        if io::stderr().is_terminal() {
-            let prefix = match status {
-                fmi3Status::fmi3OK => "[INFO]".bright_blue(),
-                fmi3Status::fmi3Warning => "[WARNING]".yellow(),
-                fmi3Status::fmi3Error => "[ERROR]".bright_red(),
-                fmi3Status::fmi3Discard => "[DISCARD]".bright_red(),
-                fmi3Status::fmi3Fatal => "[FATAL]".bright_red(),
-                fmi3Status::fmi3Pending => "[PENDING]".bright_red(),
-            };
-            eprintln!("{prefix} {}", message_str.trim_end());
-        } else {
-            let prefix = match status {
-                fmi3Status::fmi3OK => "[INFO]",
-                fmi3Status::fmi3Warning => "[WARNING]",
-                fmi3Status::fmi3Error => "[ERROR]",
-                fmi3Status::fmi3Discard => "[DISCARD]",
-                fmi3Status::fmi3Fatal => "[FATAL]",
-                fmi3Status::fmi3Pending => "[PENDING]",
-            };
-            eprintln!("{prefix} {}", message_str.trim_end());
-        };
-    } else {
-        let messages = unsafe { &*(instanceEnvironment as *const RefCell<Vec<Message>>) };
-        let message = Message {
-            status,
-            category: category_str,
-            message: message_str,
-        };
-        messages.borrow_mut().push(message);
+    if !instanceEnvironment.is_null() {
+        let logger = unsafe { &*(instanceEnvironment as *const RefCell<Box<dyn Logger>>) };
+        logger
+            .borrow()
+            .log_message(status, &category_str, &message_str);
     }
 }
 
@@ -283,10 +254,8 @@ impl FMU3 {
     fn new(
         unzipdir: &Path,
         modelIdentifier: &str,
+        logger: Box<dyn Logger>,
         logCalls: bool,
-        printCalls: bool,
-        logMessages: bool,
-        printMessages: bool,
     ) -> Result<FMU3, Box<dyn Error>> {
         let shared_library_path = unzipdir
             .join("binaries")
@@ -429,12 +398,8 @@ impl FMU3 {
             get_symbol::<fmi3ActivateModelPartitionTYPE>(&lib, b"fmi3ActivateModelPartition")?;
 
         Ok(FMU3 {
+            logger: Box::new(RefCell::new(logger)),
             logCalls,
-            printCalls,
-            calls: RefCell::new(Vec::new()),
-            logMessages,
-            printMessages,
-            messages: Box::new(RefCell::new(Vec::new())),
             _lib: lib,
             fmi3GetVersion,
             fmi3SetDebugLogging,
@@ -515,24 +480,8 @@ impl FMU3 {
         })
     }
 
-    pub fn drain_calls(&self) -> Vec<Call> {
-        self.calls.borrow_mut().drain(..).collect()
-    }
-
-    pub fn drain_messages(&self) -> Vec<Message> {
-        self.messages.borrow_mut().drain(..).collect()
-    }
-
     fn log_call(&self, status: fmi3Status, message: &str) {
-        if self.printCalls {
-            eprintln!("{}", message.bright_black());
-        } else {
-            let call = Call {
-                status,
-                message: message.to_string(),
-            };
-            self.calls.borrow_mut().push(call);
-        }
+        self.logger.borrow().log_call(status, message);
     }
 
     pub fn getVersion(&self) -> String {
@@ -554,19 +503,10 @@ impl FMU3 {
         instantiationToken: &str,
         visible: bool,
         loggingOn: bool,
+        logger: Box<dyn Logger>,
         logCalls: bool,
-        printCalls: bool,
-        logMessages: bool,
-        printMessages: bool,
     ) -> Result<FMU3, Box<dyn Error>> {
-        let mut fmu = FMU3::new(
-            unzipdir,
-            modelIdentifier,
-            logCalls,
-            printCalls,
-            logMessages,
-            printMessages,
-        )?;
+        let mut fmu = FMU3::new(unzipdir, modelIdentifier, logger, logCalls)?;
 
         let resource_path = unzipdir.join("resources").join("");
 
@@ -611,17 +551,10 @@ impl FMU3 {
             .map(|cstr| cstr.as_ptr())
             .unwrap_or(ptr::null());
 
-        let log_message = if self.logMessages {
-            logMessage as *const fmi3LogMessageCallback
-        } else {
-            ptr::null_mut() as *const fmi3LogMessageCallback
-        };
+        let log_message = logMessage as *const fmi3LogMessageCallback;
 
-        let instanceEnvironment = if self.logMessages && !self.printMessages {
-            &*self.messages as *const RefCell<Vec<Message>> as fmi3InstanceEnvironment
-        } else {
-            ptr::null_mut() as fmi3InstanceEnvironment
-        };
+        let instanceEnvironment =
+            &*self.logger as *const RefCell<Box<dyn Logger>> as fmi3InstanceEnvironment;
 
         let instance = unsafe {
             (self.fmi3InstantiateModelExchange)(
@@ -669,19 +602,10 @@ impl FMU3 {
         eventModeUsed: bool,
         earlyReturnAllowed: bool,
         requiredIntermediateVariables: &[c_uint],
+        logger: Box<dyn Logger>,
         logCalls: bool,
-        printCalls: bool,
-        logMessages: bool,
-        printMessages: bool,
     ) -> Result<FMU3, Box<dyn Error>> {
-        let mut fmu = FMU3::new(
-            unzipdir,
-            modelIdentifier,
-            logCalls,
-            printCalls,
-            logMessages,
-            printMessages,
-        )?;
+        let mut fmu = FMU3::new(unzipdir, modelIdentifier, logger, logCalls)?;
 
         let resource_path = unzipdir.join("resources").join("");
 
@@ -732,17 +656,10 @@ impl FMU3 {
             .map(|cstr| cstr.as_ptr())
             .unwrap_or(ptr::null());
 
-        let log_message = if self.logMessages {
-            logMessage as *const fmi3LogMessageCallback
-        } else {
-            ptr::null() as *const fmi3LogMessageCallback
-        };
+        let log_message = logMessage as *const fmi3LogMessageCallback;
 
-        let instanceEnvironment = if self.logMessages && !self.printMessages {
-            &*self.messages as *const RefCell<Vec<Message>> as fmi3InstanceEnvironment
-        } else {
-            ptr::null_mut() as fmi3InstanceEnvironment
-        };
+        let instanceEnvironment =
+            &*self.logger as *const RefCell<Box<dyn Logger>> as fmi3InstanceEnvironment;
 
         let intermediate_update = ptr::null();
 

@@ -1,10 +1,21 @@
 #![allow(non_snake_case)]
 
-use std::{fs::File, path::Path};
+use std::{
+    cell::RefCell,
+    fs::File,
+    path::{Path, PathBuf},
+};
 use tempfile::TempDir;
 use zip::ZipArchive;
 
-use crate::{fmi2, fmi3};
+use crate::{
+    fmi2,
+    fmi3::{self, log::DefaultLogger},
+    model_description::{
+        self, fmi2::ModelDescription as ModelDescription2,
+        fmi3::ModelDescription as ModelDescription3,
+    },
+};
 
 pub fn extract_fmu<P: AsRef<Path>>(fmu_path: P) -> Result<TempDir, Box<dyn std::error::Error>> {
     // Create temporary directory
@@ -169,9 +180,8 @@ pub struct FMU3Builder {
     pub model_description: crate::model_description::fmi3::ModelDescription,
     pub visible: bool,
     pub loggingOn: bool,
+    pub logFile: Option<PathBuf>,
     pub logCalls: bool,
-    pub printCalls: bool,
-    pub logMessages: bool,
     pub printMessages: bool,
     pub eventModeUsed: bool,
     pub earlyReturnAllowed: bool,
@@ -184,14 +194,14 @@ impl FMU3Builder {
         let model_description = crate::model_description::fmi3::ModelDescription::from_path(
             &unzipdir.path().join("modelDescription.xml"),
         )?;
+
         Ok(Self {
             unzipdir,
             model_description,
             visible: false,
             loggingOn: false,
+            logFile: None,
             logCalls: false,
-            printCalls: true,
-            logMessages: true,
             printMessages: true,
             eventModeUsed: true,
             earlyReturnAllowed: true,
@@ -214,16 +224,6 @@ impl FMU3Builder {
         self
     }
 
-    pub fn printCalls(mut self, printCalls: bool) -> Self {
-        self.printCalls = printCalls;
-        self
-    }
-
-    pub fn logMessages(mut self, logMessages: bool) -> Self {
-        self.logMessages = logMessages;
-        self
-    }
-
     pub fn printMessages(mut self, printMessages: bool) -> Self {
         self.printMessages = printMessages;
         self
@@ -234,6 +234,13 @@ impl FMU3Builder {
         instanceName: &str,
     ) -> Result<fmi3::FMU3, Box<dyn std::error::Error>> {
         if let Some(me) = &self.model_description.modelExchange {
+            let logger = if let Some(log_file) = &self.logFile {
+                DefaultLogger::from_path(log_file)
+                    .map_err(|e| format!("Failed to create log file: {e}"))?
+            } else {
+                DefaultLogger::default()
+            };
+
             fmi3::FMU3::instantiateModelExchange(
                 self.unzipdir.path(),
                 &me.modelIdentifier,
@@ -241,10 +248,8 @@ impl FMU3Builder {
                 &self.model_description.instantiationToken,
                 self.visible,
                 self.loggingOn,
+                Box::new(logger),
                 self.logCalls,
-                self.printCalls,
-                self.logMessages,
-                self.printMessages,
             )
         } else {
             Err("Model Exchange is not supported.".into())
@@ -256,6 +261,13 @@ impl FMU3Builder {
         instanceName: &str,
     ) -> Result<fmi3::FMU3, Box<dyn std::error::Error>> {
         if let Some(cs) = &self.model_description.coSimulation {
+            let logger = if let Some(log_file) = &self.logFile {
+                DefaultLogger::from_path(log_file)
+                    .map_err(|e| format!("Failed to create log file: {e}"))?
+            } else {
+                DefaultLogger::default()
+            };
+
             fmi3::FMU3::instantiateCoSimulation(
                 self.unzipdir.path(),
                 &cs.modelIdentifier,
@@ -266,10 +278,8 @@ impl FMU3Builder {
                 self.eventModeUsed,
                 self.earlyReturnAllowed,
                 &self.requiredIntermediateVariables,
+                Box::new(logger),
                 self.logCalls,
-                self.printCalls,
-                self.logMessages,
-                self.printMessages,
             )
         } else {
             Err("Co-Simulation is not supported.".into())

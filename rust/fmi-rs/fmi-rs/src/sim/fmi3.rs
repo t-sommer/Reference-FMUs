@@ -4,6 +4,7 @@ pub mod recorder;
 
 use std::{collections::HashMap, error::Error};
 
+use crate::fmi3::log::{DefaultLogger, Logger};
 use crate::model_description::fmi3::{Causality, ModelDescription};
 use crate::sim::validate_simulation_steps;
 use crate::{
@@ -32,6 +33,7 @@ pub struct SimulationSettings<'a> {
     pub input_file: Option<PathBuf>,
     pub early_return_allowed: bool,
     pub event_mode_used: bool,
+    pub log_file: Option<PathBuf>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -475,6 +477,14 @@ pub fn simulate_cs(
     let can_handle_variable_communication_step_size =
         co_simulation.canHandleVariableCommunicationStepSize;
 
+    let logger = if let Some(log_file) = &settings.log_file {
+        let stream = std::fs::File::create(log_file)
+            .map_err(|e| format!("Failed to create log file: {}", e))?;
+        DefaultLogger::new(stream)
+    } else {
+        DefaultLogger::default()
+    };
+
     let fmu = FMU3::instantiateCoSimulation(
         settings.unzipdir,
         &co_simulation.modelIdentifier,
@@ -485,10 +495,8 @@ pub fn simulate_cs(
         settings.event_mode_used,
         settings.early_return_allowed,
         &[],
+        Box::new(logger),
         settings.log_fmi_calls,
-        true,
-        true,
-        true,
     )?;
 
     set_start_values(&settings.start_values, settings.model_description, &fmu)?;
@@ -708,10 +716,8 @@ pub fn simulate_me<S: SolverFactory>(
         &settings.model_description.instantiationToken,
         false,
         settings.logging_on,
+        Box::new(DefaultLogger::default()),
         settings.log_fmi_calls,
-        true,
-        true,
-        true,
     )?;
 
     set_start_values(&settings.start_values, settings.model_description, &fmu)?;

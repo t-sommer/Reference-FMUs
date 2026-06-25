@@ -4,6 +4,7 @@ use std::{ffi::c_uint, path::PathBuf, process::ExitCode};
 use fmi::{
     fmi3::{
         FMU3,
+        log::{DefaultLogger, Logger},
         types::{fmi3FMUState, fmi3Status},
     },
     model_description::fmi3::ModelDescription,
@@ -23,14 +24,20 @@ pub struct FMUFactory {
     pub earlyReturnAllowed: bool,
     pub requiredIntermediateVariables: Vec<c_uint>,
     pub logCalls: bool,
-    pub printCalls: bool,
-    pub logMessages: bool,
-    pub printMessages: bool,
+    pub logFile: Option<PathBuf>,
 }
 
 impl FMUFactory {
     pub fn instantiate_me(&self) -> Result<FMU3, Box<dyn std::error::Error>> {
         if let Some(me) = &self.model_description.modelExchange {
+            let logger = if let Some(log_file) = &self.logFile {
+                let stream = std::fs::File::create(log_file)
+                    .map_err(|e| format!("Failed to create log file: {}", e))?;
+                DefaultLogger::new(stream)
+            } else {
+                DefaultLogger::new(std::io::stderr())
+            };
+
             FMU3::instantiateModelExchange(
                 self.unzipdir.as_path(),
                 &me.modelIdentifier,
@@ -38,10 +45,8 @@ impl FMUFactory {
                 &self.model_description.instantiationToken,
                 self.visible,
                 self.loggingOn,
+                Box::new(logger),
                 self.logCalls,
-                self.printCalls,
-                self.logMessages,
-                self.printMessages,
             )
         } else {
             Err("Model-Exchange is not supported.".into())
@@ -50,6 +55,14 @@ impl FMUFactory {
 
     pub fn instantiate_cs(&self) -> Result<FMU3, Box<dyn std::error::Error>> {
         if let Some(cs) = &self.model_description.coSimulation {
+            let logger = if let Some(log_file) = &self.logFile {
+                let stream = std::fs::File::create(log_file)
+                    .map_err(|e| format!("Failed to create log file: {}", e))?;
+                DefaultLogger::new(stream)
+            } else {
+                DefaultLogger::new(std::io::stderr())
+            };
+
             FMU3::instantiateCoSimulation(
                 self.unzipdir.as_path(),
                 &cs.modelIdentifier,
@@ -60,10 +73,8 @@ impl FMUFactory {
                 self.eventModeUsed,
                 self.earlyReturnAllowed,
                 &self.requiredIntermediateVariables,
+                Box::new(logger),
                 self.logCalls,
-                self.printCalls,
-                self.logMessages,
-                self.printMessages,
             )
         } else {
             Err("Co-Simulation is not supported.".into())
@@ -276,9 +287,7 @@ pub fn smoke_test_fmi3(args: &TestArgs) -> ExitCode {
         earlyReturnAllowed: false,
         requiredIntermediateVariables: vec![],
         logCalls: args.log_fmi_calls,
-        printCalls: true,
-        logMessages: true,
-        printMessages: true,
+        logFile: None,
     };
 
     if let Err(e) = test_set_fmu_state(&factory) {

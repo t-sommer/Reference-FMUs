@@ -117,6 +117,10 @@ pub struct SimulateArgs {
     #[arg(long)]
     log_fmi_calls: bool,
 
+    /// File to write the log to (default: stderr)
+    #[arg(long)]
+    log_file: Option<String>,
+
     /// Interval for sampling the output variables
     #[arg(long)]
     output_interval: Option<f64>,

@@ -1,7 +1,9 @@
 [package]
 name = "fmi-rs"
-version = "0.1.0"
-edition = "2024"
+description = "Functional Mock-up Interface (FMI) for Rust"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [features]
 default = ["zip"]

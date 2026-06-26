@@ -1,7 +1,9 @@
 [package]
 name = "fmi-rs-cvode"
-version = "0.1.0"
-edition = "2024"
+description = "A SUNDIALS interface for Rust"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [dependencies]
-fmi-rs = { path = "../fmi-rs" }
+fmi-rs = { workspace = true }

@@ -1,10 +1,13 @@
 [workspace]
 members = [
-    # "BouncingBall", 
-    # "Dahlquist", 
-    # "fmi-export", 
-    # "fmi-export-derive", 
-    "fmusim", 
-    # "xtask"
+    "fmusim",
 ]
 resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "BSD-2-Clause"
+
+[workspace.dependencies]
+fmi-rs = { path = "fmi-rs/fmi-rs", version = "0.1.0" }

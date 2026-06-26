@@ -1,13 +1,13 @@
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() {
-    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let out_dir = PathBuf::from(&env::var("OUT_DIR").unwrap());
     let target = env::var("TARGET").unwrap();
 
     // Organize vendor by target triple to prevent cross-compilation conflicts
-    let library_dir = manifest_dir.join("vendor").join(&target);
+    let library_dir = out_dir.join("sundials");
 
     if !library_dir.exists() {
         fetch_and_build_cvode(&library_dir, &target);
@@ -111,6 +111,10 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
     }
 
     // 4. Build and Install
+    println!(
+        "cargo:warning=Installing SUNDIALS to {install_dir:?}..."
+    );
+
     let status = Command::new("cmake")
         .args([
             "--build",

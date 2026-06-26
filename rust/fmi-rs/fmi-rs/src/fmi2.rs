@@ -10,12 +10,10 @@ pub mod types;
 
 use crate::SHARED_LIBRARY_EXTENSION;
 use crate::fmi2::log::Logger;
-use colored::Colorize;
 use libloading::{Library, Symbol};
 use std::cell::RefCell;
 use std::error::Error;
 use std::ffi::{CStr, CString};
-use std::io::{self, IsTerminal};
 use std::os::raw::c_void;
 use std::path::Path;
 use std::ptr;
@@ -330,7 +328,7 @@ impl<T> FMU2<T> {
             loggingOn,
             provideMemoryManagementFunctions,
         ) {
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
             Ok(_) => Ok(fmu),
         }
     }
@@ -405,18 +403,13 @@ impl<T> FMU2<T> {
             }
         };
 
-        let url_cstr = match resourceUrl
-            .map(|url| url.to_string())
+        let url_cstr = resourceUrl
             .map(|url| {
-                CString::new(url).map_err(|e| {
+                CString::new(url.to_string()).map_err(|e| {
                     format!("Failed to convert argument resourceUrl to C string: {}", e)
                 })
             })
-            .transpose()
-        {
-            Ok(cstr) => cstr,
-            Err(e) => return Err(e.into()),
-        };
+            .transpose()?;
 
         let componentEnvironment =
             &*self.logger as *const RefCell<Box<dyn Logger>> as fmi2ComponentEnvironment;

@@ -4,7 +4,7 @@ use std::{ffi::c_uint, path::PathBuf, process::ExitCode};
 use fmi_rs::{
     fmi3::{
         FMU3,
-        log::{DefaultLogger, Logger},
+        log::DefaultLogger,
         types::{fmi3FMUState, fmi3Status},
     },
     model_description::fmi3::ModelDescription,
@@ -206,7 +206,7 @@ pub fn get_all_variables(
     call(fmu.enterInitializationMode(None, 0.0, None))?;
     call(fmu.exitInitializationMode())?;
 
-    for variable in model_description.modelVariables.iter() {
+    for _variable in model_description.modelVariables.iter() {
         // match &variable.variableType {
         //     VariableType::Real { start, .. } => {
         //         let mut values = [0.0];

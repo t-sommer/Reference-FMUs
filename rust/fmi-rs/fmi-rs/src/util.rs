@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
 use std::{
-    cell::RefCell,
     fs::File,
     path::{Path, PathBuf},
 };
@@ -11,10 +10,6 @@ use zip::ZipArchive;
 use crate::{
     fmi2,
     fmi3,
-    model_description::{
-        self, fmi2::ModelDescription as ModelDescription2,
-        fmi3::ModelDescription as ModelDescription3,
-    },
 };
 
 pub fn extract_fmu<P: AsRef<Path>>(fmu_path: P) -> Result<TempDir, Box<dyn std::error::Error>> {

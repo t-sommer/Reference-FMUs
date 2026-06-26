@@ -4,7 +4,7 @@ pub mod recorder;
 
 use std::{collections::HashMap, error::Error};
 
-use crate::fmi3::log::{DefaultLogger, Logger};
+use crate::fmi3::log::DefaultLogger;
 use crate::model_description::fmi3::{Causality, ModelDescription};
 use crate::sim::validate_simulation_steps;
 use crate::{

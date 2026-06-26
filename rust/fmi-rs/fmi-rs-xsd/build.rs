@@ -1,13 +1,13 @@
-use std::{env, path::Path};
+use std::env;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 fn main() {
-    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let out_dir = PathBuf::from(&env::var("OUT_DIR").unwrap());
     let target = env::var("TARGET").unwrap();
 
-    // Organize vendor by target triple to prevent cross-compilation conflicts
-    let library_dir = manifest_dir.join("vendor").join(&target);
+    let library_dir = out_dir.join("libxml2");
 
-    // Check if libxml2 static library exists; if not, download and build it.
     if !library_dir.exists() {
         fetch_and_build_libxml2(&library_dir, &target);
     }
@@ -15,10 +15,9 @@ fn main() {
     cc::Build::new()
         .file("src/c/src/fmi_rs_xsd.c")
         .include("src/c/include")
-        .include(format!("vendor/{target}/include/libxml2"))
+        .include(format!("{}", library_dir.join("include").join("libxml2").display()))
         .compile("fmi_rs_xsd");
 
-    // Link to libxml2 static library
     println!(
         "cargo:rustc-link-search=native={}",
         library_dir.join("lib").display()
@@ -40,9 +39,7 @@ fn main() {
 }
 
 /// Downloads, builds, and installs libxml2 to the specified directory.
-fn fetch_and_build_libxml2(install_dir: &std::path::Path, target: &str) {
-    use std::process::Command;
-
+fn fetch_and_build_libxml2(install_dir: &Path, target: &str) {
     let version = "2.15.3";
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR not set");
     let out_path = std::path::Path::new(&out_dir);

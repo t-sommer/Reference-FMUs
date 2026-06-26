@@ -6,7 +6,6 @@ fn main() {
     let out_dir = PathBuf::from(&env::var("OUT_DIR").unwrap());
     let target = env::var("TARGET").unwrap();
 
-    // Organize vendor by target triple to prevent cross-compilation conflicts
     let library_dir = out_dir.join("sundials");
 
     if !library_dir.exists() {
@@ -111,10 +110,6 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
     }
 
     // 4. Build and Install
-    println!(
-        "cargo:warning=Installing SUNDIALS to {install_dir:?}..."
-    );
-
     let status = Command::new("cmake")
         .args([
             "--build",

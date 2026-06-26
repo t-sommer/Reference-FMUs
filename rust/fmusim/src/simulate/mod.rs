@@ -1,6 +1,6 @@
 use std::{fs::read_to_string, process::ExitCode};
 
-use fmi::model_description::{DefaultExperiment, FMIMajorVersion};
+use fmi_rs::model_description::{DefaultExperiment, FMIMajorVersion};
 
 use crate::{SimulateArgs, SimulateConfigArgs, error, prepare_fmu};
 

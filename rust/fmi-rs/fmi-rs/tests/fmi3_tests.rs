@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use fmi::fmi3::types::*;
-use fmi::fmi3::*;
+use fmi_rs::fmi3::types::*;
+use fmi_rs::fmi3::*;
 use std::{env, path::PathBuf};
 
 macro_rules! assert_ok {

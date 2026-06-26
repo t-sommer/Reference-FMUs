@@ -1,9 +1,9 @@
 #![allow(non_camel_case_types, non_snake_case, unused_variables)]
 
 #[cfg(feature = "fmi2")]
-use fmi::fmi2::types::*;
+use fmi_rs::fmi2::types::*;
 // #[cfg(not(feature = "fmi2"))]
-use fmi::{fmi3::types::*, types::fmiStatus};
+use fmi_rs::{fmi3::types::*, types::fmiStatus};
 use std::any::type_name_of_val;
 use std::os::raw::c_void;
 use std::ptr::null_mut;

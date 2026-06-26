@@ -186,8 +186,8 @@ pub extern "C" fn fmi2Instantiate(
     };
 
     let solver = match fmuType {
-        fmi::fmi2::types::fmi2Type::fmi2ModelExchange => None,
-        fmi::fmi2::types::fmi2Type::fmi2CoSimulation => Some(Solver::new()),
+        fmi_rs::fmi2::types::fmi2Type::fmi2ModelExchange => None,
+        fmi_rs::fmi2::types::fmi2Type::fmi2CoSimulation => Some(Solver::new()),
         _ => return std::ptr::null_mut(),
     };
 

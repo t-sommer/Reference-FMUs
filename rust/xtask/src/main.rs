@@ -1,4 +1,4 @@
-use fmi::SHARED_LIBRARY_EXTENSION;
+use fmi_rs::SHARED_LIBRARY_EXTENSION;
 use std::fs;
 use std::fs::File;
 use std::io;
@@ -60,8 +60,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let (deploy_dir, platform, features) = match fmi_version.as_str() {
-        "2" => ("fmi2", fmi::fmi2::PLATFORM, vec!["--features", "fmi2"]),
-        "3" => ("fmi3", fmi::fmi3::PLATFORM_TUPLE, vec![]),
+        "2" => ("fmi2", fmi_rs::fmi2::PLATFORM, vec!["--features", "fmi2"]),
+        "3" => ("fmi3", fmi_rs::fmi3::PLATFORM_TUPLE, vec![]),
         _ => return Err(format!("Unsupported FMI version: {}", fmi_version).into()),
     };
 

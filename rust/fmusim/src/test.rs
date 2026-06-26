@@ -1,6 +1,6 @@
 use std::process::ExitCode;
 
-use fmi::model_description::FMIMajorVersion;
+use fmi_rs::model_description::FMIMajorVersion;
 
 use crate::{
     TestArgs, error, prepare_fmu,

@@ -1,7 +1,7 @@
 use colored::Colorize;
 use std::{ffi::c_uint, path::PathBuf, process::ExitCode};
 
-use fmi::{
+use fmi_rs::{
     fmi3::{
         FMU3,
         log::{DefaultLogger, Logger},

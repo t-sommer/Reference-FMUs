@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use fmi::{
+use fmi_rs::{
     model_description::fmi3::{TypeDefinition, VariableType},
     sim::{
         euler::ForwardEulerFactory,
@@ -28,17 +28,17 @@ pub fn simulate_fmu(
     unzipdir: &tempfile::TempDir,
     xml_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let model_description = fmi::model_description::fmi3::ModelDescription::from_path(xml_path)?;
+    let model_description = fmi_rs::model_description::fmi3::ModelDescription::from_path(xml_path)?;
 
-    let output_variables: Vec<&fmi::model_description::fmi3::ModelVariable> =
+    let output_variables: Vec<&fmi_rs::model_description::fmi3::ModelVariable> =
         if args.output_variable.is_empty() {
             model_description
                 .modelVariables
                 .iter()
-                .filter(|v| v.causality == fmi::model_description::fmi3::Causality::Output)
+                .filter(|v| v.causality == fmi_rs::model_description::fmi3::Causality::Output)
                 .collect()
         } else {
-            let variable_map: HashMap<&str, &fmi::model_description::fmi3::ModelVariable> =
+            let variable_map: HashMap<&str, &fmi_rs::model_description::fmi3::ModelVariable> =
                 model_description
                     .modelVariables
                     .iter()
@@ -71,7 +71,7 @@ pub fn simulate_fmu(
     let (start_time, stop_time, tolerance, output_interval) =
         calculate_simulation_steps(args, default_experiment, fixed_step_size);
 
-    let settings = fmi::sim::fmi3::SimulationSettings {
+    let settings = fmi_rs::sim::fmi3::SimulationSettings {
         unzipdir: unzipdir.path(),
         model_description: &model_description,
         start_time,
@@ -102,29 +102,29 @@ pub fn simulate_fmu(
     let input = if let Some(path) = &args.input_file {
         let file =
             File::open(path).map_err(|e| format!("Failed to open input file '{}': {}", path, e))?;
-        let trajectories = fmi::sim::fmi3::csv::read_csv(&file, settings.model_description)
+        let trajectories = fmi_rs::sim::fmi3::csv::read_csv(&file, settings.model_description)
             .map_err(|e| format!("Failed to read input CSV '{}': {}", path, e))?;
-        Some(fmi::sim::fmi3::input::StaticInput::new(trajectories))
+        Some(fmi_rs::sim::fmi3::input::StaticInput::new(trajectories))
     } else {
         None
     };
 
     let mut trajectories =
-        fmi::sim::fmi3::Trajectories::new(&model_description, output_variables.clone());
+        fmi_rs::sim::fmi3::Trajectories::new(&model_description, output_variables.clone());
 
-    let mut recorder = fmi::sim::fmi3::recorder::Recorder::new(&mut trajectories);
+    let mut recorder = fmi_rs::sim::fmi3::recorder::Recorder::new(&mut trajectories);
 
     let fixes_step_size = args.fixed_step_size.unwrap_or(output_interval);
 
     let result = match interface_type {
         InterfaceType::ModelExchange => match args.solver {
-            SolverType::Euler => fmi::sim::fmi3::simulate_me(
+            SolverType::Euler => fmi_rs::sim::fmi3::simulate_me(
                 &settings,
                 &ForwardEulerFactory { fixes_step_size },
                 input.as_ref(),
                 &mut recorder,
             ),
-            SolverType::Cvode => fmi::sim::fmi3::simulate_me(
+            SolverType::Cvode => fmi_rs::sim::fmi3::simulate_me(
                 &settings,
                 &CVodeSolverFactory,
                 input.as_ref(),
@@ -132,12 +132,12 @@ pub fn simulate_fmu(
             ),
         },
         InterfaceType::CoSimulation => {
-            fmi::sim::fmi3::simulate_cs(&settings, input.as_ref(), &mut recorder)
+            fmi_rs::sim::fmi3::simulate_cs(&settings, input.as_ref(), &mut recorder)
         }
     };
 
     if let Some(output_file) = args.output_file.as_ref()
-        && let Err(e) = fmi::sim::fmi3::csv::write_csv(&trajectories, output_file)
+        && let Err(e) = fmi_rs::sim::fmi3::csv::write_csv(&trajectories, output_file)
     {
         return Err(format!("Failed to write output CSV file '{}': {}", output_file, e).into());
     }

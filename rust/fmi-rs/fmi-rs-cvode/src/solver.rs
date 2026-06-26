@@ -15,11 +15,11 @@ use crate::{
     sunlinsol_dense::SUNLinSol_Dense,
     sunmatrix_dense::{SM_COLUMN_D, SUNDenseMatrix},
 };
-use fmi::sim::{
+use fmi_rs::sim::{
     GetContinuousStateDerivativesFn, GetContinuousStatesFn, GetEventIndicatorsFn,
     SetContinuousInputsFn, SetContinuousStatesFn, SetTimeFn, Solver, SolverFactory,
 };
-use fmi::sim::{GetDirectionalDerivativeFn, GetNominalsOfContinuousStatesFn};
+use fmi_rs::sim::{GetDirectionalDerivativeFn, GetNominalsOfContinuousStatesFn};
 use std::{ffi::c_void, slice::from_raw_parts_mut};
 
 type Error = Box<dyn std::error::Error>;

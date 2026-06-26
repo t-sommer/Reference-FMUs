@@ -7,7 +7,7 @@
 // ```
 
 // Note: This file assumes the including crate has:
-// - use fmi::fmi3::types::*;
+// - use fmi_rs::fmi3::types::*;
 // - A ModelInstance type with appropriate methods
 // - get_instance! and get_instance_mut! macros defined
 

@@ -1,4 +1,4 @@
-use fmi::model_description::validation::validate_structured_variable_name;
+use fmi_rs::model_description::validation::validate_structured_variable_name;
 
 #[test]
 fn test_structured_variable_name_validation() {

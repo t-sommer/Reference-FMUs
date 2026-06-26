@@ -1,10 +1,10 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use fmi::fmi2::*;
-use fmi::model_description::fmi2::{Causality, ModelDescription};
-use fmi::sim::fmi2::recorder::Recorder;
-use fmi::sim::fmi2::{SimulationSettings, Trajectories};
-use fmi::{fmi2::types::*, sim::fmi2::simulate_cs};
+use fmi_rs::fmi2::*;
+use fmi_rs::model_description::fmi2::{Causality, ModelDescription};
+use fmi_rs::sim::fmi2::recorder::Recorder;
+use fmi_rs::sim::fmi2::{SimulationSettings, Trajectories};
+use fmi_rs::{fmi2::types::*, sim::fmi2::simulate_cs};
 use std::vec;
 use std::{env, path::PathBuf};
 

@@ -6,7 +6,7 @@ mod validate;
 
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
-use fmi::{
+use fmi_rs::{
     model_description::{FMIMajorVersion, peak_fmi_major_version},
     util::extract_fmu,
 };

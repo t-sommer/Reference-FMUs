@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use fmi::types::fmiStatus;
+use fmi_rs::types::fmiStatus;
 use serde::{Deserialize, Serialize};
 
 // Re-export the derive macro

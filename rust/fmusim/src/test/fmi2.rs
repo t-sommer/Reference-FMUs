@@ -2,7 +2,7 @@ use clap::error::Result;
 use colored::Colorize;
 use std::{path::PathBuf, process::ExitCode};
 
-use fmi::{
+use fmi_rs::{
     fmi2::{
         CS, FMU2, ME, log::DefaultLogger, types::{fmi2FMUstate, fmi2False, fmi2Status, fmi2True},
     }, model_description::{

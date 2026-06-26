@@ -1,7 +1,7 @@
 use std::{process::ExitCode, vec};
 
 use colored::Colorize;
-use fmi::{model_description::FMIMajorVersion, util::get_zip_contents};
+use fmi_rs::{model_description::FMIMajorVersion, util::get_zip_contents};
 use fmi_rs_xsd::validate_model_description_against_xsd;
 
 use crate::{ValidateArgs, error, prepare_fmu};
@@ -78,7 +78,7 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
     match &fmi_major_version {
         FMIMajorVersion::V2 => {
             let model_description =
-                match fmi::model_description::fmi2::ModelDescription::from_node(&root) {
+                match fmi_rs::model_description::fmi2::ModelDescription::from_node(&root) {
                     Ok(md) => md,
                     Err(e) => {
                         let message = format!("Failed to parse modelDescription.xml: {e}");
@@ -89,7 +89,7 @@ pub fn validate_fmu(args: &ValidateArgs) -> ExitCode {
         }
         FMIMajorVersion::V3 => {
             let model_description =
-                match fmi::model_description::fmi3::ModelDescription::from_node(&root) {
+                match fmi_rs::model_description::fmi3::ModelDescription::from_node(&root) {
                     Ok(md) => md,
                     Err(e) => {
                         let message = format!("Failed to parse modelDescription.xml: {e}");

@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use fmi::model_description::fmi2::{SimpleType, Variability, VariableType};
-use fmi::sim::euler::ForwardEulerFactory;
-use fmi::sim::fmi2::Trajectories;
-use fmi::sim::fmi2::csv::read_csv;
+use fmi_rs::model_description::fmi2::{SimpleType, Variability, VariableType};
+use fmi_rs::sim::euler::ForwardEulerFactory;
+use fmi_rs::sim::fmi2::Trajectories;
+use fmi_rs::sim::fmi2::csv::read_csv;
 use fmi_rs_cvode::solver::CVodeSolverFactory;
 use plotly::layout::AxisRange;
 use plotly::{
@@ -23,17 +23,17 @@ pub fn simulate_fmu(
     unzipdir: &tempfile::TempDir,
     xml_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let model_description = fmi::model_description::fmi2::ModelDescription::from_path(xml_path)?;
+    let model_description = fmi_rs::model_description::fmi2::ModelDescription::from_path(xml_path)?;
 
-    let output_variables: Vec<&fmi::model_description::fmi2::ScalarVariable> =
+    let output_variables: Vec<&fmi_rs::model_description::fmi2::ScalarVariable> =
         if args.output_variable.is_empty() {
             model_description
                 .modelVariables
                 .iter()
-                .filter(|v| v.causality == fmi::model_description::fmi2::Causality::Output)
+                .filter(|v| v.causality == fmi_rs::model_description::fmi2::Causality::Output)
                 .collect()
         } else {
-            let variable_map: HashMap<&str, &fmi::model_description::fmi2::ScalarVariable> =
+            let variable_map: HashMap<&str, &fmi_rs::model_description::fmi2::ScalarVariable> =
                 model_description
                     .modelVariables
                     .iter()
@@ -62,7 +62,7 @@ pub fn simulate_fmu(
         args.fixed_step_size,
     );
 
-    let settings = fmi::sim::fmi2::SimulationSettings {
+    let settings = fmi_rs::sim::fmi2::SimulationSettings {
         unzipdir: unzipdir.path(),
         model_description: &model_description,
         start_time,
@@ -93,29 +93,29 @@ pub fn simulate_fmu(
     let input = if let Some(path) = &args.input_file {
         let file =
             File::open(path).map_err(|e| format!("Failed to open input file '{}': {}", path, e))?;
-        let trajectories = fmi::sim::fmi2::csv::read_csv(&file, settings.model_description)
+        let trajectories = fmi_rs::sim::fmi2::csv::read_csv(&file, settings.model_description)
             .map_err(|e| format!("Failed to read input CSV '{}': {}", path, e))?;
-        Some(fmi::sim::fmi2::input::StaticInput::new(trajectories))
+        Some(fmi_rs::sim::fmi2::input::StaticInput::new(trajectories))
     } else {
         None
     };
 
     let mut trajectories =
-        fmi::sim::fmi2::Trajectories::new(&model_description, output_variables.clone());
+        fmi_rs::sim::fmi2::Trajectories::new(&model_description, output_variables.clone());
 
-    let mut recorder = fmi::sim::fmi2::recorder::Recorder::new(&mut trajectories);
+    let mut recorder = fmi_rs::sim::fmi2::recorder::Recorder::new(&mut trajectories);
 
     let fixes_step_size = args.fixed_step_size.unwrap_or(output_interval);
 
     let result = match interface_type {
         InterfaceType::ModelExchange => match args.solver {
-            SolverType::Euler => fmi::sim::fmi2::simulate_me(
+            SolverType::Euler => fmi_rs::sim::fmi2::simulate_me(
                 &settings,
                 &ForwardEulerFactory { fixes_step_size },
                 input.as_ref(),
                 &mut recorder,
             ),
-            SolverType::Cvode => fmi::sim::fmi2::simulate_me(
+            SolverType::Cvode => fmi_rs::sim::fmi2::simulate_me(
                 &settings,
                 &CVodeSolverFactory,
                 input.as_ref(),
@@ -123,12 +123,12 @@ pub fn simulate_fmu(
             ),
         },
         InterfaceType::CoSimulation => {
-            fmi::sim::fmi2::simulate_cs(&settings, input.as_ref(), &mut recorder)
+            fmi_rs::sim::fmi2::simulate_cs(&settings, input.as_ref(), &mut recorder)
         }
     };
 
     if let Some(output_file) = args.output_file.as_ref() {
-        fmi::sim::fmi2::csv::write_csv(&trajectories, output_file)?;
+        fmi_rs::sim::fmi2::csv::write_csv(&trajectories, output_file)?;
     }
 
     if args.show_plot {

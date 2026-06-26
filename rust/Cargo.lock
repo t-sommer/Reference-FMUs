@@ -542,17 +542,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "fmi-rs-cvode"
-version = "0.1.0"
-dependencies = [
- "fmi-rs",
-]
-
-[[package]]
 name = "fmi-rs-libxml2"
 version = "0.1.0"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "fmi-rs-sundials"
+version = "0.1.0"
+dependencies = [
+ "fmi-rs",
 ]
 
 [[package]]
@@ -564,8 +564,8 @@ dependencies = [
  "colored",
  "csv",
  "fmi-rs",
- "fmi-rs-cvode",
  "fmi-rs-libxml2",
+ "fmi-rs-sundials",
  "libloading",
  "plotly",
  "roxmltree",

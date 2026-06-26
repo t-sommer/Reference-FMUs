@@ -11,7 +11,7 @@ use fmi_rs::{
         fmi3::{Trajectories, csv::read_csv},
     },
 };
-use fmi_rs_cvode::solver::CVodeSolverFactory;
+use fmi_rs_sundials::solver::CVodeSolverFactory;
 use plotly::{
     Configuration, Layout, Plot, Scatter,
     color::NamedColor,

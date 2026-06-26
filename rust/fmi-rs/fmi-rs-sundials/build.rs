@@ -9,7 +9,7 @@ fn main() {
     let library_dir = out_dir.join("sundials");
 
     if !library_dir.exists() {
-        fetch_and_build_cvode(&library_dir, &target);
+        fetch_and_build_sundials(&library_dir, &target);
     }
 
     println!(
@@ -34,14 +34,14 @@ fn main() {
     }
 }
 
-/// Downloads, builds, and installs cvode to the specified directory.
-fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
-    let version = "7.7.0";
+/// Downloads, builds, and installs SUNDIALS to the specified directory.
+fn fetch_and_build_sundials(install_dir: &Path, target: &str) {
+    let version = "7.8.0";
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR not set");
     let out_path = Path::new(&out_dir);
 
     println!(
-        "cargo:warning=Sundials not found. Downloading and building CVODE v{version} for {target}..."
+        "cargo:warning=Sundials not found. Downloading and building SUNDIALS v{version} for {target}..."
     );
 
     // Determine CMake generator based on the Rust target
@@ -55,8 +55,8 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
 
     // 1. Download source using curl (standard on modern Windows)
     let url =
-        format!("https://github.com/llnl/sundials/releases/download/v7.7.0/cvode-{version}.tar.gz");
-    let tar_path = out_path.join("cvode.tar.gz");
+        format!("https://github.com/llnl/sundials/releases/download/v{version}/sundials-{version}.tar.gz");
+    let tar_path = out_path.join("sundials.tar.gz");
     let status = Command::new("curl")
         .args(["-L", "-o", tar_path.to_str().unwrap(), &url])
         .output()
@@ -64,7 +64,7 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
 
     if !status.status.success() {
         panic!(
-            "Failed to download cvode from {}. Error: {}",
+            "Failed to download SUNDIALS from {}. Error: {}",
             url,
             String::from_utf8_lossy(&status.stderr)
         );
@@ -78,13 +78,13 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
         .expect("Failed to execute cmake -E tar.");
     if !status.status.success() {
         panic!(
-            "Failed to extract cvode source: {}",
+            "Failed to extract SUNDIALS source: {}",
             String::from_utf8_lossy(&status.stderr)
         );
     }
 
-    let src_dir = out_path.join(format!("cvode-{version}"));
-    let build_dir = out_path.join("cvode-build");
+    let src_dir = out_path.join(format!("sundials-{version}"));
+    let build_dir = out_path.join("sundials-build");
 
     // 3. Configure with CMake
     let status = Command::new("cmake")
@@ -95,6 +95,13 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
             build_dir.to_str().unwrap(),
             &format!("-DCMAKE_INSTALL_PREFIX={}", install_dir.display()),
             "-DBUILD_SHARED_LIBS=OFF",
+            "-DBUILD_TESTING=OFF",
+            "-DSUNDIALS_ENABLE_ARKODE=OFF",
+            "-DSUNDIALS_ENABLE_CVODES=OFF",
+            "-DSUNDIALS_ENABLE_C_EXAMPLES=OFF",
+            "-DSUNDIALS_ENABLE_IDA=OFF",
+            "-DSUNDIALS_ENABLE_IDAS=OFF",
+            "-DSUNDIALS_ENABLE_KINSOL=OFF",
             "-G",
             generator,
         ])
@@ -103,7 +110,7 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
 
     if !status.status.success() {
         panic!(
-            "Failed to configure cvode with generator {}: {}",
+            "Failed to configure SUNDIALS with generator {}: {}",
             generator,
             String::from_utf8_lossy(&status.stderr)
         );
@@ -120,11 +127,11 @@ fn fetch_and_build_cvode(install_dir: &Path, target: &str) {
             "install",
         ])
         .output()
-        .expect("Failed to build cvode.");
+        .expect("Failed to build SUNDIALS.");
 
     if !status.status.success() {
         panic!(
-            "Failed to install cvode: {}",
+            "Failed to install SUNDIALS: {}",
             String::from_utf8_lossy(&status.stderr)
         );
     }

@@ -1,5 +1,5 @@
 [package]
-name = "fmi-rs-cvode"
+name = "fmi-rs-sundials"
 description = "A SUNDIALS interface for Rust"
 version.workspace = true
 edition.workspace = true

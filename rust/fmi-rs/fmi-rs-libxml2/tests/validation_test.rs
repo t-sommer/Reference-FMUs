@@ -1,4 +1,4 @@
-use fmi_rs_xsd::validate_model_description_against_xsd;
+use fmi_rs_libxml2::validate_model_description_against_xsd;
 
 #[test]
 fn valid_model_description_fmi2() {

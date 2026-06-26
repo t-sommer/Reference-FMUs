@@ -1,5 +1,5 @@
 [package]
-name = "fmi-rs-xsd"
+name = "fmi-rs-libxml2"
 description = "XSD schema validation for Rust"
 version.workspace = true
 edition.workspace = true

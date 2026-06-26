@@ -2,7 +2,7 @@ use std::{process::ExitCode, vec};
 
 use colored::Colorize;
 use fmi_rs::{model_description::FMIMajorVersion, util::get_zip_contents};
-use fmi_rs_xsd::validate_model_description_against_xsd;
+use fmi_rs_libxml2::validate_model_description_against_xsd;
 
 use crate::{ValidateArgs, error, prepare_fmu};
 
